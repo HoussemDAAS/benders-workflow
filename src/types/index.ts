@@ -64,6 +64,7 @@ export interface KanbanColumn {
   title: string;
   color: string;
   order: number;
+  order_index?: number; // Backend uses snake_case
 }
 
 export interface KanbanTask {

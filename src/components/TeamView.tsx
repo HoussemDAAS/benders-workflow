@@ -98,7 +98,7 @@ const TeamMemberCard: React.FC<TeamMemberCardProps> = ({
         </div>
         <div className="contact-item">
           <Calendar size={14} />
-          <span>Joined {new Date(member.createdAt).toLocaleDateString()}</span>
+          <span>Joined {new Date(member.createdAt || member.created_at || Date.now()).toLocaleDateString()}</span>
         </div>
       </div>
 
@@ -347,10 +347,12 @@ export function TeamView({
       <div className={`team-grid ${viewMode}`}>
         {filteredMembers.map((member) => {
           const memberTasks = tasks.filter(task => 
-            task.assignedMembers.includes(member.id)
+            task.assignedMembers && task.assignedMembers.includes(member.id)
           );
           const memberWorkflows = workflows.filter(workflow =>
-            workflow.steps.some(step => step.assignedMembers.includes(member.id))
+            workflow.steps && workflow.steps.some(step => 
+              step.assignedMembers && step.assignedMembers.includes(member.id)
+            )
           );
           
           return (

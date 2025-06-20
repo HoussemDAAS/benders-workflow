@@ -153,8 +153,10 @@ export function Dashboard({
           </div>
           <div className="workflow-list">
             {activeWorkflows.slice(0, 4).map((workflow) => {
-              const completedSteps = workflow.steps.filter(step => step.status === 'completed').length;
-              const totalSteps = workflow.steps.length;
+              // Handle workflows without steps data from API
+              const steps = workflow.steps || [];
+              const completedSteps = steps.filter(step => step.status === 'completed').length;
+              const totalSteps = steps.length;
               const progress = totalSteps > 0 ? (completedSteps / totalSteps) * 100 : 0;
 
               return (
@@ -174,7 +176,10 @@ export function Dashboard({
                       />
                     </div>
                     <span className="progress-text">
-                      {completedSteps}/{totalSteps} steps completed
+                      {totalSteps > 0 
+                        ? `${completedSteps}/${totalSteps} steps completed`
+                        : 'No steps defined'
+                      }
                     </span>
                   </div>
                   <div className="workflow-meta">

@@ -58,12 +58,14 @@ const WorkflowCard: React.FC<WorkflowCardProps> = ({
   onStatusChange,
   onViewFlowchart 
 }) => {
-  const completedSteps = workflow.steps.filter(step => step.status === 'completed').length;
-  const totalSteps = workflow.steps.length;
+  // Handle workflows without steps data from API
+  const steps = workflow.steps || [];
+  const completedSteps = steps.filter(step => step.status === 'completed').length;
+  const totalSteps = steps.length;
   const progress = totalSteps > 0 ? (completedSteps / totalSteps) * 100 : 0;
 
-  const assignedMembers = workflow.steps
-    .flatMap(step => step.assignedMembers)
+  const assignedMembers = steps
+    .flatMap(step => step.assignedMembers || [])
     .filter((value, index, self) => self.indexOf(value) === index)
     .map(memberId => teamMembers.find(member => member.id === memberId))
     .filter(Boolean)
@@ -135,7 +137,10 @@ const WorkflowCard: React.FC<WorkflowCardProps> = ({
           />
         </div>
         <div className="progress-stats">
-          {completedSteps}/{totalSteps} steps completed
+          {totalSteps > 0 
+            ? `${completedSteps}/${totalSteps} steps completed`
+            : 'No steps defined'
+          }
         </div>
       </div>
 
@@ -207,11 +212,15 @@ interface FlowchartViewProps {
 }
 
 const FlowchartView: React.FC<FlowchartViewProps> = ({ workflow, onClose, onWorkflowUpdate }) => {
+  // Handle workflows without steps/connections data from API
+  const steps = workflow.steps || [];
+  const connections = workflow.connections || [];
+  
   // Convert workflow steps to React Flow nodes
-  const initialNodes: Node[] = workflow.steps.map((step) => ({
+  const initialNodes: Node[] = steps.map((step) => ({
     id: step.id,
-    type: step.type,
-    position: step.position,
+    type: step.type || 'process',
+    position: step.position || { x: 0, y: 0 },
     data: { 
       label: step.name,
       description: step.description 
@@ -219,7 +228,7 @@ const FlowchartView: React.FC<FlowchartViewProps> = ({ workflow, onClose, onWork
   }));
 
   // Convert workflow connections to React Flow edges
-  const initialEdges: Edge[] = workflow.connections.map((conn) => ({
+  const initialEdges: Edge[] = connections.map((conn) => ({
     id: conn.id,
     source: conn.source,
     target: conn.target,
@@ -239,7 +248,7 @@ const FlowchartView: React.FC<FlowchartViewProps> = ({ workflow, onClose, onWork
   const handleSave = useCallback(() => {
     // Convert back to workflow format and save
     const updatedSteps: WorkflowStep[] = nodes.map((node) => {
-      const originalStep = workflow.steps.find(s => s.id === node.id);
+      const originalStep = steps.find(s => s.id === node.id);
       return {
         ...originalStep!,
         position: node.position,
@@ -264,7 +273,7 @@ const FlowchartView: React.FC<FlowchartViewProps> = ({ workflow, onClose, onWork
 
     onWorkflowUpdate(updatedWorkflow);
     onClose();
-  }, [nodes, edges, workflow, onWorkflowUpdate, onClose]);
+  }, [nodes, edges, workflow, steps, onWorkflowUpdate, onClose]);
 
   return (
     <div className="flowchart-overlay">

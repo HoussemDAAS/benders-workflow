@@ -1,5 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { v4 as uuidv4 } from 'uuid';
+import React, { useState, useCallback, useMemo } from 'react';
 
 // Components
 import { Sidebar } from './components/Sidebar';
@@ -8,14 +7,30 @@ import { KanbanBoard } from './components/KanbanBoard';
 import { WorkflowsView } from './components/WorkflowsView';
 import { TeamView } from './components/TeamView';
 import { ClientsView } from './components/ClientsView';
+import { LoadingCard } from './components/LoadingSpinner';
+import { ErrorCard } from './components/ErrorMessage';
+
+// Services
+import {
+  clientService,
+  teamService,
+  workflowService,
+  taskService,
+  dashboardService,
+  CreateClientRequest,
+  CreateTeamMemberRequest,
+  CreateWorkflowRequest,
+  CreateTaskRequest
+} from './services';
+
+// Hooks
+import { useMultipleApi } from './hooks/useApi';
 
 // Types
 import { 
-  AppState, 
   Client, 
   TeamMember, 
   Workflow, 
-  KanbanColumn, 
   KanbanTask,
   DashboardStats 
 } from './types';
@@ -23,293 +38,243 @@ import {
 // Styles
 import './styles/app.css';
 
-// Initial data
-const initialKanbanColumns: KanbanColumn[] = [
-  { id: 'todo', title: 'To Do', color: '#64748b', order: 1 },
-  { id: 'in-progress', title: 'In Progress', color: '#3b82f6', order: 2 },
-  { id: 'review', title: 'Review', color: '#f59e0b', order: 3 },
-  { id: 'done', title: 'Done', color: '#10b981', order: 4 }
-];
-
-const initialTeamMembers: TeamMember[] = [
-  {
-    id: '1',
-    name: 'John Doe',
-    email: 'john@company.com',
-    role: 'Project Manager',
-    skills: ['Project Management', 'Agile', 'Communication'],
-    isActive: true,
-    createdAt: new Date()
-  },
-  {
-    id: '2',
-    name: 'Sarah Wilson',
-    email: 'sarah@company.com',
-    role: 'Developer',
-    skills: ['React', 'TypeScript', 'Node.js'],
-    isActive: true,
-    createdAt: new Date()
-  },
-  {
-    id: '3',
-    name: 'Mike Chen',
-    email: 'mike@company.com',
-    role: 'Designer',
-    skills: ['UI/UX Design', 'Figma', 'Prototyping'],
-    isActive: true,
-    createdAt: new Date()
-  }
-];
-
-const initialClients: Client[] = [
-  {
-    id: '1',
-    name: 'Alice Smith',
-    company: 'TechCorp Inc.',
-    email: 'alice@techcorp.com',
-    phone: '+1-555-0123',
-    isActive: true,
-    createdAt: new Date()
-  },
-  {
-    id: '2',
-    name: 'Bob Johnson',
-    company: 'StartupXYZ',
-    email: 'bob@startupxyz.com',
-    isActive: true,
-    createdAt: new Date()
-  }
-];
-
-const initialWorkflows: Workflow[] = [
-  {
-    id: '1',
-    name: 'Website Redesign',
-    description: 'Complete redesign of the company website with modern UI/UX',
-    clientId: '1',
-    steps: [
-      {
-        id: 'step1',
-        name: 'Project Kickoff',
-        description: 'Initial meeting and requirements gathering',
-        type: 'start-end',
-        assignedMembers: ['1'],
-        position: { x: 100, y: 100 },
-        status: 'completed',
-        dependencies: []
-      },
-      {
-        id: 'step2',
-        name: 'Design Mockups',
-        description: 'Create wireframes and visual designs',
-        type: 'process',
-        assignedMembers: ['3'],
-        position: { x: 100, y: 200 },
-        status: 'in-progress',
-        dependencies: ['step1']
-      },
-      {
-        id: 'step3',
-        name: 'Development',
-        description: 'Frontend and backend implementation',
-        type: 'process',
-        assignedMembers: ['2'],
-        position: { x: 100, y: 300 },
-        status: 'pending',
-        dependencies: ['step2']
-      }
-    ],
-    connections: [
-      { id: 'conn1', source: 'step1', target: 'step2' },
-      { id: 'conn2', source: 'step2', target: 'step3' }
-    ],
-    status: 'active',
-    createdAt: new Date(),
-    updatedAt: new Date(),
-    startDate: new Date(),
-    expectedEndDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days from now
-  }
-];
-
-const initialTasks: KanbanTask[] = [
-  {
-    id: '1',
-    title: 'Create user research plan',
-    description: 'Develop comprehensive research methodology',
-    workflowId: '1',
-    stepId: 'step2',
-    assignedMembers: ['3'],
-    priority: 'high',
-    status: 'in-progress',
-    tags: ['research', 'planning'],
-    dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-    createdAt: new Date(),
-    updatedAt: new Date()
-  },
-  {
-    id: '2',
-    title: 'Setup development environment',
-    description: 'Configure build tools and development workflow',
-    workflowId: '1',
-    stepId: 'step3',
-    assignedMembers: ['2'],
-    priority: 'medium',
-    status: 'todo',
-    tags: ['development', 'setup'],
-    createdAt: new Date(),
-    updatedAt: new Date()
-  }
-];
-
 export default function App() {
-  const [appState, setAppState] = useState<AppState>({
-    clients: initialClients,
-    teamMembers: initialTeamMembers,
-    workflows: initialWorkflows,
-    kanbanColumns: initialKanbanColumns,
-    kanbanTasks: initialTasks,
-    currentView: 'dashboard',
-    selectedWorkflow: undefined,
-    selectedClient: undefined
-  });
+  const [currentView, setCurrentView] = useState<string>('dashboard');
+  const [selectedWorkflow, setSelectedWorkflow] = useState<string | undefined>();
+  const [selectedClient, setSelectedClient] = useState<string | undefined>();
 
-  // Calculate dashboard stats
-  const dashboardStats: DashboardStats = {
-    totalClients: appState.clients.filter(c => c.isActive).length,
-    activeWorkflows: appState.workflows.filter(w => w.status === 'active').length,
-    completedTasks: appState.kanbanTasks.filter(t => t.status === 'done').length,
-    teamMembers: appState.teamMembers.filter(m => m.isActive).length,
-    overdueItems: appState.kanbanTasks.filter(t => 
-      t.dueDate && new Date(t.dueDate) < new Date() && t.status !== 'done'
-    ).length
+  // Memoize API call functions to prevent infinite re-renders
+  const apiCallFunctions = useMemo(() => ({
+    clients: () => clientService.getAll(),
+    teamMembers: () => teamService.getAll(),
+    workflows: () => workflowService.getAll(),
+    kanbanColumns: () => taskService.getColumns(),
+    kanbanTasks: () => taskService.getAll(),
+    dashboardStats: () => dashboardService.getStats()
+  }), []);
+
+  // Load all data using our API hook
+  const { data, loading, error, refresh } = useMultipleApi(apiCallFunctions);
+
+  // Extract data with fallbacks - all data from API now
+  const clients = data?.clients || [];
+  const teamMembers = data?.teamMembers || [];
+  const workflows = data?.workflows || [];
+  const kanbanColumns = data?.kanbanColumns || [
+    { id: 'todo', title: 'To Do', color: '#64748b', order: 1 },
+    { id: 'in-progress', title: 'In Progress', color: '#3b82f6', order: 2 },
+    { id: 'review', title: 'Review', color: '#f59e0b', order: 3 },
+    { id: 'done', title: 'Done', color: '#10b981', order: 4 }
+  ];
+  const kanbanTasks = data?.kanbanTasks || [];
+  const dashboardStats = data?.dashboardStats || {
+    totalClients: 0,
+    activeWorkflows: 0,
+    completedTasks: 0,
+    teamMembers: 0,
+    overdueItems: 0
   };
 
-  // Event handlers
+  // Event handlers - MUST be defined before any conditional returns to maintain hook order
   const handleViewChange = useCallback((view: string) => {
-    setAppState(prev => ({ ...prev, currentView: view as any }));
+    setCurrentView(view);
   }, []);
 
   const handleNewWorkflow = useCallback(() => {
-    // For now, just switch to workflows view
-    // In a real app, this would open a modal or form
-    handleViewChange('workflows');
-  }, [handleViewChange]);
+    setCurrentView('workflows');
+  }, []);
 
   // Workflow handlers
   const handleWorkflowCreate = useCallback(() => {
-    console.log('Create new workflow');
-    // TODO: Implement workflow creation modal
+    console.log('Create workflow - will be implemented with modal');
+    // TODO: Open modal for workflow creation
   }, []);
 
-  const handleWorkflowEdit = useCallback((workflow: Workflow) => {
-    setAppState(prev => ({
-      ...prev,
-      workflows: prev.workflows.map(w => 
-        w.id === workflow.id ? workflow : w
-      )
-    }));
-  }, []);
+  const handleWorkflowEdit = useCallback(async (workflow: Workflow) => {
+    try {
+      // Convert workflow to update format
+      const updateData: Partial<CreateWorkflowRequest> = {
+        name: workflow.name,
+        description: workflow.description,
+        clientId: workflow.clientId,
+        status: workflow.status === 'draft' ? 'active' : workflow.status === 'on-hold' ? 'paused' : workflow.status as any,
+        startDate: workflow.startDate ? new Date(workflow.startDate).toISOString() : undefined,
+        expectedEndDate: workflow.expectedEndDate ? new Date(workflow.expectedEndDate).toISOString() : undefined
+      };
+      
+      await workflowService.update(workflow.id, updateData);
+      await refresh();
+    } catch (error) {
+      console.error('Failed to update workflow:', error);
+    }
+  }, [refresh]);
 
-  const handleWorkflowStatusChange = useCallback((workflowId: string, status: string) => {
-    setAppState(prev => ({
-      ...prev,
-      workflows: prev.workflows.map(w => 
-        w.id === workflowId 
-          ? { ...w, status: status as any, updatedAt: new Date() }
-          : w
-      )
-    }));
-  }, []);
+  const handleWorkflowStatusChange = useCallback(async (workflowId: string, status: string) => {
+    try {
+      await workflowService.updateStatus(workflowId, status);
+      await refresh();
+    } catch (error) {
+      console.error('Failed to update workflow status:', error);
+    }
+  }, [refresh]);
 
   // Team member handlers
   const handleMemberCreate = useCallback(() => {
-    console.log('Create new team member');
-    // TODO: Implement team member creation modal
+    console.log('Create team member - will be implemented with modal');
+    // TODO: Open modal for team member creation
   }, []);
 
-  const handleMemberEdit = useCallback((member: TeamMember) => {
-    console.log('Edit team member:', member);
-    // TODO: Implement team member edit modal
-  }, []);
+  const handleMemberEdit = useCallback(async (member: TeamMember) => {
+    try {
+      const updateData: Partial<CreateTeamMemberRequest> = {
+        name: member.name,
+        email: member.email,
+        role: member.role,
+        skills: member.skills,
+        isActive: member.isActive
+      };
+      
+      await teamService.update(member.id, updateData);
+      await refresh();
+    } catch (error) {
+      console.error('Failed to update team member:', error);
+    }
+  }, [refresh]);
 
-  const handleMemberStatusChange = useCallback((memberId: string, isActive: boolean) => {
-    setAppState(prev => ({
-      ...prev,
-      teamMembers: prev.teamMembers.map(m => 
-        m.id === memberId ? { ...m, isActive } : m
-      )
-    }));
-  }, []);
+  const handleMemberStatusChange = useCallback(async (memberId: string, isActive: boolean) => {
+    try {
+      await teamService.updateStatus(memberId, isActive);
+      await refresh();
+    } catch (error) {
+      console.error('Failed to update team member status:', error);
+    }
+  }, [refresh]);
 
   // Client handlers
   const handleClientCreate = useCallback(() => {
-    console.log('Create new client');
-    // TODO: Implement client creation modal
+    console.log('Create client - will be implemented with modal');
+    // TODO: Open modal for client creation
   }, []);
 
-  const handleClientEdit = useCallback((client: Client) => {
-    console.log('Edit client:', client);
-    // TODO: Implement client edit modal
-  }, []);
+  const handleClientEdit = useCallback(async (client: Client) => {
+    try {
+      const updateData: Partial<CreateClientRequest> = {
+        name: client.name,
+        company: client.company,
+        email: client.email,
+        phone: client.phone,
+        isActive: client.isActive
+      };
+      
+      await clientService.update(client.id, updateData);
+      await refresh();
+    } catch (error) {
+      console.error('Failed to update client:', error);
+    }
+  }, [refresh]);
 
-  const handleClientStatusChange = useCallback((clientId: string, isActive: boolean) => {
-    setAppState(prev => ({
-      ...prev,
-      clients: prev.clients.map(c => 
-        c.id === clientId ? { ...c, isActive } : c
-      )
-    }));
-  }, []);
+  const handleClientStatusChange = useCallback(async (clientId: string, isActive: boolean) => {
+    try {
+      await clientService.updateStatus(clientId, isActive);
+      await refresh();
+    } catch (error) {
+      console.error('Failed to update client status:', error);
+    }
+  }, [refresh]);
 
   // Kanban handlers
-  const handleTaskMove = useCallback((taskId: string, newStatus: string) => {
-    setAppState(prev => ({
-      ...prev,
-      kanbanTasks: prev.kanbanTasks.map(task =>
-        task.id === taskId
-          ? { ...task, status: newStatus, updatedAt: new Date() }
-          : task
-      )
-    }));
-  }, []);
+  const handleTaskMove = useCallback(async (taskId: string, newStatus: string) => {
+    try {
+      await taskService.move(taskId, newStatus);
+      await refresh();
+    } catch (error) {
+      console.error('Failed to move task:', error);
+    }
+  }, [refresh]);
 
-  const handleTaskCreate = useCallback((columnId: string) => {
-    const newTask: KanbanTask = {
-      id: uuidv4(),
-      title: 'New Task',
-      description: 'Task description',
-      workflowId: appState.selectedWorkflow || appState.workflows[0]?.id || '',
-      stepId: '',
-      assignedMembers: [],
-      priority: 'medium',
-      status: columnId,
-      tags: [],
-      createdAt: new Date(),
-      updatedAt: new Date()
-    };
+  const handleTaskCreate = useCallback(async (columnId: string, workflowId?: string, clientId?: string) => {
+    try {
+      const newTask: CreateTaskRequest = {
+        title: 'New Task',
+        description: 'Task description',
+        workflowId: workflowId || selectedWorkflow || workflows[0]?.id,
+        stepId: '',
+        priority: 'medium',
+        status: columnId,
+        tags: [],
+        assignedMembers: [],
+        clientId: clientId // For auto-workflow creation
+      };
 
-    setAppState(prev => ({
-      ...prev,
-      kanbanTasks: [...prev.kanbanTasks, newTask]
-    }));
-  }, [appState.selectedWorkflow, appState.workflows]);
+      await taskService.create(newTask);
+      await refresh();
+    } catch (error) {
+      console.error('Failed to create task:', error);
+    }
+  }, [selectedWorkflow, workflows, refresh]);
 
-  const handleTaskEdit = useCallback((task: KanbanTask) => {
-    // For now, just log the task
-    // In a real app, this would open an edit modal
-    console.log('Edit task:', task);
-  }, []);
+  const handleTaskEdit = useCallback(async (task: KanbanTask) => {
+    try {
+      const updateData: Partial<CreateTaskRequest> = {
+        title: task.title,
+        description: task.description,
+        workflowId: task.workflowId,
+        stepId: task.stepId,
+        priority: task.priority,
+        status: task.status,
+        tags: task.tags,
+        dueDate: task.dueDate ? new Date(task.dueDate).toISOString() : undefined,
+        assignedMembers: task.assignedMembers
+      };
+      
+      await taskService.update(task.id, updateData);
+      await refresh();
+    } catch (error) {
+      console.error('Failed to update task:', error);
+    }
+  }, [refresh]);
+
+  // Show loading or error states - AFTER all hooks are defined
+  if (loading) {
+    return (
+      <div className="app">
+        <Sidebar
+          currentView={currentView}
+          onViewChange={handleViewChange}
+          onNewWorkflow={handleNewWorkflow}
+        />
+        <main className="main-content">
+          <LoadingCard message="Loading application data..." />
+        </main>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="app">
+        <Sidebar
+          currentView={currentView}
+          onViewChange={handleViewChange}
+          onNewWorkflow={handleNewWorkflow}
+        />
+        <main className="main-content">
+          <ErrorCard error={error} onRetry={refresh} />
+        </main>
+      </div>
+    );
+  }
 
   // Render current view
   const renderCurrentView = () => {
-    switch (appState.currentView) {
+    switch (currentView) {
       case 'dashboard':
         return (
           <Dashboard
             stats={dashboardStats}
-            recentClients={appState.clients}
-            activeWorkflows={appState.workflows.filter(w => w.status === 'active')}
-            teamMembers={appState.teamMembers}
+            recentClients={clients}
+            activeWorkflows={workflows.filter((w: any) => w.status === 'active')}
+            teamMembers={teamMembers}
             onViewChange={handleViewChange}
           />
         );
@@ -317,9 +282,9 @@ export default function App() {
       case 'workflows':
         return (
           <WorkflowsView
-            workflows={appState.workflows}
-            clients={appState.clients}
-            teamMembers={appState.teamMembers}
+            workflows={workflows}
+            clients={clients}
+            teamMembers={teamMembers}
             onWorkflowCreate={handleWorkflowCreate}
             onWorkflowEdit={handleWorkflowEdit}
             onWorkflowStatusChange={handleWorkflowStatusChange}
@@ -329,22 +294,24 @@ export default function App() {
       case 'kanban':
         return (
           <KanbanBoard
-            columns={appState.kanbanColumns}
-            tasks={appState.kanbanTasks}
-            teamMembers={appState.teamMembers}
-            workflows={appState.workflows}
+            columns={kanbanColumns}
+            tasks={kanbanTasks}
+            teamMembers={teamMembers}
+            workflows={workflows}
+            clients={clients}
             onTaskMove={handleTaskMove}
             onTaskCreate={handleTaskCreate}
             onTaskEdit={handleTaskEdit}
+            onRefresh={refresh}
           />
         );
 
       case 'team':
         return (
           <TeamView
-            teamMembers={appState.teamMembers}
-            workflows={appState.workflows}
-            tasks={appState.kanbanTasks}
+            teamMembers={teamMembers}
+            workflows={workflows}
+            tasks={kanbanTasks}
             onMemberCreate={handleMemberCreate}
             onMemberEdit={handleMemberEdit}
             onMemberStatusChange={handleMemberStatusChange}
@@ -354,10 +321,10 @@ export default function App() {
       case 'clients':
         return (
           <ClientsView
-            clients={appState.clients}
-            workflows={appState.workflows}
-            tasks={appState.kanbanTasks}
-            teamMembers={appState.teamMembers}
+            clients={clients}
+            workflows={workflows}
+            tasks={kanbanTasks}
+            teamMembers={teamMembers}
             onClientCreate={handleClientCreate}
             onClientEdit={handleClientEdit}
             onClientStatusChange={handleClientStatusChange}
@@ -368,9 +335,9 @@ export default function App() {
         return (
           <Dashboard
             stats={dashboardStats}
-            recentClients={appState.clients}
-            activeWorkflows={appState.workflows.filter(w => w.status === 'active')}
-            teamMembers={appState.teamMembers}
+            recentClients={clients}
+            activeWorkflows={workflows.filter((w: any) => w.status === 'active')}
+            teamMembers={teamMembers}
             onViewChange={handleViewChange}
           />
         );
@@ -380,7 +347,7 @@ export default function App() {
   return (
     <div className="app">
       <Sidebar
-        currentView={appState.currentView}
+        currentView={currentView}
         onViewChange={handleViewChange}
         onNewWorkflow={handleNewWorkflow}
       />

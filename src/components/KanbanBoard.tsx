@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useDrag, useDrop, DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { 
@@ -7,18 +7,24 @@ import {
   Calendar, 
   User, 
   Flag,
-  Clock
+  Clock,
+  Workflow as WorkflowIcon,
+  Users,
+  Building
 } from 'lucide-react';
-import { KanbanTask, KanbanColumn, TeamMember, Workflow } from '../types';
+import { KanbanTask, KanbanColumn, TeamMember, Workflow, Client } from '../types';
+import { taskService, workflowService } from '../services';
 
 interface KanbanBoardProps {
   columns: KanbanColumn[];
   tasks: KanbanTask[];
   teamMembers: TeamMember[];
   workflows: Workflow[];
+  clients: Client[];
   onTaskMove: (taskId: string, newStatus: string) => void;
-  onTaskCreate: (columnId: string) => void;
+  onTaskCreate: (columnId: string, workflowId?: string, clientId?: string) => void;
   onTaskEdit: (task: KanbanTask) => void;
+  onRefresh: () => void;
 }
 
 interface TaskCardProps {
@@ -31,8 +37,10 @@ interface ColumnProps {
   column: KanbanColumn;
   tasks: KanbanTask[];
   teamMembers: TeamMember[];
+  selectedWorkflow: Workflow | null;
+  selectedClient: Client | null;
   onTaskMove: (taskId: string, newStatus: string) => void;
-  onTaskCreate: (columnId: string) => void;
+  onTaskCreate: (columnId: string, workflowId?: string, clientId?: string) => void;
   onTaskEdit: (task: KanbanTask) => void;
 }
 
@@ -46,9 +54,11 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, teamMembers, onEdit }) => {
   }));
 
   const assignedMemberNames = task.assignedMembers
-    .map(memberId => teamMembers.find(m => m.id === memberId)?.name)
-    .filter(Boolean)
-    .slice(0, 3);
+    ? task.assignedMembers
+        .map(memberId => teamMembers.find(m => m.id === memberId)?.name)
+        .filter(Boolean)
+        .slice(0, 3)
+    : [];
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
@@ -76,7 +86,7 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, teamMembers, onEdit }) => {
       <p className="task-description">{task.description}</p>
       
       <div className="task-tags">
-        {task.tags.slice(0, 3).map((tag, index) => (
+        {task.tags && task.tags.slice(0, 3).map((tag, index) => (
           <span key={index} className="task-tag">
             {tag}
           </span>
@@ -90,7 +100,7 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, teamMembers, onEdit }) => {
               {name?.charAt(0)}
             </div>
           ))}
-          {task.assignedMembers.length > 3 && (
+          {task.assignedMembers && task.assignedMembers.length > 3 && (
             <div className="assignee-more">
               +{task.assignedMembers.length - 3}
             </div>
@@ -112,6 +122,8 @@ const Column: React.FC<ColumnProps> = ({
   column, 
   tasks, 
   teamMembers, 
+  selectedWorkflow,
+  selectedClient,
   onTaskMove, 
   onTaskCreate, 
   onTaskEdit 
@@ -123,6 +135,14 @@ const Column: React.FC<ColumnProps> = ({
       isOver: monitor.isOver(),
     }),
   }));
+
+  const handleCreateTask = () => {
+    onTaskCreate(
+      column.id, 
+      selectedWorkflow?.id, 
+      selectedClient?.id
+    );
+  };
 
   return (
     <div 
@@ -136,7 +156,7 @@ const Column: React.FC<ColumnProps> = ({
         </div>
         <button 
           className="add-task-btn"
-          onClick={() => onTaskCreate(column.id)}
+          onClick={handleCreateTask}
         >
           <Plus size={16} />
         </button>
@@ -157,7 +177,7 @@ const Column: React.FC<ColumnProps> = ({
             <p>No tasks yet</p>
             <button 
               className="add-first-task"
-              onClick={() => onTaskCreate(column.id)}
+              onClick={handleCreateTask}
             >
               Add first task
             </button>
@@ -173,60 +193,202 @@ export function KanbanBoard({
   tasks, 
   teamMembers, 
   workflows,
+  clients,
   onTaskMove, 
   onTaskCreate, 
-  onTaskEdit 
+  onTaskEdit,
+  onRefresh
 }: KanbanBoardProps) {
   const [selectedWorkflow, setSelectedWorkflow] = useState<string>('all');
+  const [selectedClient, setSelectedClient] = useState<string>('all');
+  const [workflowTasks, setWorkflowTasks] = useState<KanbanTask[]>([]);
+  const [loading, setLoading] = useState(false);
 
-  const filteredTasks = selectedWorkflow === 'all' 
-    ? tasks 
-    : tasks.filter(task => task.workflowId === selectedWorkflow);
+  // Get filtered workflows based on selected client
+  const clientWorkflows = selectedClient === 'all' 
+    ? workflows 
+    : workflows.filter(w => w.clientId === selectedClient);
 
-  const sortedColumns = columns.sort((a, b) => a.order - b.order);
+  // Get current workflow and client objects
+  const currentWorkflow = workflows.find(w => w.id === selectedWorkflow) || null;
+  const currentClient = clients.find(c => c.id === selectedClient) || null;
+
+  // Fetch tasks for selected workflow or client
+  useEffect(() => {
+    const fetchTasks = async () => {
+      if (selectedWorkflow === 'all' && selectedClient === 'all') {
+        setWorkflowTasks(tasks);
+        return;
+      }
+
+      setLoading(true);
+      try {
+        let fetchedTasks: KanbanTask[] = [];
+        
+        if (selectedWorkflow && selectedWorkflow !== 'all') {
+          // Fetch tasks for specific workflow
+          fetchedTasks = await taskService.getByWorkflow(selectedWorkflow);
+        } else if (selectedClient && selectedClient !== 'all') {
+          // Fetch tasks for specific client (across all their workflows)
+          fetchedTasks = await taskService.getByClient(selectedClient);
+        }
+        
+        setWorkflowTasks(fetchedTasks);
+      } catch (error) {
+        console.error('Error fetching workflow tasks:', error);
+        setWorkflowTasks([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchTasks();
+  }, [selectedWorkflow, selectedClient, tasks]);
+
+  // Handle workflow selection
+  const handleWorkflowChange = (workflowId: string) => {
+    setSelectedWorkflow(workflowId);
+    if (workflowId !== 'all') {
+      // Find the client for this workflow and set it
+      const workflow = workflows.find(w => w.id === workflowId);
+      if (workflow) {
+        setSelectedClient(workflow.clientId);
+      }
+    }
+  };
+
+  // Handle client selection
+  const handleClientChange = (clientId: string) => {
+    setSelectedClient(clientId);
+    if (clientId !== 'all') {
+      // Reset workflow selection when client changes
+      setSelectedWorkflow('all');
+    }
+  };
+
+  const filteredTasks = workflowTasks;
+  const sortedColumns = columns.sort((a, b) => (a.order || a.order_index || 0) - (b.order || b.order_index || 0));
 
   return (
     <DndProvider backend={HTML5Backend}>
       <div className="kanban-board">
         <div className="kanban-header">
-          <div>
-            <h1>Kanban Board</h1>
-            <p>Manage and track all workflow tasks</p>
+          <div className="kanban-title-section">
+            <h1>
+              <WorkflowIcon size={24} />
+              Workflow Kanban Board
+            </h1>
+            <p>Manage tasks by workflow and client</p>
           </div>
           
-          <div className="kanban-filters">
-            <select 
-              value={selectedWorkflow}
-              onChange={(e) => setSelectedWorkflow(e.target.value)}
-              className="workflow-filter"
-            >
-              <option value="all">All Workflows</option>
-              {workflows.map(workflow => (
-                <option key={workflow.id} value={workflow.id}>
-                  {workflow.name}
+          <div className="kanban-selectors">
+            <div className="selector-group">
+              <label>
+                <Building size={16} />
+                Client:
+              </label>
+              <select 
+                value={selectedClient}
+                onChange={(e) => handleClientChange(e.target.value)}
+                className="client-selector"
+              >
+                <option value="all">All Clients</option>
+                {clients.map(client => (
+                  <option key={client.id} value={client.id}>
+                    {client.company || client.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="selector-group">
+              <label>
+                <WorkflowIcon size={16} />
+                Workflow:
+              </label>
+              <select 
+                value={selectedWorkflow}
+                onChange={(e) => handleWorkflowChange(e.target.value)}
+                className="workflow-selector"
+              >
+                <option value="all">
+                  {selectedClient === 'all' ? 'All Workflows' : 'All Client Workflows'}
                 </option>
-              ))}
-            </select>
+                {clientWorkflows.map(workflow => (
+                  <option key={workflow.id} value={workflow.id}>
+                    {workflow.name}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
         </div>
 
-        <div className="kanban-columns">
-          {sortedColumns.map((column) => {
-            const columnTasks = filteredTasks.filter(task => task.status === column.id);
-            
-            return (
-              <Column
-                key={column.id}
-                column={column}
-                tasks={columnTasks}
-                teamMembers={teamMembers}
-                onTaskMove={onTaskMove}
-                onTaskCreate={onTaskCreate}
-                onTaskEdit={onTaskEdit}
-              />
-            );
-          })}
-        </div>
+        {currentWorkflow && (
+          <div className="workflow-info">
+            <div className="workflow-details">
+              <h3>{currentWorkflow.name}</h3>
+              <p>{currentWorkflow.description}</p>
+              <div className="workflow-meta">
+                <span className={`status-badge ${currentWorkflow.status}`}>
+                  {currentWorkflow.status}
+                </span>
+                {currentClient && (
+                  <span className="client-info">
+                    <Building size={14} />
+                    {currentClient.company || currentClient.name}
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {loading ? (
+          <div className="kanban-loading">
+            <div className="loading-spinner">Loading tasks...</div>
+          </div>
+        ) : (
+          <div className="kanban-columns">
+            {sortedColumns.map((column) => {
+              const columnTasks = filteredTasks.filter(task => task.status === column.id);
+              
+              return (
+                <Column
+                  key={column.id}
+                  column={column}
+                  tasks={columnTasks}
+                  teamMembers={teamMembers}
+                  selectedWorkflow={currentWorkflow}
+                  selectedClient={currentClient}
+                  onTaskMove={onTaskMove}
+                  onTaskCreate={onTaskCreate}
+                  onTaskEdit={onTaskEdit}
+                />
+              );
+            })}
+          </div>
+        )}
+
+        {!loading && filteredTasks.length === 0 && (
+          <div className="empty-kanban">
+            <WorkflowIcon size={48} />
+            <h3>No tasks found</h3>
+            <p>
+              {selectedWorkflow !== 'all' || selectedClient !== 'all'
+                ? 'No tasks for this workflow/client. Create your first task!'
+                : 'Create your first task to get started.'
+              }
+            </p>
+            <button 
+              className="create-first-task"
+              onClick={() => onTaskCreate('todo', currentWorkflow?.id, currentClient?.id)}
+            >
+              <Plus size={20} />
+              Create First Task
+            </button>
+          </div>
+        )}
       </div>
     </DndProvider>
   );
