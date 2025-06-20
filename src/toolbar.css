@@ -1,0 +1,168 @@
+/* Toolbar Styles */
+.toolbar {
+  position: fixed;
+  left: 20px;
+  top: 20px;
+  width: 250px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  padding: 16px;
+  z-index: 1000;
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+}
+
+.toolbar-section {
+  margin-bottom: 24px;
+}
+
+.toolbar-section:last-child {
+  margin-bottom: 0;
+}
+
+.toolbar h3 {
+  margin: 0 0 12px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+  border-bottom: 1px solid #e5e7eb;
+  padding-bottom: 8px;
+}
+
+/* Node Buttons */
+.node-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.node-button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  background: white;
+  border: 1px solid #d1d5db;
+  border-left: 4px solid #d1d5db;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 12px;
+  font-weight: 500;
+  color: #374151;
+}
+
+.node-button:hover {
+  background: #f9fafb;
+  border-color: #9ca3af;
+  transform: translateX(2px);
+}
+
+.node-button:active {
+  transform: translateX(2px) scale(0.98);
+}
+
+.node-icon {
+  font-size: 16px;
+  width: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Action Buttons */
+.action-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.action-button {
+  padding: 8px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background: white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 12px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  text-decoration: none;
+  color: #374151;
+}
+
+.action-button:hover {
+  background: #f3f4f6;
+  border-color: #9ca3af;
+}
+
+.action-button.clear {
+  color: #dc2626;
+  border-color: #fecaca;
+  background: #fef2f2;
+}
+
+.action-button.clear:hover {
+  background: #fee2e2;
+  border-color: #fca5a5;
+}
+
+.action-button.export {
+  color: #059669;
+  border-color: #a7f3d0;
+  background: #ecfdf5;
+}
+
+.action-button.export:hover {
+  background: #d1fae5;
+  border-color: #6ee7b7;
+}
+
+.action-button.import {
+  color: #2563eb;
+  border-color: #bfdbfe;
+  background: #eff6ff;
+}
+
+.action-button.import:hover {
+  background: #dbeafe;
+  border-color: #93c5fd;
+}
+
+/* Instructions */
+.instructions {
+  font-size: 11px;
+  color: #6b7280;
+  line-height: 1.5;
+}
+
+.instructions p {
+  margin: 0 0 4px 0;
+}
+
+.instructions p:last-child {
+  margin-bottom: 0;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .toolbar {
+    width: 200px;
+    left: 10px;
+    top: 10px;
+    padding: 12px;
+  }
+  
+  .toolbar h3 {
+    font-size: 13px;
+  }
+  
+  .node-button,
+  .action-button {
+    font-size: 11px;
+    padding: 8px 10px;
+  }
+} 
