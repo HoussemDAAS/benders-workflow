@@ -392,6 +392,13 @@ export function WorkflowsView({
   const [deletingWorkflow, setDeletingWorkflow] = useState<Workflow | null>(null);
   const [taskFlowWorkflow, setTaskFlowWorkflow] = useState<Workflow | null>(null);
 
+  // Update client filter when initialClientFilter prop changes
+  React.useEffect(() => {
+    if (initialClientFilter) {
+      setClientFilter(initialClientFilter);
+    }
+  }, [initialClientFilter]);
+
   const statusCounts = workflows.reduce((acc, workflow) => {
     acc[workflow.status] = (acc[workflow.status] || 0) + 1;
     return acc;
