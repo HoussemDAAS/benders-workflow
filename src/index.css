@@ -1,52 +1,26 @@
-/* Import Inter font */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
-:root {
+/* Import our custom utilities */
+@import "./styles/tailwind-utilities.css";
+
+/* Tailwind CSS directives */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom base styles */
+body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
-
-  color-scheme: light;
-  color: #1e293b;
-  background-color: #f8fafc;
-
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  -webkit-text-size-adjust: 100%;
-}
-
-* {
+  margin: 0;
+  padding: 0;
   box-sizing: border-box;
 }
 
-body {
-  margin: 0;
-  min-width: 320px;
-  min-height: 100vh;
-  overflow: hidden;
+*, *::before, *::after {
+  box-sizing: border-box;
 }
 
-#root {
-  width: 100vw;
-  height: 100vh;
-  margin: 0;
-}
-
-button {
-  font-family: inherit;
-  border: none;
-  outline: none;
-  cursor: pointer;
-}
-
-input, select, textarea {
-  font-family: inherit;
-  outline: none;
-}
-
-/* Custom scrollbar for webkit browsers */
+/* Custom scrollbar styles */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -66,58 +40,22 @@ input, select, textarea {
   background: #94a3b8;
 }
 
-::-webkit-scrollbar-corner {
-  background: #f1f5f9;
+/* Force hide scrollbar for navigation specifically */
+.nav-scrollbar-hide {
+  -ms-overflow-style: none !important;
+  scrollbar-width: none !important;
 }
 
-/* Focus styles */
-button:focus-visible,
-input:focus-visible,
-select:focus-visible,
-textarea:focus-visible {
-  outline: 2px solid #3b82f6;
-  outline-offset: 2px;
+.nav-scrollbar-hide::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
 }
 
-/* Selection styles */
-::selection {
-  background: #dbeafe;
-  color: #1e40af;
+.nav-scrollbar-hide::-webkit-scrollbar-track {
+  display: none !important;
 }
 
-/* React Flow specific adjustments */
-.react-flow__controls {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-  border-radius: 8px;
-  overflow: hidden;
-}
-
-.react-flow__controls-button {
-  border: none;
-  background: white;
-  color: #374151;
-  font-size: 16px;
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.react-flow__controls-button:hover {
-  background: #f3f4f6;
-}
-
-.react-flow__minimap {
-  border-radius: 8px;
-  overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-}
-
-/* Edge label styling */
-.react-flow__edge-text {
-  font-size: 11px;
-  fill: #374151;
-  font-weight: 600;
-  text-shadow: 1px 1px 2px rgba(255, 255, 255, 0.8);
+.nav-scrollbar-hide::-webkit-scrollbar-thumb {
+  display: none !important;
 }

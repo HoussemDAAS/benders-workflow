@@ -18,18 +18,15 @@ import TeamPage from './pages/TeamPage';
 import ClientsPage from './pages/ClientsPage';
 import MeetingsPage from './pages/MeetingsPage';
 
-// Styles
-import './styles/app.css';
-
 // Layout component that handles loading and error states
 const AppLayout: React.FC = () => {
   const { loading, error, refresh } = useAppContext();
 
   if (loading) {
     return (
-      <div className="app">
+      <div className="flex h-screen bg-gray-50">
         <Sidebar />
-        <main className="main-content">
+        <main className="flex-1 overflow-auto">
           <LoadingCard message="Loading application data..." />
         </main>
       </div>
@@ -38,9 +35,9 @@ const AppLayout: React.FC = () => {
 
   if (error) {
     return (
-      <div className="app">
+      <div className="flex h-screen bg-gray-50">
         <Sidebar />
-        <main className="main-content">
+        <main className="flex-1 overflow-auto">
           <ErrorCard error={error} onRetry={refresh} />
         </main>
       </div>
@@ -48,20 +45,22 @@ const AppLayout: React.FC = () => {
   }
 
   return (
-    <div className="app">
+    <div className="flex h-screen bg-gray-50">
       <Sidebar />
-      <main className="main-content">
-        <Routes>
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
-          <Route path="/dashboard" element={<DashboardPage />} />
-          <Route path="/workflows" element={<WorkflowsPage />} />
-          <Route path="/kanban" element={<KanbanPage />} />
-          <Route path="/team" element={<TeamPage />} />
-          <Route path="/clients" element={<ClientsPage />} />
-          <Route path="/meetings" element={<MeetingsPage />} />
-          {/* Catch all route - redirect to dashboard */}
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
-        </Routes>
+      <main className="flex-1 overflow-auto">
+        <div className="h-full">
+          <Routes>
+            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/dashboard" element={<DashboardPage />} />
+            <Route path="/workflows" element={<WorkflowsPage />} />
+            <Route path="/kanban" element={<KanbanPage />} />
+            <Route path="/team" element={<TeamPage />} />
+            <Route path="/clients" element={<ClientsPage />} />
+            <Route path="/meetings" element={<MeetingsPage />} />
+            {/* Catch all route - redirect to dashboard */}
+            <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          </Routes>
+        </div>
       </main>
     </div>
   );
