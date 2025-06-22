@@ -1,7 +1,6 @@
 const express = require('express');
 const { body, validationResult } = require('express-validator');
 const Workflow = require('../models/Workflow');
-const WorkflowStep = require('../models/WorkflowStep');
 const router = express.Router();
 
 // Validation middleware
@@ -32,7 +31,18 @@ router.get('/', async (req, res) => {
       workflows = await Workflow.findAll();
     }
     
-    res.json(workflows);
+    // Attach progress details (based on completed tasks) to each workflow
+    const workflowsWithProgress = await Promise.all(
+      workflows.map(async (workflow) => {
+        const progress = await workflow.getProgress();
+        return {
+          ...workflow.toJSON(),
+          progress
+        };
+      })
+    );
+    
+    res.json(workflowsWithProgress);
   } catch (error) {
     console.error('Error fetching workflows:', error);
     res.status(500).json({ error: 'Failed to fetch workflows' });
@@ -46,7 +56,13 @@ router.get('/:id', async (req, res) => {
     if (!workflow) {
       return res.status(404).json({ error: 'Workflow not found' });
     }
-    res.json(workflow);
+
+    // Attach progress computed from tasks
+    const progress = await workflow.getProgress();
+    res.json({
+      ...workflow,
+      progress
+    });
   } catch (error) {
     console.error('Error fetching workflow:', error);
     res.status(500).json({ error: 'Failed to fetch workflow' });
@@ -54,36 +70,10 @@ router.get('/:id', async (req, res) => {
 });
 
 // GET /api/workflows/:id/steps - Get workflow steps
-router.get('/:id/steps', async (req, res) => {
-  try {
-    const workflow = await Workflow.findById(req.params.id);
-    if (!workflow) {
-      return res.status(404).json({ error: 'Workflow not found' });
-    }
-    
-    const steps = await workflow.getSteps();
-    res.json(steps);
-  } catch (error) {
-    console.error('Error fetching workflow steps:', error);
-    res.status(500).json({ error: 'Failed to fetch workflow steps' });
-  }
-});
+// Workflow steps removed – related endpoints return 410
 
 // GET /api/workflows/:id/connections - Get workflow connections
-router.get('/:id/connections', async (req, res) => {
-  try {
-    const workflow = await Workflow.findById(req.params.id);
-    if (!workflow) {
-      return res.status(404).json({ error: 'Workflow not found' });
-    }
-    
-    const connections = await workflow.getConnections();
-    res.json(connections);
-  } catch (error) {
-    console.error('Error fetching workflow connections:', error);
-    res.status(500).json({ error: 'Failed to fetch workflow connections' });
-  }
-});
+router.get('/:id/connections', (req, res) => res.status(410).json({ error: 'Workflow connections removed' }));
 
 // GET /api/workflows/:id/progress - Get workflow progress
 router.get('/:id/progress', async (req, res) => {
@@ -100,6 +90,12 @@ router.get('/:id/progress', async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch workflow progress' });
   }
 });
+
+// GET /api/workflows/:id/kanban-columns - Get workflow steps as kanban columns
+// Workflow steps removed – related endpoints return 410
+
+// GET /api/workflows/:id/kanban-tasks - Get all tasks in workflow organized by steps
+// Workflow steps removed – related endpoints return 410
 
 // POST /api/workflows - Create new workflow
 router.post('/', validateWorkflow, async (req, res) => {
@@ -119,7 +115,13 @@ router.post('/', validateWorkflow, async (req, res) => {
     });
 
     await workflow.save(req.body.performedBy);
-    res.status(201).json(workflow);
+
+    // Attach initial progress (zero tasks)
+    const progress = await workflow.getProgress();
+    res.status(201).json({
+      ...workflow.toJSON(),
+      progress
+    });
   } catch (error) {
     console.error('Error creating workflow:', error);
     res.status(500).json({ error: 'Failed to create workflow' });
@@ -127,35 +129,7 @@ router.post('/', validateWorkflow, async (req, res) => {
 });
 
 // POST /api/workflows/:id/steps - Add step to workflow
-router.post('/:id/steps', validateStep, async (req, res) => {
-  try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
-    }
-
-    const workflow = await Workflow.findById(req.params.id);
-    if (!workflow) {
-      return res.status(404).json({ error: 'Workflow not found' });
-    }
-
-    const step = new WorkflowStep({
-      workflowId: workflow.id,
-      name: req.body.name,
-      description: req.body.description,
-      type: req.body.type,
-      status: req.body.status || 'pending',
-      positionX: req.body.positionX || 0,
-      positionY: req.body.positionY || 0
-    });
-
-    await step.save(req.body.performedBy);
-    res.status(201).json(step);
-  } catch (error) {
-    console.error('Error creating workflow step:', error);
-    res.status(500).json({ error: 'Failed to create workflow step' });
-  }
-});
+// Workflow steps removed – related endpoints return 410
 
 // POST /api/workflows/:id/connections - Add connection between steps
 router.post('/:id/connections', async (req, res) => {
@@ -177,6 +151,9 @@ router.post('/:id/connections', async (req, res) => {
     res.status(500).json({ error: 'Failed to create workflow connection' });
   }
 });
+
+// POST /api/workflows/:id/kanban-columns - Create new kanban column (workflow step)
+// Workflow steps removed – related endpoints return 410
 
 // PUT /api/workflows/:id - Update workflow
 router.put('/:id', validateWorkflow, async (req, res) => {
@@ -206,6 +183,9 @@ router.put('/:id', validateWorkflow, async (req, res) => {
     res.status(500).json({ error: 'Failed to update workflow' });
   }
 });
+
+// PUT /api/workflows/:workflowId/kanban-columns/:stepId - Update kanban column
+// Workflow steps removed – related endpoints return 410
 
 // PATCH /api/workflows/:id/status - Update workflow status
 router.patch('/:id/status', async (req, res) => {
@@ -296,5 +276,11 @@ router.delete('/:id/connections/:connectionId', async (req, res) => {
     res.status(500).json({ error: 'Failed to delete workflow connection' });
   }
 });
+
+// DELETE /api/workflows/:workflowId/kanban-columns/:stepId - Delete kanban column
+// Workflow steps removed – related endpoints return 410
+
+// POST /api/workflows/:id/initialize-default-columns - Initialize default kanban columns for a workflow
+// Workflow steps removed – related endpoints return 410
 
 module.exports = router; 

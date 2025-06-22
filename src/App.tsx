@@ -526,6 +526,7 @@ export default function App() {
             workflows={workflows}
             clients={clients}
             teamMembers={teamMembers}
+            tasks={kanbanTasks}
             onWorkflowCreate={handleWorkflowCreate}
             onWorkflowEdit={handleWorkflowEdit}
             onWorkflowDelete={handleWorkflowDelete}

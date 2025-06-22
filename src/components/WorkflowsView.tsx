@@ -35,13 +35,14 @@ import {
   Target,
   Workflow as WorkflowIcon
 } from 'lucide-react';
-import { Workflow, Client, TeamMember, WorkflowStep } from '../types';
+import { Workflow, Client, TeamMember, WorkflowStep, KanbanTask } from '../types';
 import { nodeTypes } from '../nodes';
 
 interface WorkflowsViewProps {
   workflows: Workflow[];
   clients: Client[];
   teamMembers: TeamMember[];
+  tasks: KanbanTask[];
   onWorkflowCreate: (workflow: CreateWorkflowData) => void;
   onWorkflowEdit: (workflow: Workflow) => void;
   onWorkflowDelete: (workflowId: string) => void;
@@ -61,6 +62,7 @@ interface WorkflowCardProps {
   workflow: Workflow;
   client: Client | undefined;
   teamMembers: TeamMember[];
+  workflowTasks: KanbanTask[];
   onEdit: (workflow: Workflow) => void;
   onStatusChange: (workflowId: string, status: string) => void;
   onViewFlowchart: (workflow: Workflow) => void;
@@ -81,160 +83,8 @@ interface DeleteModalProps {
   onConfirm: () => void;
 }
 
-const WorkflowCard: React.FC<WorkflowCardProps> = ({ 
-  workflow, 
-  client, 
-  teamMembers, 
-  onEdit, 
-  onStatusChange,
-  onViewFlowchart 
-}) => {
-  // Handle workflows without steps data from API
-  const steps = workflow.steps || [];
-  const completedSteps = steps.filter(step => step.status === 'completed').length;
-  const totalSteps = steps.length;
-  const progress = totalSteps > 0 ? (completedSteps / totalSteps) * 100 : 0;
-
-  const assignedMembers = steps
-    .flatMap(step => step.assignedMembers || [])
-    .filter((value, index, self) => self.indexOf(value) === index)
-    .map(memberId => teamMembers.find(member => member.id === memberId))
-    .filter(Boolean)
-    .slice(0, 3);
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'active': return 'text-green-600 bg-green-100';
-      case 'completed': return 'text-blue-600 bg-blue-100';
-      case 'on-hold': return 'text-yellow-600 bg-yellow-100';
-      case 'draft': return 'text-gray-600 bg-gray-100';
-      default: return 'text-gray-600 bg-gray-100';
-    }
-  };
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'active': return <Play size={12} />;
-      case 'completed': return <CheckCircle size={12} />;
-      case 'on-hold': return <Pause size={12} />;
-      case 'draft': return <Edit3 size={12} />;
-      default: return <Clock size={12} />;
-    }
-  };
-
-  const isOverdue = workflow.expectedEndDate && new Date(workflow.expectedEndDate) < new Date() && workflow.status !== 'completed';
-
-  return (
-    <div className={`workflow-card ${isOverdue ? 'overdue' : ''}`}>
-      <div className="workflow-card-header">
-        <div className="workflow-title-section">
-          <h3 className="workflow-title">{workflow.name}</h3>
-          <span className={`workflow-status-badge ${getStatusColor(workflow.status)}`}>
-            {getStatusIcon(workflow.status)}
-            {workflow.status}
-          </span>
-        </div>
-        <div className="workflow-actions">
-          <button 
-            className="action-btn secondary"
-            onClick={() => onViewFlowchart(workflow)}
-          >
-            View Flowchart
-          </button>
-          <button 
-            className="action-btn"
-            onClick={() => onEdit(workflow)}
-          >
-            <Edit3 size={16} />
-          </button>
-        </div>
-      </div>
-
-      <p className="workflow-description">{workflow.description}</p>
-
-      <div className="workflow-client">
-        <strong>Client:</strong> {client?.name} ({client?.company})
-      </div>
-
-      <div className="workflow-progress-section">
-        <div className="progress-header">
-          <span className="progress-label">Progress</span>
-          <span className="progress-percentage">{Math.round(progress)}%</span>
-        </div>
-        <div className="progress-bar">
-          <div 
-            className="progress-fill" 
-            style={{ width: `${progress}%` }}
-          />
-        </div>
-        <div className="progress-stats">
-          {totalSteps > 0 
-            ? `${completedSteps}/${totalSteps} steps completed`
-            : 'No steps defined'
-          }
-        </div>
-      </div>
-
-      <div className="workflow-team">
-        <div className="team-label">Team:</div>
-        <div className="team-avatars">
-          {assignedMembers.map((member, index) => (
-            <div key={index} className="team-avatar" title={member?.name}>
-              {member?.name?.charAt(0)}
-            </div>
-          ))}
-          {assignedMembers.length === 0 && (
-            <span className="no-team">No team assigned</span>
-          )}
-        </div>
-      </div>
-
-      <div className="workflow-footer">
-        <div className="workflow-dates">
-          {workflow.startDate && (
-            <div className="date-item">
-              <Calendar size={14} />
-              Started: {new Date(workflow.startDate).toLocaleDateString()}
-            </div>
-          )}
-          {workflow.expectedEndDate && (
-            <div className={`date-item ${isOverdue ? 'overdue' : ''}`}>
-              <Clock size={14} />
-              Due: {new Date(workflow.expectedEndDate).toLocaleDateString()}
-            </div>
-          )}
-        </div>
-        
-        <div className="workflow-quick-actions">
-          {workflow.status === 'draft' && (
-            <button 
-              className="quick-action-btn start"
-              onClick={() => onStatusChange(workflow.id, 'active')}
-            >
-              Start
-            </button>
-          )}
-          {workflow.status === 'active' && (
-            <button 
-              className="quick-action-btn pause"
-              onClick={() => onStatusChange(workflow.id, 'on-hold')}
-            >
-              Pause
-            </button>
-          )}
-          {workflow.status === 'on-hold' && (
-            <button 
-              className="quick-action-btn resume"
-              onClick={() => onStatusChange(workflow.id, 'active')}
-            >
-              Resume
-            </button>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-};
+// Unused WorkflowCard component - keeping interface for potential future use
+// Currently using inline rendering in the main component
 
 interface FlowchartViewProps {
   workflow: Workflow;
@@ -531,6 +381,7 @@ export function WorkflowsView({
   workflows, 
   clients, 
   teamMembers,
+  tasks,
   onWorkflowCreate, 
   onWorkflowEdit,
   onWorkflowDelete,
@@ -676,9 +527,10 @@ export function WorkflowsView({
       <div className="workflows-grid">
         {filteredWorkflows.map((workflow) => {
           const client = clients.find(c => c.id === workflow.clientId);
-          const stepsCount = workflow.steps?.length || 0;
-          const completedSteps = workflow.steps?.filter(step => step.status === 'completed').length || 0;
-          const progressPercentage = stepsCount > 0 ? Math.round((completedSteps / stepsCount) * 100) : 0;
+          const workflowTasks = tasks.filter(task => task.workflowId === workflow.id);
+          const totalTasks = workflowTasks.length;
+          const completedTasks = workflowTasks.filter(task => task.status === 'done').length;
+          const progressPercentage = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
           
           return (
             <div key={workflow.id} className="workflow-card">
@@ -749,7 +601,7 @@ export function WorkflowsView({
                   />
                 </div>
                 <div className="progress-details">
-                  <span>{completedSteps} of {stepsCount} steps completed</span>
+                  <span>{completedTasks} of {totalTasks} tasks completed</span>
                 </div>
               </div>
 
@@ -770,8 +622,8 @@ export function WorkflowsView({
 
               <div className="workflow-stats">
                 <div className="stat-item">
-                  <span className="stat-value">{stepsCount}</span>
-                  <span className="stat-label">Steps</span>
+                  <span className="stat-value">{totalTasks}</span>
+                  <span className="stat-label">Tasks</span>
                 </div>
                 <div className="stat-item">
                   <span className="stat-value">{workflow.connections?.length || 0}</span>

@@ -112,35 +112,21 @@ class Workflow {
     });
   }
 
+  // Legacy workflow step helpers – now obsolete
   async getSteps() {
-    const WorkflowStep = require('./WorkflowStep');
-    return await WorkflowStep.findByWorkflowId(this.id);
+    return [];
   }
 
   async getConnections() {
-    const db = getDatabase();
-    return await db.all(`
-      SELECT * FROM workflow_connections 
-      WHERE workflow_id = ?
-      ORDER BY created_at
-    `, [this.id]);
+    return [];
   }
 
-  async addConnection(sourceStepId, targetStepId) {
-    const db = getDatabase();
-    const connectionId = uuidv4();
-    
-    await db.run(`
-      INSERT INTO workflow_connections (id, workflow_id, source_step_id, target_step_id, created_at)
-      VALUES (?, ?, ?, ?, ?)
-    `, [connectionId, this.id, sourceStepId, targetStepId, new Date().toISOString()]);
-    
-    return connectionId;
+  async addConnection() {
+    throw new Error('Workflow connections feature removed');
   }
 
-  async removeConnection(connectionId) {
-    const db = getDatabase();
-    await db.run('DELETE FROM workflow_connections WHERE id = ?', [connectionId]);
+  async removeConnection() {
+    // no-op
   }
 
   async getTasks() {
@@ -153,14 +139,28 @@ class Workflow {
   }
 
   async getProgress() {
-    const steps = await this.getSteps();
-    const totalSteps = steps.length;
-    const completedSteps = steps.filter(step => step.status === 'completed').length;
-    
+    const db = getDatabase();
+
+    // Count all tasks for this workflow
+    const totalResult = await db.get(
+      'SELECT COUNT(*) as count FROM kanban_tasks WHERE workflow_id = ?',
+      [this.id]
+    );
+
+    // Count tasks marked as done (status = "done")
+    const completedResult = await db.get(
+      "SELECT COUNT(*) as count FROM kanban_tasks WHERE workflow_id = ? AND status = 'done'",
+      [this.id]
+    );
+
+    const totalTasks = totalResult?.count || 0;
+    const completedTasks = completedResult?.count || 0;
+    const percentage = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+
     return {
-      totalSteps,
-      completedSteps,
-      percentage: totalSteps > 0 ? Math.round((completedSteps / totalSteps) * 100) : 0
+      totalTasks,
+      completedTasks,
+      percentage
     };
   }
 
