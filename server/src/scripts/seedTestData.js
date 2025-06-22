@@ -183,101 +183,6 @@ async function seedTestData() {
       `, [workflow.id, workflow.name, workflow.description, workflow.clientId, workflow.status, workflow.startDate, workflow.expectedEndDate, workflow.actualEndDate]);
     }
     
-    // Seed Workflow Steps
-    console.log('📋 Seeding workflow steps...');
-    const workflowStepsData = [
-      // E-commerce Platform Development Steps
-      {
-        id: uuidv4(),
-        workflowId: workflowsData[0].id,
-        name: 'Requirements Analysis',
-        description: 'Gather and analyze business requirements',
-        type: 'process',
-        status: 'completed'
-      },
-      {
-        id: uuidv4(),
-        workflowId: workflowsData[0].id,
-        name: 'System Design',
-        description: 'Design system architecture and database schema',
-        type: 'process',
-        status: 'completed'
-      },
-      {
-        id: uuidv4(),
-        workflowId: workflowsData[0].id,
-        name: 'Frontend Development',
-        description: 'Develop user interface and user experience',
-        type: 'process',
-        status: 'in-progress'
-      },
-      {
-        id: uuidv4(),
-        workflowId: workflowsData[0].id,
-        name: 'Backend Development',
-        description: 'Develop API and business logic',
-        type: 'process',
-        status: 'in-progress'
-      },
-      {
-        id: uuidv4(),
-        workflowId: workflowsData[0].id,
-        name: 'Payment Integration',
-        description: 'Integrate payment gateway and processing',
-        type: 'process',
-        status: 'pending'
-      },
-      {
-        id: uuidv4(),
-        workflowId: workflowsData[0].id,
-        name: 'Testing & QA',
-        description: 'Comprehensive testing and quality assurance',
-        type: 'process',
-        status: 'pending'
-      },
-      
-      // Mobile App Redesign Steps
-      {
-        id: uuidv4(),
-        workflowId: workflowsData[1].id,
-        name: 'User Research',
-        description: 'Conduct user interviews and usability studies',
-        type: 'process',
-        status: 'completed'
-      },
-      {
-        id: uuidv4(),
-        workflowId: workflowsData[1].id,
-        name: 'Wireframing',
-        description: 'Create wireframes and user flow diagrams',
-        type: 'process',
-        status: 'completed'
-      },
-      {
-        id: uuidv4(),
-        workflowId: workflowsData[1].id,
-        name: 'UI Design',
-        description: 'Design high-fidelity mockups and prototypes',
-        type: 'process',
-        status: 'in-progress'
-      },
-      {
-        id: uuidv4(),
-        workflowId: workflowsData[1].id,
-        name: 'Development',
-        description: 'Implement the new design in the mobile app',
-        type: 'process',
-        status: 'pending'
-      }
-    ];
-    
-    for (const step of workflowStepsData) {
-      await db.run(`
-        INSERT INTO workflow_steps (id, workflow_id, name, description, type, status, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
-      `, [step.id, step.workflowId, step.name, step.description, step.type, step.status]);
-    }
-    
     // Seed Kanban Columns
     console.log('📋 Seeding kanban columns...');
     const columnsData = [
@@ -302,7 +207,7 @@ async function seedTestData() {
         title: 'Setup user authentication system',
         description: 'Implement JWT-based authentication with login/logout functionality',
         workflowId: workflowsData[0].id,
-        stepId: workflowStepsData[3].id,
+        stepId: null,
         status: 'in-progress',
         priority: 'high',
         tags: ['authentication', 'security', 'backend'],
@@ -314,7 +219,7 @@ async function seedTestData() {
         title: 'Design product catalog page',
         description: 'Create responsive product catalog with filtering and search',
         workflowId: workflowsData[0].id,
-        stepId: workflowStepsData[2].id,
+        stepId: null,
         status: 'todo',
         priority: 'medium',
         tags: ['frontend', 'ui', 'catalog'],
@@ -326,7 +231,7 @@ async function seedTestData() {
         title: 'Implement shopping cart functionality',
         description: 'Add/remove items, calculate totals, persist cart state',
         workflowId: workflowsData[0].id,
-        stepId: workflowStepsData[2].id,
+        stepId: null,
         status: 'review',
         priority: 'high',
         tags: ['frontend', 'cart', 'state-management'],
@@ -338,7 +243,7 @@ async function seedTestData() {
         title: 'Database schema optimization',
         description: 'Optimize database queries and add proper indexing',
         workflowId: workflowsData[0].id,
-        stepId: workflowStepsData[3].id,
+        stepId: null,
         status: 'done',
         priority: 'medium',
         tags: ['database', 'performance', 'optimization'],
@@ -350,7 +255,7 @@ async function seedTestData() {
         title: 'User persona development',
         description: 'Create detailed user personas based on research findings',
         workflowId: workflowsData[1].id,
-        stepId: workflowStepsData[6].id,
+        stepId: null,
         status: 'done',
         priority: 'high',
         tags: ['research', 'personas', 'ux'],
@@ -362,7 +267,7 @@ async function seedTestData() {
         title: 'Navigation redesign',
         description: 'Redesign app navigation based on user feedback',
         workflowId: workflowsData[1].id,
-        stepId: workflowStepsData[8].id,
+        stepId: null,
         status: 'in-progress',
         priority: 'high',
         tags: ['navigation', 'ui', 'redesign'],
@@ -374,7 +279,7 @@ async function seedTestData() {
         title: 'Accessibility audit',
         description: 'Conduct comprehensive accessibility audit and implement fixes',
         workflowId: workflowsData[1].id,
-        stepId: workflowStepsData[8].id,
+        stepId: null,
         status: 'todo',
         priority: 'medium',
         tags: ['accessibility', 'audit', 'compliance'],
@@ -531,7 +436,6 @@ async function seedTestData() {
     console.log(`   • ${clientsData.length} clients`);
     console.log(`   • ${teamMembersData.length} team members`);
     console.log(`   • ${workflowsData.length} workflows`);
-    console.log(`   • ${workflowStepsData.length} workflow steps`);
     console.log(`   • ${kanbanTasksData.length} kanban tasks`);
     console.log(`   • ${meetingsData.length} client meetings`);
     console.log(`   • ${activityLogsData.length} activity logs`);

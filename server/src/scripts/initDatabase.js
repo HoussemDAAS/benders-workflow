@@ -52,62 +52,11 @@ const createTables = async () => {
       )
     `);
 
-    // Workflow steps table
-    await db.run(`
-      CREATE TABLE IF NOT EXISTS workflow_steps (
-        id TEXT PRIMARY KEY,
-        workflow_id TEXT NOT NULL,
-        name TEXT NOT NULL,
-        description TEXT,
-        type TEXT NOT NULL CHECK (type IN ('start-end', 'process', 'decision', 'input-output')),
-        status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'in-progress', 'completed', 'blocked')),
-        position_x REAL DEFAULT 0,
-        position_y REAL DEFAULT 0,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (workflow_id) REFERENCES workflows (id) ON DELETE CASCADE
-      )
-    `);
-
-    // Step assignments table (many-to-many: steps <-> team_members)
-    await db.run(`
-      CREATE TABLE IF NOT EXISTS step_assignments (
-        id TEXT PRIMARY KEY,
-        step_id TEXT NOT NULL,
-        member_id TEXT NOT NULL,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (step_id) REFERENCES workflow_steps (id) ON DELETE CASCADE,
-        FOREIGN KEY (member_id) REFERENCES team_members (id) ON DELETE CASCADE,
-        UNIQUE(step_id, member_id)
-      )
-    `);
-
-    // Step dependencies table
-    await db.run(`
-      CREATE TABLE IF NOT EXISTS step_dependencies (
-        id TEXT PRIMARY KEY,
-        step_id TEXT NOT NULL,
-        depends_on_step_id TEXT NOT NULL,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (step_id) REFERENCES workflow_steps (id) ON DELETE CASCADE,
-        FOREIGN KEY (depends_on_step_id) REFERENCES workflow_steps (id) ON DELETE CASCADE,
-        UNIQUE(step_id, depends_on_step_id)
-      )
-    `);
-
-    // Workflow connections table
-    await db.run(`
-      CREATE TABLE IF NOT EXISTS workflow_connections (
-        id TEXT PRIMARY KEY,
-        workflow_id TEXT NOT NULL,
-        source_step_id TEXT NOT NULL,
-        target_step_id TEXT NOT NULL,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (workflow_id) REFERENCES workflows (id) ON DELETE CASCADE,
-        FOREIGN KEY (source_step_id) REFERENCES workflow_steps (id) ON DELETE CASCADE,
-        FOREIGN KEY (target_step_id) REFERENCES workflow_steps (id) ON DELETE CASCADE
-      )
-    `);
+    // --- Remove legacy workflow_steps tables (step assign/dependency/connection) ---
+    await db.run('DROP TABLE IF EXISTS workflow_connections');
+    await db.run('DROP TABLE IF EXISTS step_dependencies');
+    await db.run('DROP TABLE IF EXISTS step_assignments');
+    await db.run('DROP TABLE IF EXISTS workflow_steps');
 
     // Kanban columns table
     await db.run(`
@@ -128,7 +77,7 @@ const createTables = async () => {
         title TEXT NOT NULL,
         description TEXT,
         workflow_id TEXT,
-        step_id TEXT,
+        step_id TEXT, -- legacy field, no longer constrained
         priority TEXT DEFAULT 'medium' CHECK (priority IN ('low', 'medium', 'high', 'urgent')),
         status TEXT NOT NULL, -- references kanban_columns.id
         tags TEXT, -- JSON array as string
@@ -136,7 +85,6 @@ const createTables = async () => {
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (workflow_id) REFERENCES workflows (id) ON DELETE SET NULL,
-        FOREIGN KEY (step_id) REFERENCES workflow_steps (id) ON DELETE SET NULL,
         FOREIGN KEY (status) REFERENCES kanban_columns (id)
       )
     `);
@@ -218,33 +166,9 @@ const createTables = async () => {
 
     console.log('Database tables created successfully!');
     
-    // Create indexes for better performance
-    await createIndexes(db);
-    
   } catch (error) {
     console.error('Error creating tables:', error);
     process.exit(1);
-  }
-};
-
-const createIndexes = async (db) => {
-  console.log('Creating database indexes...');
-  
-  try {
-    // Indexes for better query performance
-    await db.run('CREATE INDEX IF NOT EXISTS idx_workflows_client_id ON workflows (client_id)');
-    await db.run('CREATE INDEX IF NOT EXISTS idx_workflow_steps_workflow_id ON workflow_steps (workflow_id)');
-    await db.run('CREATE INDEX IF NOT EXISTS idx_kanban_tasks_workflow_id ON kanban_tasks (workflow_id)');
-    await db.run('CREATE INDEX IF NOT EXISTS idx_kanban_tasks_status ON kanban_tasks (status)');
-    await db.run('CREATE INDEX IF NOT EXISTS idx_kanban_tasks_due_date ON kanban_tasks (due_date)');
-    await db.run('CREATE INDEX IF NOT EXISTS idx_client_meetings_client_id ON client_meetings (client_id)');
-    await db.run('CREATE INDEX IF NOT EXISTS idx_client_meetings_date ON client_meetings (meeting_date)');
-    await db.run('CREATE INDEX IF NOT EXISTS idx_activity_log_entity ON activity_log (entity_type, entity_id)');
-    await db.run('CREATE INDEX IF NOT EXISTS idx_activity_log_created_at ON activity_log (created_at)');
-    
-    console.log('Database indexes created successfully!');
-  } catch (error) {
-    console.error('Error creating indexes:', error);
   }
 };
 

@@ -5,6 +5,7 @@ const Workflow = require('../models/Workflow');
 const Client = require('../models/Client');
 const { getDatabase } = require('../config/database');
 const router = express.Router();
+const ActivityLogger = require('../models/ActivityLogger');
 
 // Validation middleware
 const validateTask = [
@@ -12,7 +13,6 @@ const validateTask = [
   body('status').notEmpty().withMessage('Status is required'),
   body('description').optional().trim(),
   body('workflowId').optional(),
-  body('stepId').optional(),
   body('priority').optional().isIn(['low', 'medium', 'high', 'urgent']),
   body('dueDate').optional().isISO8601(),
   body('clientId').optional(), // Add clientId for auto-workflow creation
@@ -235,7 +235,6 @@ router.post('/', validateTask, async (req, res) => {
       title: req.body.title,
       description: req.body.description,
       workflowId: workflowId,
-      stepId: req.body.stepId,
       priority: req.body.priority || 'medium',
       status: req.body.status,
       tags: req.body.tags || [],
@@ -302,7 +301,6 @@ router.put('/:id', validateTask, async (req, res) => {
     task.title = req.body.title;
     task.description = req.body.description;
     task.workflowId = req.body.workflowId || task.workflowId;
-    task.stepId = req.body.stepId || task.stepId;
     task.priority = req.body.priority || task.priority;
     task.status = req.body.status;
     task.tags = req.body.tags || task.tags;
@@ -486,5 +484,8 @@ router.delete('/columns/:id', async (req, res) => {
     res.status(500).json({ error: 'Failed to delete kanban column' });
   }
 });
+
+// Legacy move-to-step endpoint removed
+router.patch('/:id/move-to-step', (req, res) => res.status(410).json({ error: 'Workflow steps feature removed' }));
 
 module.exports = router; 

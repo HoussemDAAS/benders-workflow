@@ -63,6 +63,7 @@ export interface Workflow {
   updatedAt: Date;
   startDate?: Date;
   expectedEndDate?: Date;
+  progress?: WorkflowProgress;
 }
 
 export interface WorkflowConnection {
@@ -120,4 +121,13 @@ export interface DashboardStats {
 }
 
 export type Priority = 'low' | 'medium' | 'high' | 'urgent';
-export type TaskStatus = 'pending' | 'in-progress' | 'completed' | 'blocked'; 
+export type TaskStatus = 'pending' | 'in-progress' | 'completed' | 'blocked';
+
+export interface WorkflowProgress {
+  totalTasks: number;
+  completedTasks: number;
+  percentage: number;
+  doneStepId?: string;
+  doneStepName?: string;
+  kanbanSteps?: number;
+} 

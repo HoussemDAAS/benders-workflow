@@ -12,7 +12,7 @@ import {
   Users,
   Building
 } from 'lucide-react';
-import { KanbanTask, KanbanColumn, TeamMember, Workflow, Client, WorkflowStep } from '../types';
+import { KanbanTask, KanbanColumn, TeamMember, Workflow, Client } from '../types';
 import { taskService, workflowService } from '../services';
 
 interface KanbanBoardProps {
@@ -32,27 +32,26 @@ interface KanbanBoardProps {
 }
 
 interface TaskCardProps {
-  task: KanbanTask | WorkflowStep;
+  task: KanbanTask;
   teamMembers: TeamMember[];
-  onEdit: (task: KanbanTask | WorkflowStep) => void;
-  isWorkflowStep?: boolean;
+  onEdit: (task: KanbanTask) => void;
 }
 
 interface ColumnProps {
   column: KanbanColumn;
-  tasks: (KanbanTask | WorkflowStep)[];
+  tasks: KanbanTask[];
   teamMembers: TeamMember[];
   selectedWorkflow: Workflow | null;
   selectedClient: Client | null;
   onTaskMove: (taskId: string, newStatus: string) => void;
   onTaskCreate: (columnId: string, workflowId?: string, clientId?: string) => void;
-  onTaskEdit: (task: KanbanTask | WorkflowStep) => void;
+  onTaskEdit: (task: KanbanTask) => void;
 }
 
-const TaskCard: React.FC<TaskCardProps> = ({ task, teamMembers, onEdit, isWorkflowStep = false }) => {
+const TaskCard: React.FC<TaskCardProps> = ({ task, teamMembers, onEdit }) => {
   const [{ isDragging }, drag] = useDrag(() => ({
     type: 'task',
-    item: { id: task.id, isWorkflowStep },
+    item: { id: task.id },
     collect: (monitor) => ({
       isDragging: monitor.isDragging(),
     }),
@@ -75,24 +74,22 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, teamMembers, onEdit, isWorkfl
     }
   };
 
-  // Handle different task types
-  const title = isWorkflowStep ? (task as WorkflowStep).name : (task as KanbanTask).title;
+  const title = task.title;
   const description = task.description;
-  const priority = isWorkflowStep ? 'medium' : (task as KanbanTask).priority;
-  const dueDate = isWorkflowStep ? (task as WorkflowStep).dueDate : (task as KanbanTask).dueDate;
-  const tags = isWorkflowStep ? [(task as WorkflowStep).type] : (task as KanbanTask).tags || [];
+  const priority = task.priority;
+  const dueDate = task.dueDate;
+  const tags = task.tags || [];
 
   const isOverdue = dueDate && new Date(dueDate) < new Date();
 
   return (
     <div
       ref={drag}
-      className={`task-card ${isDragging ? 'dragging' : ''} ${isOverdue ? 'overdue' : ''} ${isWorkflowStep ? 'workflow-step-card' : ''}`}
+      className={`task-card ${isDragging ? 'dragging' : ''} ${isOverdue ? 'overdue' : ''}`}
       onClick={() => onEdit(task)}
     >
       <div className="task-card-header">
         <h4 className="task-title">
-          {isWorkflowStep && <WorkflowIcon size={14} style={{ display: 'inline', marginRight: '6px' }} />}
           {title}
         </h4>
         <div className={`priority-indicator ${getPriorityColor(priority)}`} />
@@ -101,16 +98,11 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, teamMembers, onEdit, isWorkfl
       <p className="task-description">{description}</p>
       
       <div className="task-tags">
-        {tags && tags.slice(0, 3).map((tag, index) => (
-          <span key={index} className={`task-tag ${isWorkflowStep ? 'workflow-tag' : ''}`}>
+        {tags.slice(0, 3).map((tag, index) => (
+          <span key={index} className="task-tag">
             {tag}
           </span>
         ))}
-        {isWorkflowStep && (
-          <span className="task-tag workflow-step-badge">
-            Workflow Step
-          </span>
-        )}
       </div>
 
       <div className="task-card-footer">
@@ -150,15 +142,8 @@ const Column: React.FC<ColumnProps> = ({
 }) => {
   const [{ isOver }, drop] = useDrop(() => ({
     accept: 'task',
-    drop: (item: { id: string; isWorkflowStep?: boolean }) => {
-      // For workflow steps, we need to update the step status, not move regular tasks
-      if (item.isWorkflowStep) {
-        // Handle workflow step status update
-        console.log('Moving workflow step:', item.id, 'to column:', column.id);
-        // TODO: Implement workflow step status update
-      } else {
-        onTaskMove(item.id, column.id);
-      }
+    drop: (item: { id: string }) => {
+      onTaskMove(item.id, column.id);
     },
     collect: (monitor) => ({
       isOver: monitor.isOver(),
@@ -198,7 +183,6 @@ const Column: React.FC<ColumnProps> = ({
             task={task}
             teamMembers={teamMembers}
             onEdit={onTaskEdit}
-            isWorkflowStep={'type' in task} // WorkflowStep has 'type' property
           />
         ))}
         
@@ -235,7 +219,7 @@ export function KanbanBoard({
 }: KanbanBoardProps) {
   const [selectedWorkflow, setSelectedWorkflow] = useState<string>(globalSelectedWorkflow || 'all');
   const [selectedClient, setSelectedClient] = useState<string>(globalSelectedClient || 'all');
-  const [workflowTasks, setWorkflowTasks] = useState<(KanbanTask | WorkflowStep)[]>([]);
+  const [workflowTasks, setWorkflowTasks] = useState<KanbanTask[]>([]);
   const [loading, setLoading] = useState(false);
 
   // Get current workflow and client
@@ -258,28 +242,15 @@ export function KanbanBoard({
   useEffect(() => {
     const filterTasks = () => {
       setLoading(true);
-      let allItems: (KanbanTask | WorkflowStep)[] = [...tasks];
-      
-      // Add workflow steps as tasks if a workflow is selected
-      if (currentWorkflow && currentWorkflow.steps) {
-        allItems = [...allItems, ...currentWorkflow.steps];
-      }
+      let allItems: KanbanTask[] = [...tasks];
       
       // Filter by workflow and client
       if (selectedWorkflow !== 'all' || selectedClient !== 'all') {
         let filteredItems = allItems.filter(item => {
-          // For regular tasks
-          if ('workflowId' in item) {
-            const task = item as KanbanTask;
-            const matchesWorkflow = selectedWorkflow === 'all' || task.workflowId === selectedWorkflow;
-            const matchesClient = selectedClient === 'all' || 
-              workflows.find(w => w.id === task.workflowId)?.clientId === selectedClient;
-            return matchesWorkflow && matchesClient;
-          }
-          // For workflow steps - only include if the current workflow is selected
-          else {
-            return selectedWorkflow !== 'all';
-          }
+          const matchesWorkflow = selectedWorkflow === 'all' || item.workflowId === selectedWorkflow;
+          const matchesClient = selectedClient === 'all' || 
+            workflows.find(w => w.id === item.workflowId)?.clientId === selectedClient;
+          return matchesWorkflow && matchesClient;
         });
         allItems = filteredItems;
       }
@@ -289,7 +260,7 @@ export function KanbanBoard({
     };
 
     filterTasks();
-  }, [selectedWorkflow, selectedClient, tasks, workflows, currentWorkflow]);
+  }, [selectedWorkflow, selectedClient, tasks, workflows]);
 
   // Handle workflow selection
   const handleWorkflowChange = (workflowId: string) => {
@@ -391,12 +362,6 @@ export function KanbanBoard({
                     {currentClient.company || currentClient.name}
                   </span>
                 )}
-                {currentWorkflow.steps && (
-                  <span className="workflow-steps-info">
-                    <WorkflowIcon size={14} />
-                    {currentWorkflow.steps.length} steps
-                  </span>
-                )}
               </div>
             </div>
           </div>
@@ -411,25 +376,8 @@ export function KanbanBoard({
             {kanbanColumns.map((column) => {
               const columnItems = workflowTasks.filter(item => {
                 // For regular tasks, match by status
-                if ('status' in item && 'workflowId' in item) {
-                  return (item as KanbanTask).status === column.id;
-                }
-                // For workflow steps, match by step status
-                else if ('type' in item) {
-                  const step = item as WorkflowStep;
-                  // Map workflow step statuses to kanban columns
-                  switch (step.status) {
-                    case 'pending':
-                      return column.id === 'todo' || column.title.toLowerCase().includes('todo') || column.title.toLowerCase().includes('backlog');
-                    case 'in-progress':
-                      return column.id === 'in-progress' || column.title.toLowerCase().includes('progress') || column.title.toLowerCase().includes('doing');
-                    case 'completed':
-                      return column.id === 'done' || column.title.toLowerCase().includes('done') || column.title.toLowerCase().includes('complete');
-                    case 'blocked':
-                      return column.id === 'blocked' || column.title.toLowerCase().includes('blocked') || column.title.toLowerCase().includes('review');
-                    default:
-                      return column.id === 'todo';
-                  }
+                if ('status' in item) {
+                  return item.status === column.id;
                 }
                 return false;
               });
@@ -457,7 +405,7 @@ export function KanbanBoard({
             <h3>No tasks found</h3>
             <p>
               {selectedWorkflow !== 'all' || selectedClient !== 'all'
-                ? 'No tasks or workflow steps for this selection. Create your first task!'
+                ? 'No tasks for this selection. Create your first task!'
                 : 'Create your first task to get started.'
               }
             </p>
