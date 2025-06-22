@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { 
   LayoutDashboard, 
   Workflow, 
@@ -12,13 +13,24 @@ import {
 } from 'lucide-react';
 
 interface SidebarProps {
-  currentView: string;
-  onViewChange: (view: string) => void;
-  onNewWorkflow: () => void;
   onNewTask?: () => void;
 }
 
-export function Sidebar({ currentView, onViewChange, onNewWorkflow, onNewTask }: SidebarProps) {
+export function Sidebar({ onNewTask }: SidebarProps) {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // Get current view from URL path
+  const currentView = location.pathname.slice(1) || 'dashboard';
+
+  const handleViewChange = (view: string) => {
+    navigate(`/${view}`);
+  };
+
+  const handleNewWorkflow = () => {
+    navigate('/workflows');
+  };
+
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'workflows', label: 'Workflows', icon: Workflow },
@@ -38,7 +50,7 @@ export function Sidebar({ currentView, onViewChange, onNewWorkflow, onNewTask }:
       </div>
 
       <div className="sidebar-actions">
-        <button className="new-workflow-btn" onClick={onNewWorkflow}>
+        <button className="new-workflow-btn" onClick={handleNewWorkflow}>
           <Plus size={16} />
           New Workflow
         </button>
@@ -57,7 +69,7 @@ export function Sidebar({ currentView, onViewChange, onNewWorkflow, onNewTask }:
             <button
               key={item.id}
               className={`nav-item ${currentView === item.id ? 'active' : ''}`}
-              onClick={() => onViewChange(item.id)}
+              onClick={() => handleViewChange(item.id)}
             >
               <Icon size={20} />
               <span>{item.label}</span>
@@ -74,4 +86,4 @@ export function Sidebar({ currentView, onViewChange, onNewWorkflow, onNewTask }:
       </div>
     </div>
   );
-} 
+}
