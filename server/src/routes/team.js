@@ -243,12 +243,34 @@ router.patch('/:id/skills', async (req, res) => {
 // DELETE /api/team/:id - Delete team member
 router.delete('/:id', async (req, res) => {
   try {
-    const member = await TeamMember.findById(req.params.id);
+    const { db } = require('../config/database');
+    const { id } = req.params;
+    
+    // Check if team member exists
+    const member = db.prepare('SELECT id FROM team_members WHERE id = ?').get(id);
+    
     if (!member) {
       return res.status(404).json({ error: 'Team member not found' });
     }
-
-    await member.delete(req.body.performedBy);
+    
+    // Start transaction to remove all assignments and delete member
+    const deleteTransaction = db.transaction(() => {
+      // Remove task assignments
+      db.prepare('DELETE FROM task_assignments WHERE memberId = ?').run(id);
+      
+      // Remove workflow step assignments (if any)
+      db.prepare(`
+        UPDATE workflow_steps 
+        SET assignedMembers = REPLACE(assignedMembers, ?, '') 
+        WHERE assignedMembers LIKE ?
+      `).run(id, `%${id}%`);
+      
+      // Delete the team member
+      db.prepare('DELETE FROM team_members WHERE id = ?').run(id);
+    });
+    
+    deleteTransaction();
+    
     res.status(204).send();
   } catch (error) {
     console.error('Error deleting team member:', error);

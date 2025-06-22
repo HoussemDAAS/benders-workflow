@@ -21,6 +21,22 @@ export interface Client {
   createdAt: Date;
 }
 
+export interface Meeting {
+  id: string;
+  title: string;
+  type: 'in-person' | 'video' | 'phone';
+  scheduledDate: string;
+  clientId: string;
+  duration: number;
+  status: 'scheduled' | 'completed' | 'cancelled';
+  description?: string;
+  location?: string;
+  notes?: string;
+  attendeeIds: string[];
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 export interface WorkflowStep {
   id: string;
   name: string;
@@ -72,7 +88,7 @@ export interface KanbanTask {
   title: string;
   description: string;
   workflowId: string;
-  stepId: string;
+  stepId?: string;
   assignedMembers: string[];
   priority: 'low' | 'medium' | 'high' | 'urgent';
   status: string; // column ID

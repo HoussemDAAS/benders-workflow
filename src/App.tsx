@@ -7,8 +7,13 @@ import { KanbanBoard } from './components/KanbanBoard';
 import { WorkflowsView } from './components/WorkflowsView';
 import { TeamView } from './components/TeamView';
 import { ClientsView } from './components/ClientsView';
+import { MeetingView } from './components/MeetingView';
 import { LoadingCard } from './components/LoadingSpinner';
 import { ErrorCard } from './components/ErrorMessage';
+import { TaskEditModal } from './components/TaskEditModal';
+import { ClientModal } from './components/ClientModal';
+import { TeamMemberModal } from './components/TeamMemberModal';
+import { MeetingModal } from './components/MeetingModal';
 
 // Services
 import {
@@ -17,6 +22,7 @@ import {
   workflowService,
   taskService,
   dashboardService,
+  meetingService,
   CreateClientRequest,
   CreateTeamMemberRequest,
   CreateWorkflowRequest,
@@ -30,8 +36,10 @@ import { useMultipleApi } from './hooks/useApi';
 import { 
   Client, 
   TeamMember, 
-  Workflow, 
+  Workflow,
+  WorkflowStep, 
   KanbanTask,
+  Meeting,
   DashboardStats 
 } from './types';
 
@@ -42,6 +50,49 @@ export default function App() {
   const [currentView, setCurrentView] = useState<string>('dashboard');
   const [selectedWorkflow, setSelectedWorkflow] = useState<string | undefined>();
   const [selectedClient, setSelectedClient] = useState<string | undefined>();
+  
+  // Task edit modal state
+  const [taskEditModal, setTaskEditModal] = useState<{
+    isOpen: boolean;
+    task: KanbanTask | null;
+  }>({
+    isOpen: false,
+    task: null
+  });
+
+  // Client modal state
+  const [clientModal, setClientModal] = useState<{
+    isOpen: boolean;
+    client: Client | null;
+  }>({
+    isOpen: false,
+    client: null
+  });
+
+  // Team member modal state
+  const [teamMemberModal, setTeamMemberModal] = useState<{
+    isOpen: boolean;
+    member: TeamMember | null;
+  }>({
+    isOpen: false,
+    member: null
+  });
+
+  // Meeting modal state
+  const [meetingModal, setMeetingModal] = useState<{
+    isOpen: boolean;
+    meeting: Meeting | null;
+  }>({
+    isOpen: false,
+    meeting: null
+  });
+
+  // New task context
+  const [newTaskContext, setNewTaskContext] = useState<{
+    columnId?: string;
+    workflowId?: string;
+    clientId?: string;
+  }>({});
 
   // Memoize API call functions to prevent infinite re-renders
   const apiCallFunctions = useMemo(() => ({
@@ -50,6 +101,7 @@ export default function App() {
     workflows: () => workflowService.getAll(),
     kanbanColumns: () => taskService.getColumns(),
     kanbanTasks: () => taskService.getAll(),
+    meetings: () => meetingService.getAll(),
     dashboardStats: () => dashboardService.getStats()
   }), []);
 
@@ -60,6 +112,7 @@ export default function App() {
   const clients = data?.clients || [];
   const teamMembers = data?.teamMembers || [];
   const workflows = data?.workflows || [];
+  const meetings = data?.meetings || [];
   const kanbanColumns = data?.kanbanColumns || [
     { id: 'todo', title: 'To Do', color: '#64748b', order: 1 },
     { id: 'in-progress', title: 'In Progress', color: '#3b82f6', order: 2 },
@@ -85,10 +138,14 @@ export default function App() {
   }, []);
 
   // Workflow handlers
-  const handleWorkflowCreate = useCallback(() => {
-    console.log('Create workflow - will be implemented with modal');
-    // TODO: Open modal for workflow creation
-  }, []);
+  const handleWorkflowCreate = useCallback(async (workflowData: any) => {
+    try {
+      await workflowService.create(workflowData);
+      await refresh();
+    } catch (error) {
+      console.error('Failed to create workflow:', error);
+    }
+  }, [refresh]);
 
   const handleWorkflowEdit = useCallback(async (workflow: Workflow) => {
     try {
@@ -109,6 +166,15 @@ export default function App() {
     }
   }, [refresh]);
 
+  const handleWorkflowDelete = useCallback(async (workflowId: string) => {
+    try {
+      await workflowService.delete(workflowId);
+      await refresh();
+    } catch (error) {
+      console.error('Failed to delete workflow:', error);
+    }
+  }, [refresh]);
+
   const handleWorkflowStatusChange = useCallback(async (workflowId: string, status: string) => {
     try {
       await workflowService.updateStatus(workflowId, status);
@@ -120,24 +186,46 @@ export default function App() {
 
   // Team member handlers
   const handleMemberCreate = useCallback(() => {
-    console.log('Create team member - will be implemented with modal');
-    // TODO: Open modal for team member creation
+    setTeamMemberModal({
+      isOpen: true,
+      member: null
+    });
   }, []);
 
-  const handleMemberEdit = useCallback(async (member: TeamMember) => {
+  const handleMemberEdit = useCallback((member: TeamMember) => {
+    setTeamMemberModal({
+      isOpen: true,
+      member: member
+    });
+  }, []);
+
+  const handleTeamMemberModalSubmit = useCallback(async (memberData: any) => {
     try {
-      const updateData: Partial<CreateTeamMemberRequest> = {
-        name: member.name,
-        email: member.email,
-        role: member.role,
-        skills: member.skills,
-        isActive: member.isActive
-      };
-      
-      await teamService.update(member.id, updateData);
+      if (teamMemberModal.member) {
+        // Update existing member
+        await teamService.update(teamMemberModal.member.id, memberData);
+      } else {
+        // Create new member
+        await teamService.create(memberData);
+      }
+      await refresh();
+      setTeamMemberModal({ isOpen: false, member: null });
+    } catch (error) {
+      console.error('Failed to save team member:', error);
+      throw error; // Re-throw to let modal handle the error
+    }
+  }, [teamMemberModal.member, refresh]);
+
+  const handleTeamMemberModalClose = useCallback(() => {
+    setTeamMemberModal({ isOpen: false, member: null });
+  }, []);
+
+  const handleMemberDelete = useCallback(async (memberId: string) => {
+    try {
+      await teamService.delete(memberId);
       await refresh();
     } catch (error) {
-      console.error('Failed to update team member:', error);
+      console.error('Failed to delete team member:', error);
     }
   }, [refresh]);
 
@@ -152,24 +240,46 @@ export default function App() {
 
   // Client handlers
   const handleClientCreate = useCallback(() => {
-    console.log('Create client - will be implemented with modal');
-    // TODO: Open modal for client creation
+    setClientModal({
+      isOpen: true,
+      client: null
+    });
   }, []);
 
-  const handleClientEdit = useCallback(async (client: Client) => {
+  const handleClientEdit = useCallback((client: Client) => {
+    setClientModal({
+      isOpen: true,
+      client: client
+    });
+  }, []);
+
+  const handleClientModalSubmit = useCallback(async (clientData: any) => {
     try {
-      const updateData: Partial<CreateClientRequest> = {
-        name: client.name,
-        company: client.company,
-        email: client.email,
-        phone: client.phone,
-        isActive: client.isActive
-      };
-      
-      await clientService.update(client.id, updateData);
+      if (clientModal.client) {
+        // Update existing client
+        await clientService.update(clientModal.client.id, clientData);
+      } else {
+        // Create new client
+        await clientService.create(clientData);
+      }
+      await refresh();
+      setClientModal({ isOpen: false, client: null });
+    } catch (error) {
+      console.error('Failed to save client:', error);
+      throw error; // Re-throw to let modal handle the error
+    }
+  }, [clientModal.client, refresh]);
+
+  const handleClientModalClose = useCallback(() => {
+    setClientModal({ isOpen: false, client: null });
+  }, []);
+
+  const handleClientDelete = useCallback(async (clientId: string) => {
+    try {
+      await clientService.delete(clientId);
       await refresh();
     } catch (error) {
-      console.error('Failed to update client:', error);
+      console.error('Failed to delete client:', error);
     }
   }, [refresh]);
 
@@ -183,54 +293,185 @@ export default function App() {
   }, [refresh]);
 
   // Kanban handlers
-  const handleTaskMove = useCallback(async (taskId: string, newStatus: string) => {
+  const handleTaskMove = useCallback(async (taskId: string, newColumnId: string) => {
     try {
-      await taskService.move(taskId, newStatus);
+      // Find the task to understand its current context
+      const task = kanbanTasks.find(t => t.id === taskId);
+      if (!task) return;
+
+      // Determine if we're moving within workflow steps or generic columns
+      const currentWorkflow = selectedWorkflow && selectedWorkflow !== 'all' 
+        ? workflows.find(w => w.id === selectedWorkflow)
+        : null;
+
+      if (currentWorkflow && currentWorkflow.steps && currentWorkflow.steps.length > 0) {
+        // Moving between workflow steps - update stepId
+        const targetStep = currentWorkflow.steps.find(step => step.id === newColumnId);
+        if (targetStep) {
+          await taskService.update(taskId, {
+            stepId: newColumnId,
+            status: targetStep.status || task.status // Update status to match step status
+          });
+        }
+      } else {
+        // Moving between generic columns - update status
+        await taskService.move(taskId, newColumnId);
+      }
+      
       await refresh();
     } catch (error) {
       console.error('Failed to move task:', error);
     }
-  }, [refresh]);
+  }, [refresh, kanbanTasks, selectedWorkflow, workflows]);
 
   const handleTaskCreate = useCallback(async (columnId: string, workflowId?: string, clientId?: string) => {
-    try {
-      const newTask: CreateTaskRequest = {
-        title: 'New Task',
-        description: 'Task description',
-        workflowId: workflowId || selectedWorkflow || workflows[0]?.id,
-        stepId: '',
-        priority: 'medium',
-        status: columnId,
-        tags: [],
-        assignedMembers: [],
-        clientId: clientId // For auto-workflow creation
-      };
+    // Open modal for new task creation - pass null to indicate new task
+    setTaskEditModal({
+      isOpen: true,
+      task: null // This will be handled by the modal to show default values
+    });
+    
+    // Store the column and workflow context for the new task
+    setNewTaskContext({
+      columnId,
+      workflowId: workflowId || selectedWorkflow || workflows[0]?.id,
+      clientId
+    });
+  }, [selectedWorkflow, workflows]);
 
-      await taskService.create(newTask);
-      await refresh();
-    } catch (error) {
-      console.error('Failed to create task:', error);
+  const handleTaskEdit = useCallback(async (task: KanbanTask | WorkflowStep) => {
+    // For workflow steps, we can't edit them directly - they need to be handled differently
+    if ('type' in task) {
+      // This is a WorkflowStep - for now, just log that it's clicked
+      console.log('Workflow step clicked:', task.name);
+      return;
     }
-  }, [selectedWorkflow, workflows, refresh]);
+    
+    // Open the task edit modal for regular tasks
+    setTaskEditModal({
+      isOpen: true,
+      task: task as KanbanTask
+    });
+  }, []);
 
-  const handleTaskEdit = useCallback(async (task: KanbanTask) => {
+  const handleTaskSave = useCallback(async (task: KanbanTask) => {
     try {
-      const updateData: Partial<CreateTaskRequest> = {
-        title: task.title,
-        description: task.description,
-        workflowId: task.workflowId,
-        stepId: task.stepId,
-        priority: task.priority,
-        status: task.status,
-        tags: task.tags,
-        dueDate: task.dueDate ? new Date(task.dueDate).toISOString() : undefined,
-        assignedMembers: task.assignedMembers
-      };
+      if (task.id) {
+        // Update existing task
+        const updateData: Partial<CreateTaskRequest> = {
+          title: task.title,
+          description: task.description,
+          workflowId: task.workflowId,
+          stepId: task.stepId,
+          priority: task.priority,
+          status: task.status,
+          tags: task.tags,
+          dueDate: task.dueDate ? new Date(task.dueDate).toISOString() : undefined,
+          assignedMembers: task.assignedMembers
+        };
+        
+        await taskService.update(task.id, updateData);
+      } else {
+        // Create new task
+        const createData: CreateTaskRequest = {
+          title: task.title,
+          description: task.description,
+          workflowId: task.workflowId,
+          stepId: task.stepId,
+          priority: task.priority,
+          status: task.status,
+          tags: task.tags || [],
+          dueDate: task.dueDate ? new Date(task.dueDate).toISOString() : undefined,
+          assignedMembers: task.assignedMembers || []
+        };
+        
+        await taskService.create(createData);
+      }
       
-      await taskService.update(task.id, updateData);
       await refresh();
     } catch (error) {
-      console.error('Failed to update task:', error);
+      console.error('Failed to save task:', error);
+      throw error; // Re-throw to let modal handle the error
+    }
+  }, [refresh]);
+
+  const handleTaskDelete = useCallback(async (taskId: string) => {
+    try {
+      await taskService.delete(taskId);
+      await refresh();
+    } catch (error) {
+      console.error('Failed to delete task:', error);
+      throw error; // Re-throw to let modal handle the error
+    }
+  }, [refresh]);
+
+  const handleTaskModalClose = useCallback(() => {
+    setTaskEditModal({
+      isOpen: false,
+      task: null
+    });
+    // Clear the new task context
+    setNewTaskContext({});
+  }, []);
+
+  const handleNewTask = useCallback(() => {
+    setTaskEditModal({
+      isOpen: true,
+      task: null
+    });
+  }, []);
+
+  // Meeting handlers
+  const handleMeetingCreate = useCallback(() => {
+    setMeetingModal({
+      isOpen: true,
+      meeting: null
+    });
+  }, []);
+
+  const handleMeetingEdit = useCallback((meeting: Meeting) => {
+    setMeetingModal({
+      isOpen: true,
+      meeting: meeting
+    });
+  }, []);
+
+  const handleMeetingModalSubmit = useCallback(async (meetingData: any) => {
+    try {
+      if (meetingModal.meeting) {
+        // Update existing meeting
+        await meetingService.update(meetingModal.meeting.id, meetingData);
+      } else {
+        // Create new meeting
+        await meetingService.create(meetingData);
+      }
+      await refresh();
+      setMeetingModal({ isOpen: false, meeting: null });
+    } catch (error) {
+      console.error('Failed to save meeting:', error);
+      throw error; // Re-throw to let modal handle the error
+    }
+  }, [meetingModal.meeting, refresh]);
+
+  const handleMeetingModalClose = useCallback(() => {
+    setMeetingModal({ isOpen: false, meeting: null });
+  }, []);
+
+  const handleMeetingDelete = useCallback(async (meetingId: string) => {
+    try {
+      await meetingService.delete(meetingId);
+      await refresh();
+    } catch (error) {
+      console.error('Failed to delete meeting:', error);
+    }
+  }, [refresh]);
+
+  const handleMeetingStatusChange = useCallback(async (meetingId: string, status: string) => {
+    try {
+      await meetingService.updateStatus(meetingId, status as any);
+      await refresh();
+    } catch (error) {
+      console.error('Failed to update meeting status:', error);
     }
   }, [refresh]);
 
@@ -287,6 +528,7 @@ export default function App() {
             teamMembers={teamMembers}
             onWorkflowCreate={handleWorkflowCreate}
             onWorkflowEdit={handleWorkflowEdit}
+            onWorkflowDelete={handleWorkflowDelete}
             onWorkflowStatusChange={handleWorkflowStatusChange}
           />
         );
@@ -303,6 +545,10 @@ export default function App() {
             onTaskCreate={handleTaskCreate}
             onTaskEdit={handleTaskEdit}
             onRefresh={refresh}
+            selectedWorkflow={selectedWorkflow}
+            selectedClient={selectedClient}
+            onWorkflowChange={setSelectedWorkflow}
+            onClientChange={setSelectedClient}
           />
         );
 
@@ -314,6 +560,7 @@ export default function App() {
             tasks={kanbanTasks}
             onMemberCreate={handleMemberCreate}
             onMemberEdit={handleMemberEdit}
+            onMemberDelete={handleMemberDelete}
             onMemberStatusChange={handleMemberStatusChange}
           />
         );
@@ -327,7 +574,21 @@ export default function App() {
             teamMembers={teamMembers}
             onClientCreate={handleClientCreate}
             onClientEdit={handleClientEdit}
+            onClientDelete={handleClientDelete}
             onClientStatusChange={handleClientStatusChange}
+          />
+        );
+
+      case 'meetings':
+        return (
+          <MeetingView
+            meetings={meetings}
+            clients={clients}
+            teamMembers={teamMembers}
+            onMeetingCreate={handleMeetingCreate}
+            onMeetingEdit={handleMeetingEdit}
+            onMeetingDelete={handleMeetingDelete}
+            onMeetingStatusChange={handleMeetingStatusChange}
           />
         );
 
@@ -350,10 +611,51 @@ export default function App() {
         currentView={currentView}
         onViewChange={handleViewChange}
         onNewWorkflow={handleNewWorkflow}
+        onNewTask={handleNewTask}
       />
       <main className="main-content">
         {renderCurrentView()}
       </main>
+      
+      {/* Task Edit Modal */}
+      <TaskEditModal
+        task={taskEditModal.task}
+        isOpen={taskEditModal.isOpen}
+        onClose={handleTaskModalClose}
+        onSave={handleTaskSave}
+        onDelete={handleTaskDelete}
+        teamMembers={teamMembers}
+        workflows={workflows}
+        columns={kanbanColumns}
+        defaultColumnId={newTaskContext.columnId}
+        defaultWorkflowId={newTaskContext.workflowId}
+      />
+
+      {/* Client Modal */}
+      <ClientModal
+        client={clientModal.client || undefined}
+        isOpen={clientModal.isOpen}
+        onClose={handleClientModalClose}
+        onSubmit={handleClientModalSubmit}
+      />
+
+      {/* Team Member Modal */}
+      <TeamMemberModal
+        member={teamMemberModal.member || undefined}
+        isOpen={teamMemberModal.isOpen}
+        onClose={handleTeamMemberModalClose}
+        onSubmit={handleTeamMemberModalSubmit}
+      />
+
+      {/* Meeting Modal */}
+      <MeetingModal
+        meeting={meetingModal.meeting || undefined}
+        clients={clients}
+        teamMembers={teamMembers}
+        isOpen={meetingModal.isOpen}
+        onClose={handleMeetingModalClose}
+        onSubmit={handleMeetingModalSubmit}
+      />
     </div>
   );
 }

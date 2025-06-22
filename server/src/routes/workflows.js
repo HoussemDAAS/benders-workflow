@@ -236,12 +236,44 @@ router.patch('/:id/status', async (req, res) => {
 // DELETE /api/workflows/:id - Delete workflow
 router.delete('/:id', async (req, res) => {
   try {
-    const workflow = await Workflow.findById(req.params.id);
+    const { db } = require('../config/database');
+    const { id } = req.params;
+    
+    // Check if workflow exists
+    const workflow = db.prepare('SELECT id FROM workflows WHERE id = ?').get(id);
+    
     if (!workflow) {
       return res.status(404).json({ error: 'Workflow not found' });
     }
-
-    await workflow.delete(req.body.performedBy);
+    
+    // Start transaction to delete all related data
+    const deleteTransaction = db.transaction(() => {
+      // Delete task assignments for tasks in this workflow
+      db.prepare(`
+        DELETE FROM task_assignments 
+        WHERE taskId IN (
+          SELECT id FROM kanban_tasks WHERE workflowId = ?
+        )
+      `).run(id);
+      
+      // Delete tasks in this workflow
+      db.prepare('DELETE FROM kanban_tasks WHERE workflowId = ?').run(id);
+      
+      // Delete workflow connections
+      db.prepare('DELETE FROM workflow_connections WHERE workflowId = ?').run(id);
+      
+      // Delete workflow steps
+      db.prepare('DELETE FROM workflow_steps WHERE workflowId = ?').run(id);
+      
+      // Delete activity logs for this workflow
+      db.prepare('DELETE FROM activity_logs WHERE workflowId = ?').run(id);
+      
+      // Finally delete the workflow
+      db.prepare('DELETE FROM workflows WHERE id = ?').run(id);
+    });
+    
+    deleteTransaction();
+    
     res.status(204).send();
   } catch (error) {
     console.error('Error deleting workflow:', error);

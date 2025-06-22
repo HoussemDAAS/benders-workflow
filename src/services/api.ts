@@ -1,4 +1,4 @@
-const API_BASE_URL = 'http://localhost:3001/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
 export class ApiError extends Error {
   constructor(public status: number, message: string) {
@@ -60,5 +60,5 @@ export const apiService = {
   post: <T>(endpoint: string, data?: any): Promise<T> => api.post<T>(endpoint, data),
   put: <T>(endpoint: string, data?: any): Promise<T> => api.put<T>(endpoint, data),
   patch: <T>(endpoint: string, data?: any): Promise<T> => api.patch<T>(endpoint, data),
-  delete: <T>(endpoint: string): Promise<T> => api.delete<T>(endpoint),
+  delete: (endpoint: string): Promise<any> => api.delete(endpoint),
 }; 

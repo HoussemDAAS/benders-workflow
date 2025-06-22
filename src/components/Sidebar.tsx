@@ -6,20 +6,24 @@ import {
   Users, 
   Building2,
   Settings,
-  Plus
+  Plus,
+  CheckSquare,
+  Calendar
 } from 'lucide-react';
 
 interface SidebarProps {
   currentView: string;
   onViewChange: (view: string) => void;
   onNewWorkflow: () => void;
+  onNewTask?: () => void;
 }
 
-export function Sidebar({ currentView, onViewChange, onNewWorkflow }: SidebarProps) {
+export function Sidebar({ currentView, onViewChange, onNewWorkflow, onNewTask }: SidebarProps) {
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'workflows', label: 'Workflows', icon: Workflow },
     { id: 'kanban', label: 'Kanban Board', icon: Kanban },
+    { id: 'meetings', label: 'Meetings', icon: Calendar },
     { id: 'team', label: 'Team Members', icon: Users },
     { id: 'clients', label: 'Clients', icon: Building2 },
   ];
@@ -38,6 +42,12 @@ export function Sidebar({ currentView, onViewChange, onNewWorkflow }: SidebarPro
           <Plus size={16} />
           New Workflow
         </button>
+        {onNewTask && (
+          <button className="new-task-btn" onClick={onNewTask}>
+            <CheckSquare size={16} />
+            New Task
+          </button>
+        )}
       </div>
 
       <nav className="sidebar-nav">
