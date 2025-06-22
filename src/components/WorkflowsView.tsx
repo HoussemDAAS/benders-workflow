@@ -17,15 +17,7 @@ import '../flowchart-nodes.css';
 
 import { 
   Plus, 
-  Edit3, 
-  Play, 
-  Pause, 
-  MoreHorizontal, 
   Calendar,
-  Users,
-  CheckCircle,
-  Clock,
-  AlertCircle,
   Search,
   Filter,
   Edit2,
@@ -33,10 +25,16 @@ import {
   MoreVertical,
   Building,
   Target,
-  Workflow as WorkflowIcon
+  Workflow as WorkflowIcon,
+  Play,
+  CheckCircle,
+  Pause,
+  Clock,
+  AlertCircle
 } from 'lucide-react';
 import { Workflow, Client, TeamMember, WorkflowStep, KanbanTask } from '../types';
 import { nodeTypes } from '../nodes';
+import { TaskFlowView } from './TaskFlowView';
 
 interface WorkflowsViewProps {
   workflows: Workflow[];
@@ -393,6 +391,7 @@ export function WorkflowsView({
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [editingWorkflow, setEditingWorkflow] = useState<Workflow | null>(null);
   const [deletingWorkflow, setDeletingWorkflow] = useState<Workflow | null>(null);
+  const [taskFlowWorkflow, setTaskFlowWorkflow] = useState<Workflow | null>(null);
 
   const statusCounts = workflows.reduce((acc, workflow) => {
     acc[workflow.status] = (acc[workflow.status] || 0) + 1;
@@ -567,6 +566,12 @@ export function WorkflowsView({
                         Edit
                       </button>
                       <button 
+                        onClick={() => setTaskFlowWorkflow(workflow)}
+                      >
+                        <WorkflowIcon size={14} />
+                        View Task Flow
+                      </button>
+                      <button 
                         onClick={() => setDeletingWorkflow(workflow)}
                         className="danger"
                       >
@@ -680,6 +685,15 @@ export function WorkflowsView({
         onClose={() => setDeletingWorkflow(null)}
         onConfirm={handleDeleteWorkflow}
       />
+
+      {taskFlowWorkflow && (
+        <TaskFlowView
+          workflow={taskFlowWorkflow}
+          tasks={tasks.filter(task => task.workflowId === taskFlowWorkflow.id)}
+          teamMembers={teamMembers}
+          onClose={() => setTaskFlowWorkflow(null)}
+        />
+      )}
     </div>
   );
 } 
