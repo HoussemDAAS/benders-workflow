@@ -370,41 +370,44 @@ export function KanbanBoard({
                   </div>
                 </div>
               </div>
-              
-              <div className="flex flex-col sm:flex-row gap-3">
-                <select 
-                  value={selectedClient}
-                  onChange={(e) => handleClientChange(e.target.value)}
-                  className="px-4 py-3 border border-gray-300 rounded-xl text-sm text-gray-900 bg-white transition-all duration-200 focus:outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/10 min-w-[180px]"
-                >
-                  <option value="all" className="text-gray-900">All Clients</option>
-                  {clients.map(client => (
-                    <option key={client.id} value={client.id} className="text-gray-900">
-                      {client.company || client.name}
-                    </option>
-                  ))}
-                </select>
-
-                <select 
-                  value={selectedWorkflow}
-                  onChange={(e) => handleWorkflowChange(e.target.value)}
-                  className="px-4 py-3 border border-gray-300 rounded-xl text-sm text-gray-900 bg-white transition-all duration-200 focus:outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/10 min-w-[200px]"
-                >
-                  <option value="all" className="text-gray-900">
-                    {selectedClient === 'all' ? 'All Workflows' : 'All Client Workflows'}
-                  </option>
-                  {clientWorkflows.map(workflow => (
-                    <option key={workflow.id} value={workflow.id} className="text-gray-900">
-                      {workflow.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
             </div>
           </div>
         </div>
 
         <div className="px-6 pb-6">
+          {/* Filters Section */}
+          <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 -mt-6 mb-6 relative z-10">
+            <div className="flex flex-col lg:flex-row gap-4">
+              <select 
+                value={selectedClient}
+                onChange={(e) => handleClientChange(e.target.value)}
+                className="px-4 py-3 border border-gray-300 rounded-xl text-sm text-gray-900 bg-white transition-all duration-200 focus:outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/10 flex-1 lg:flex-none lg:min-w-[200px]"
+              >
+                <option value="all" className="text-gray-900">All Clients</option>
+                {clients.map(client => (
+                  <option key={client.id} value={client.id} className="text-gray-900">
+                    {client.company || client.name}
+                  </option>
+                ))}
+              </select>
+
+              <select 
+                value={selectedWorkflow}
+                onChange={(e) => handleWorkflowChange(e.target.value)}
+                className="px-4 py-3 border border-gray-300 rounded-xl text-sm text-gray-900 bg-white transition-all duration-200 focus:outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/10 flex-1 lg:flex-none lg:min-w-[250px]"
+              >
+                <option value="all" className="text-gray-900">
+                  {selectedClient === 'all' ? 'All Workflows' : 'All Client Workflows'}
+                </option>
+                {clientWorkflows.map(workflow => (
+                  <option key={workflow.id} value={workflow.id} className="text-gray-900">
+                    {workflow.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
           {/* Workflow Info */}
           {currentWorkflow && (
             <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 -mt-6 mb-6 relative z-10">
