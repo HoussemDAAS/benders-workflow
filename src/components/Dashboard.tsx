@@ -11,8 +11,7 @@ import {
   ArrowDownRight,
   Target,
   Star,
-  Eye,
-  RefreshCw
+  Eye
 } from 'lucide-react';
 import { DashboardStats, Client, TeamMember, Workflow } from '../types';
 
@@ -22,7 +21,7 @@ interface DashboardProps {
   activeWorkflows: Workflow[];
   teamMembers: TeamMember[];
   onViewChange: (view: string) => void;
-  onRefresh?: () => void;
+  onClientSelect?: (clientId: string) => void;
 }
 
 export function Dashboard({ 
@@ -31,7 +30,7 @@ export function Dashboard({
   activeWorkflows, 
   teamMembers, 
   onViewChange,
-  onRefresh
+  onClientSelect
 }: DashboardProps) {
   // Calculate trends based on actual data relationships
   const calculateTrends = () => {
@@ -229,7 +228,11 @@ export function Dashboard({
               
               <div className="p-5 space-y-3">
                 {recentClients.slice(0, 5).map((client) => (
-                  <div key={client.id} className="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 transition-colors duration-200 group cursor-pointer">
+                  <div 
+                    key={client.id} 
+                    className="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 transition-colors duration-200 group cursor-pointer"
+                    onClick={() => onClientSelect?.(client.id)}
+                  >
                     <div className="relative">
                       {client.avatar ? (
                         <img 

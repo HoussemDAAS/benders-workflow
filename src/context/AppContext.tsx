@@ -69,7 +69,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     overdueItems: 0
   };
 
-  const contextValue: AppContextType = {
+  const contextValue: AppContextType = useMemo(() => ({
     clients,
     teamMembers,
     workflows,
@@ -80,7 +80,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     loading,
     error,
     refresh,
-  };
+  }), [clients, teamMembers, workflows, meetings, kanbanColumns, kanbanTasks, dashboardStats, loading, error, refresh]);
 
   return (
     <AppContext.Provider value={contextValue}>
