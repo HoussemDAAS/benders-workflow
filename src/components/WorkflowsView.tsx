@@ -37,6 +37,7 @@ interface WorkflowsViewProps {
   onWorkflowEdit: (workflow: Workflow) => void;
   onWorkflowDelete: (workflowId: string) => void;
   onWorkflowStatusChange: (workflowId: string, status: string) => void;
+  initialClientFilter?: string;
 }
 
 interface CreateWorkflowData {
@@ -380,15 +381,23 @@ export function WorkflowsView({
   onWorkflowCreate, 
   onWorkflowEdit,
   onWorkflowDelete,
-  onWorkflowStatusChange 
+  onWorkflowStatusChange,
+  initialClientFilter 
 }: WorkflowsViewProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [clientFilter, setClientFilter] = useState<string>('all');
+  const [clientFilter, setClientFilter] = useState<string>(initialClientFilter || 'all');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [editingWorkflow, setEditingWorkflow] = useState<Workflow | null>(null);
   const [deletingWorkflow, setDeletingWorkflow] = useState<Workflow | null>(null);
   const [taskFlowWorkflow, setTaskFlowWorkflow] = useState<Workflow | null>(null);
+
+  // Update client filter when initialClientFilter prop changes
+  React.useEffect(() => {
+    if (initialClientFilter) {
+      setClientFilter(initialClientFilter);
+    }
+  }, [initialClientFilter]);
 
   const statusCounts = workflows.reduce((acc, workflow) => {
     acc[workflow.status] = (acc[workflow.status] || 0) + 1;
