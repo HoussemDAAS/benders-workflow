@@ -203,92 +203,128 @@ export function TaskEditModal({
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case 'urgent': return 'bg-red-500';
-      case 'high': return 'bg-orange-500';
-      case 'medium': return 'bg-yellow-500';
-      case 'low': return 'bg-green-500';
-      default: return 'bg-gray-500';
+      case 'low': return 'text-blue-600 bg-blue-100';
+      case 'medium': return 'text-yellow-600 bg-yellow-100';
+      case 'high': return 'text-orange-600 bg-orange-100';
+      case 'urgent': return 'text-red-600 bg-red-100';
+      default: return 'text-gray-600 bg-gray-100';
     }
   };
 
   const selectedWorkflow = workflows.find(w => w.id === formData.workflowId);
-  const workflowSteps = selectedWorkflow?.steps || [];
+  const availableSteps = selectedWorkflow?.steps || [];
 
   if (!isOpen) return null;
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content task-edit-modal" onClick={e => e.stopPropagation()}>
-        <div className="modal-header">
-          <h2>
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto modal-content" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between p-6 border-b border-gray-100">
+          <h2 className="text-2xl font-bold text-gray-900">
             {task ? 'Edit Task' : 'Create New Task'}
           </h2>
-          <button className="close-btn" onClick={onClose}>
-            <X size={20} />
-          </button>
+          <div className="flex gap-2">
+            {task && onDelete && (
+              <button 
+                onClick={handleDelete}
+                className="w-10 h-10 bg-red-100 hover:bg-red-200 text-red-600 rounded-lg flex items-center justify-center transition-colors duration-200"
+                title="Delete Task"
+              >
+                <Trash2 size={16} />
+              </button>
+            )}
+            <button 
+              className="w-10 h-10 bg-gray-100 hover:bg-gray-200 rounded-lg flex items-center justify-center transition-colors duration-200"
+              onClick={onClose}
+              type="button"
+            >
+              <X size={20} />
+            </button>
+          </div>
         </div>
-
-        <form onSubmit={handleSubmit} className="task-edit-form">
-          <div className="modal-body">
-            {/* Title */}
-            <div className="form-group">
-              <label htmlFor="title">Title *</label>
-              <input
-                id="title"
-                type="text"
-                value={formData.title}
-                onChange={e => handleInputChange('title', e.target.value)}
-                className={errors.title ? 'error' : ''}
-                placeholder="Enter task title..."
-              />
-              {errors.title && <span className="error-message">{errors.title}</span>}
+        
+        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+          {errors.submit && (
+            <div className="p-4 bg-red-50 border border-red-200 rounded-xl">
+              <p className="text-sm text-red-700">{errors.submit}</p>
             </div>
+          )}
 
-          {/* Description */}
-          <div className="form-group">
-            <label htmlFor="description">Description</label>
+          <div className="space-y-2">
+            <label htmlFor="title" className="text-sm font-medium text-gray-700">
+              Task Title *
+            </label>
+            <input
+              id="title"
+              type="text"
+              value={formData.title}
+              onChange={e => handleInputChange('title', e.target.value)}
+              className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all duration-200 ${
+                errors.title 
+                  ? 'border-red-300 focus:border-red-500 focus:ring-red/20 bg-red-50' 
+                  : 'border-gray-200 focus:border-primary'
+              }`}
+              placeholder="Enter task title..."
+              disabled={isSubmitting}
+            />
+            {errors.title && <span className="text-sm text-red-600">{errors.title}</span>}
+          </div>
+
+          <div className="space-y-2">
+            <label htmlFor="description" className="text-sm font-medium text-gray-700">
+              Description
+            </label>
             <textarea
               id="description"
               value={formData.description}
               onChange={e => handleInputChange('description', e.target.value)}
-              placeholder="Enter task description..."
-              rows={3}
+              rows={4}
+              className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200"
+              placeholder="Task description and details..."
+              disabled={isSubmitting}
             />
           </div>
 
-          {/* Workflow & Step */}
-          <div className="form-row">
-            <div className="form-group">
-              <label htmlFor="workflow">
-                <WorkflowIcon size={16} />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <label htmlFor="workflow" className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                <WorkflowIcon size={16} className="text-gray-400" />
                 Workflow *
               </label>
               <select
                 id="workflow"
                 value={formData.workflowId}
                 onChange={e => handleInputChange('workflowId', e.target.value)}
-                className={errors.workflowId ? 'error' : ''}
+                className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all duration-200 ${
+                  errors.workflowId 
+                    ? 'border-red-300 focus:border-red-500 focus:ring-red/20 bg-red-50' 
+                    : 'border-gray-200 focus:border-primary'
+                }`}
+                disabled={isSubmitting}
               >
-                <option value="">Select workflow...</option>
+                <option value="">Select a workflow...</option>
                 {workflows.map(workflow => (
                   <option key={workflow.id} value={workflow.id}>
                     {workflow.name}
                   </option>
                 ))}
               </select>
-              {errors.workflowId && <span className="error-message">{errors.workflowId}</span>}
+              {errors.workflowId && <span className="text-sm text-red-600">{errors.workflowId}</span>}
             </div>
 
-            <div className="form-group">
-              <label htmlFor="step">Workflow Step</label>
+            <div className="space-y-2">
+              <label htmlFor="step" className="text-sm font-medium text-gray-700">
+                Workflow Step
+              </label>
               <select
                 id="step"
                 value={formData.stepId}
                 onChange={e => handleInputChange('stepId', e.target.value)}
-                disabled={!selectedWorkflow}
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200"
+                disabled={isSubmitting || !selectedWorkflow}
               >
-                <option value="">No specific step</option>
-                {workflowSteps.map(step => (
+                <option value="">Select a step...</option>
+                {availableSteps.map(step => (
                   <option key={step.id} value={step.id}>
                     {step.name}
                   </option>
@@ -297,32 +333,41 @@ export function TaskEditModal({
             </div>
           </div>
 
-          {/* Priority & Status */}
-          <div className="form-row">
-            <div className="form-group">
-              <label htmlFor="priority">
-                <Flag size={16} />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                <Flag size={16} className="text-gray-400" />
                 Priority
               </label>
-              <select
-                id="priority"
-                value={formData.priority}
-                onChange={e => handleInputChange('priority', e.target.value)}
-              >
-                <option value="low">Low</option>
-                <option value="medium">Medium</option>
-                <option value="high">High</option>
-                <option value="urgent">Urgent</option>
-              </select>
-              <div className={`priority-indicator ${getPriorityColor(formData.priority)}`} />
+              <div className="grid grid-cols-2 gap-2">
+                {(['low', 'medium', 'high', 'urgent'] as const).map(priority => (
+                  <button
+                    key={priority}
+                    type="button"
+                    onClick={() => handleInputChange('priority', priority)}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                      formData.priority === priority
+                        ? getPriorityColor(priority)
+                        : 'border border-gray-200 hover:border-gray-300 text-gray-600'
+                    }`}
+                    disabled={isSubmitting}
+                  >
+                    {priority.charAt(0).toUpperCase() + priority.slice(1)}
+                  </button>
+                ))}
+              </div>
             </div>
 
-            <div className="form-group">
-              <label htmlFor="status">Status</label>
+            <div className="space-y-2">
+              <label htmlFor="status" className="text-sm font-medium text-gray-700">
+                Status
+              </label>
               <select
                 id="status"
                 value={formData.status}
                 onChange={e => handleInputChange('status', e.target.value)}
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200"
+                disabled={isSubmitting}
               >
                 {columns.map(column => (
                   <option key={column.id} value={column.id}>
@@ -333,10 +378,9 @@ export function TaskEditModal({
             </div>
           </div>
 
-          {/* Due Date */}
-          <div className="form-group">
-            <label htmlFor="dueDate">
-              <Calendar size={16} />
+          <div className="space-y-2">
+            <label htmlFor="dueDate" className="flex items-center gap-2 text-sm font-medium text-gray-700">
+              <Calendar size={16} className="text-gray-400" />
               Due Date
             </label>
             <input
@@ -344,121 +388,105 @@ export function TaskEditModal({
               type="date"
               value={formData.dueDate}
               onChange={e => handleInputChange('dueDate', e.target.value)}
+              className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200"
+              disabled={isSubmitting}
             />
           </div>
 
-          {/* Tags */}
-          <div className="form-group">
-            <label>
-              <Tag size={16} />
+          <div className="space-y-4">
+            <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+              <Tag size={16} className="text-gray-400" />
               Tags
             </label>
-            <div className="tags-container">
-              <div className="current-tags">
+            
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={newTag}
+                onChange={e => setNewTag(e.target.value)}
+                placeholder="Add a tag..."
+                className="flex-1 px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                onKeyPress={e => e.key === 'Enter' && (e.preventDefault(), handleAddTag())}
+                disabled={isSubmitting}
+              />
+              <button
+                type="button"
+                onClick={handleAddTag}
+                className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors duration-200 flex items-center gap-2"
+                disabled={isSubmitting}
+              >
+                <Plus size={16} />
+                Add
+              </button>
+            </div>
+
+            {formData.tags.length > 0 && (
+              <div className="flex flex-wrap gap-2">
                 {formData.tags.map(tag => (
-                  <span key={tag} className="tag">
-                    {tag}
+                  <div key={tag} className="flex items-center gap-2 px-3 py-1 bg-primary/10 text-primary rounded-full text-sm">
+                    <span>{tag}</span>
                     <button
                       type="button"
                       onClick={() => handleRemoveTag(tag)}
-                      className="remove-tag"
+                      className="hover:bg-primary/20 rounded-full p-1 transition-colors duration-200"
+                      disabled={isSubmitting}
                     >
                       <X size={12} />
                     </button>
-                  </span>
+                  </div>
                 ))}
-              </div>
-              <div className="add-tag">
-                <input
-                  type="text"
-                  value={newTag}
-                  onChange={e => setNewTag(e.target.value)}
-                  placeholder="Add tag..."
-                  onKeyPress={e => e.key === 'Enter' && (e.preventDefault(), handleAddTag())}
-                />
-                <button
-                  type="button"
-                  onClick={handleAddTag}
-                  disabled={!newTag.trim()}
-                >
-                  <Plus size={16} />
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Assigned Members */}
-          <div className="form-group">
-            <label>
-              <User size={16} />
-              Assigned Members
-            </label>
-            <div className="members-grid">
-              {teamMembers.filter(member => member.isActive).map(member => (
-                <div
-                  key={member.id}
-                  className={`member-option ${formData.assignedMembers.includes(member.id) ? 'selected' : ''}`}
-                  onClick={() => handleMemberToggle(member.id)}
-                >
-                  <div className="member-avatar">
-                    {member.avatar ? (
-                      <img src={member.avatar} alt={member.name} />
-                    ) : (
-                      member.name.charAt(0)
-                    )}
-                  </div>
-                  <div className="member-info">
-                    <span className="member-name">{member.name}</span>
-                    <span className="member-role">{member.role}</span>
-                  </div>
-                  {formData.assignedMembers.includes(member.id) && (
-                    <Check size={16} className="check-icon" />
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-
-            {/* Error Message */}
-            {errors.submit && (
-              <div className="error-banner">
-                {errors.submit}
               </div>
             )}
           </div>
 
-          {/* Actions */}
-          <div className="modal-actions">
-            <div className="action-group">
-              {task && onDelete && (
-                <button
-                  type="button"
-                  onClick={handleDelete}
-                  className="delete-btn"
-                >
-                  <Trash2 size={16} />
-                  Delete
-                </button>
+          <div className="space-y-3">
+            <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+              <User size={16} className="text-gray-400" />
+              Assigned Members
+            </label>
+            <div className="space-y-2 max-h-32 overflow-y-auto border border-gray-200 rounded-xl p-3">
+              {teamMembers.filter(m => m.isActive).map(member => (
+                <label key={member.id} className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={formData.assignedMembers.includes(member.id)}
+                    onChange={() => handleMemberToggle(member.id)}
+                    className="w-4 h-4 text-primary bg-gray-100 border-gray-300 rounded focus:ring-primary/20 focus:ring-2"
+                    disabled={isSubmitting}
+                  />
+                  <span className="text-sm text-gray-700">{member.name}</span>
+                  <span className="text-xs text-gray-500">({member.role})</span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex gap-3 pt-4 border-t border-gray-100">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 px-6 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-medium transition-colors duration-200"
+              disabled={isSubmitting}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="flex-1 px-6 py-3 bg-primary hover:bg-primary/90 disabled:bg-primary/50 text-white rounded-xl font-medium transition-colors duration-200 flex items-center justify-center gap-2"
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Save size={16} />
+                  {task ? 'Update Task' : 'Create Task'}
+                </>
               )}
-            </div>
-            
-            <div className="action-group">
-              <button
-                type="button"
-                onClick={onClose}
-                className="cancel-btn"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="save-btn"
-              >
-                <Save size={16} />
-                {isSubmitting ? 'Saving...' : task ? 'Update Task' : 'Create Task'}
-              </button>
-            </div>
+            </button>
           </div>
         </form>
       </div>

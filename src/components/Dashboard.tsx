@@ -9,10 +9,10 @@ import {
   Activity,
   ArrowUpRight,
   ArrowDownRight,
-  Plus,
   Target,
   Star,
-  Eye
+  Eye,
+  RefreshCw
 } from 'lucide-react';
 import { DashboardStats, Client, TeamMember, Workflow } from '../types';
 
@@ -22,6 +22,7 @@ interface DashboardProps {
   activeWorkflows: Workflow[];
   teamMembers: TeamMember[];
   onViewChange: (view: string) => void;
+  onRefresh?: () => void;
 }
 
 export function Dashboard({ 
@@ -29,16 +30,55 @@ export function Dashboard({
   recentClients, 
   activeWorkflows, 
   teamMembers, 
-  onViewChange 
+  onViewChange,
+  onRefresh
 }: DashboardProps) {
+  // Calculate trends based on actual data relationships
+  const calculateTrends = () => {
+    const activeClients = recentClients.filter(client => client.isActive).length;
+    const clientUtilization = stats.totalClients > 0 ? (activeClients / stats.totalClients) * 100 : 0;
+    
+    const workflowsWithProgress = activeWorkflows.filter(workflow => {
+      const steps = workflow.steps || [];
+      return steps.some(step => step.status === 'completed');
+    }).length;
+    const workflowProgress = stats.activeWorkflows > 0 ? (workflowsWithProgress / stats.activeWorkflows) * 100 : 0;
+    
+    const activeTeamMembers = teamMembers.filter(member => member.isActive).length;
+    const teamUtilization = stats.teamMembers > 0 ? (activeTeamMembers / stats.teamMembers) * 100 : 0;
+    
+    const tasksPerWorkflow = stats.activeWorkflows > 0 ? stats.completedTasks / stats.activeWorkflows : 0;
+    
+    return {
+      clients: {
+        value: `${Math.round(clientUtilization)}%`,
+        isPositive: clientUtilization >= 75
+      },
+      workflows: {
+        value: `${Math.round(workflowProgress)}%`,
+        isPositive: workflowProgress >= 60
+      },
+      tasks: {
+        value: `${Math.round(tasksPerWorkflow * 10) / 10}/wf`,
+        isPositive: tasksPerWorkflow >= 3
+      },
+      team: {
+        value: `${Math.round(teamUtilization)}%`,
+        isPositive: teamUtilization >= 80
+      }
+    };
+  };
+
+  const trends = calculateTrends();
+
   const statCards = [
     {
       title: 'Clients',
       value: stats.totalClients,
       icon: Building2,
       gradient: 'from-primary to-accent',
-      trend: '+12%',
-      trendUp: true,
+      trend: trends.clients.value,
+      trendUp: trends.clients.isPositive,
       action: () => onViewChange('clients')
     },
     {
@@ -46,8 +86,8 @@ export function Dashboard({
       value: stats.activeWorkflows,
       icon: Activity,
       gradient: 'from-secondary to-primary',
-      trend: '+8%',
-      trendUp: true,
+      trend: trends.workflows.value,
+      trendUp: trends.workflows.isPositive,
       action: () => onViewChange('workflows')
     },
     {
@@ -55,8 +95,8 @@ export function Dashboard({
       value: stats.completedTasks,
       icon: CheckCircle,
       gradient: 'from-tertiary to-secondary',
-      trend: '+24%',
-      trendUp: true,
+      trend: trends.tasks.value,
+      trendUp: trends.tasks.isPositive,
       action: () => onViewChange('kanban')
     },
     {
@@ -64,8 +104,8 @@ export function Dashboard({
       value: stats.teamMembers,
       icon: Users,
       gradient: 'from-accent to-tertiary',
-      trend: '+2',
-      trendUp: true,
+      trend: trends.team.value,
+      trendUp: trends.team.isPositive,
       action: () => onViewChange('team')
     }
   ];
@@ -101,12 +141,7 @@ export function Dashboard({
               </div>
             </div>
             
-            <div className="flex items-center gap-3">
-              <button className="flex items-center gap-2 px-4 py-2 bg-tertiary hover:bg-tertiary/90 text-primary rounded-xl font-medium transition-all duration-200 shadow-lg">
-                <Plus size={16} />
-                Quick Action
-              </button>
-            </div>
+           
           </div>
         </div>
       </div>

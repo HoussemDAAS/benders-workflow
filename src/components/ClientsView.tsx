@@ -11,10 +11,11 @@ import {
   CheckCircle,
   Clock,
   AlertTriangle,
-  DollarSign,
   TrendingUp,
   Workflow as WorkflowIcon,
-  AlertCircle
+  AlertCircle,
+  Star,
+  ArrowUpRight
 } from 'lucide-react';
 import { Client, Workflow, KanbanTask, TeamMember } from '../types';
 
@@ -70,106 +71,143 @@ const ClientCard: React.FC<ClientCardProps> = ({
   );
 
   return (
-    <div className={`client-card ${!client.isActive ? 'inactive' : ''} ${isOverdue ? 'has-overdue' : ''}`}>
-      <div className="client-card-header">
-        <div className="client-avatar-section">
-          <div className="client-avatar large">
+    <div className={`group relative bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer hover:-translate-y-1 border border-gray-100 ${
+      !client.isActive ? 'opacity-75 bg-gray-50' : ''
+    } ${isOverdue ? 'ring-2 ring-red-200 border-red-200' : ''}`}>
+      {/* Header */}
+      <div className="flex items-start justify-between mb-4">
+        <div className="flex items-center gap-4">
+          <div className="relative">
             {client.avatar ? (
-              <img src={client.avatar} alt={client.name} />
+              <img 
+                src={client.avatar} 
+                alt={client.name}
+                className="w-14 h-14 rounded-xl object-cover shadow-md"
+              />
             ) : (
-              <Building2 size={24} />
+              <div className="w-14 h-14 bg-gradient-to-br from-primary to-accent rounded-xl flex items-center justify-center shadow-md">
+                <Building2 size={24} className="text-white" />
+              </div>
+            )}
+            {client.isActive && (
+              <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white"></div>
             )}
           </div>
-          <div className="client-basic-info">
-            <h3 className="client-name">{client.name}</h3>
-            <p className="client-company">{client.company}</p>
-            <span className={`client-status ${client.isActive ? 'active' : 'inactive'}`}>
+          <div className="flex-1 min-w-0">
+            <h3 className="text-lg font-bold text-gray-900 truncate group-hover:text-primary transition-colors duration-300">
+              {client.name}
+            </h3>
+            <p className="text-sm text-gray-600 font-medium">{client.company}</p>
+            <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold mt-1 ${
+              client.isActive 
+                ? 'bg-green-100 text-green-700' 
+                : 'bg-gray-100 text-gray-600'
+            }`}>
               {client.isActive ? 'Active Client' : 'Inactive'}
             </span>
           </div>
         </div>
         
-        <div className="client-actions">
+        <div className="flex items-center gap-2">
           <button 
-            className="action-btn secondary"
-            onClick={() => onEdit(client)}
+            className="w-8 h-8 bg-gray-100 hover:bg-primary hover:text-white rounded-lg flex items-center justify-center transition-all duration-200 opacity-0 group-hover:opacity-100"
+            onClick={(e) => {
+              e.stopPropagation();
+              onEdit(client);
+            }}
           >
-            <Edit3 size={16} />
+            <Edit3 size={14} />
           </button>
-          <div className="client-menu">
-            <button className="menu-trigger">
-              <MoreVertical size={16} />
-            </button>
-          </div>
+          <button className="w-8 h-8 bg-gray-100 hover:bg-gray-200 rounded-lg flex items-center justify-center transition-colors duration-200 opacity-0 group-hover:opacity-100">
+            <MoreVertical size={14} />
+          </button>
         </div>
       </div>
 
-      <div className="client-contact">
-        <div className="contact-item">
-          <Mail size={14} />
-          <span>{client.email}</span>
+      {/* Contact Info */}
+      <div className="space-y-2 mb-4 p-3 bg-gray-50 rounded-xl">
+        <div className="flex items-center gap-2 text-sm text-gray-600">
+          <Mail size={14} className="text-gray-400" />
+          <span className="truncate">{client.email}</span>
         </div>
         {client.phone && (
-          <div className="contact-item">
-            <Phone size={14} />
+          <div className="flex items-center gap-2 text-sm text-gray-600">
+            <Phone size={14} className="text-gray-400" />
             <span>{client.phone}</span>
           </div>
         )}
-        <div className="contact-item">
-          <Calendar size={14} />
+        <div className="flex items-center gap-2 text-sm text-gray-600">
+          <Calendar size={14} className="text-gray-400" />
           <span>Client since {new Date(client.createdAt).toLocaleDateString()}</span>
         </div>
       </div>
 
-      <div className="client-projects-overview">
-        <h4>Project Overview</h4>
-        <div className="overview-stats">
-          <div className="overview-stat">
-            <WorkflowIcon size={16} />
-            <span>{clientWorkflows.length} Total Workflows</span>
+      {/* Project Overview */}
+      <div className="mb-4">
+        <h4 className="text-sm font-bold text-gray-900 mb-3">Project Overview</h4>
+        <div className="grid grid-cols-3 gap-3">
+          <div className="text-center p-2 bg-blue-50 rounded-lg">
+            <div className="flex items-center justify-center gap-1 mb-1">
+              <WorkflowIcon size={14} className="text-blue-600" />
+            </div>
+            <div className="text-lg font-bold text-blue-600">{clientWorkflows.length}</div>
+            <div className="text-xs text-gray-600">Total</div>
           </div>
-          <div className="overview-stat">
-            <CheckCircle size={16} className="text-green-500" />
-            <span>{activeWorkflows} Active</span>
+          <div className="text-center p-2 bg-green-50 rounded-lg">
+            <div className="flex items-center justify-center gap-1 mb-1">
+              <CheckCircle size={14} className="text-green-600" />
+            </div>
+            <div className="text-lg font-bold text-green-600">{activeWorkflows}</div>
+            <div className="text-xs text-gray-600">Active</div>
           </div>
-          <div className="overview-stat">
-            <Clock size={16} className="text-blue-500" />
-            <span>{completedWorkflows} Completed</span>
+          <div className="text-center p-2 bg-purple-50 rounded-lg">
+            <div className="flex items-center justify-center gap-1 mb-1">
+              <Clock size={14} className="text-purple-600" />
+            </div>
+            <div className="text-lg font-bold text-purple-600">{completedWorkflows}</div>
+            <div className="text-xs text-gray-600">Done</div>
           </div>
         </div>
       </div>
 
+      {/* Progress */}
       {totalTasks > 0 && (
-        <div className="client-progress">
-          <div className="progress-header">
-            <span className="progress-label">Overall Progress</span>
-            <span className="progress-percentage">{Math.round(overallProgress)}%</span>
+        <div className="mb-4">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm font-medium text-gray-700">Overall Progress</span>
+            <span className="text-sm font-bold text-gray-900">{Math.round(overallProgress)}%</span>
           </div>
-          <div className="progress-bar">
+          <div className="w-full bg-gray-200 rounded-full h-2">
             <div 
-              className="progress-fill" 
+              className="bg-gradient-to-r from-primary to-accent h-2 rounded-full transition-all duration-500" 
               style={{ width: `${overallProgress}%` }}
             />
           </div>
-          <div className="progress-stats">
+          <div className="text-xs text-gray-500 mt-1">
             {completedTasks}/{totalTasks} tasks completed
           </div>
         </div>
       )}
 
-      <div className="client-recent-activity">
-        <h4>Recent Workflows</h4>
-        <div className="activity-list">
+      {/* Recent Workflows */}
+      <div className="mb-4">
+        <h4 className="text-sm font-bold text-gray-900 mb-2">Recent Workflows</h4>
+        <div className="space-y-2">
           {clientWorkflows.slice(0, 3).map((workflow) => (
-            <div key={workflow.id} className="activity-item">
-              <div className="activity-content">
-                <div className="activity-name">{workflow.name}</div>
-                <div className="activity-meta">
-                  <span className={`activity-status ${workflow.status}`}>
+            <div key={workflow.id} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-medium text-gray-900 truncate">{workflow.name}</div>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-bold ${
+                    workflow.status === 'active' ? 'bg-green-100 text-green-700' :
+                    workflow.status === 'completed' ? 'bg-blue-100 text-blue-700' :
+                    workflow.status === 'on-hold' ? 'bg-yellow-100 text-yellow-700' :
+                    'bg-gray-100 text-gray-700'
+                  }`}>
                     {workflow.status}
                   </span>
                   {workflow.expectedEndDate && (
-                    <span className="activity-date">
+                    <span className="text-xs text-gray-500">
                       Due {new Date(workflow.expectedEndDate).toLocaleDateString()}
                     </span>
                   )}
@@ -178,40 +216,36 @@ const ClientCard: React.FC<ClientCardProps> = ({
             </div>
           ))}
           {clientWorkflows.length === 0 && (
-            <div className="no-activity">No workflows yet</div>
+            <div className="text-sm text-gray-500 text-center py-2">No workflows yet</div>
           )}
           {clientWorkflows.length > 3 && (
-            <div className="more-activity">
+            <div className="text-xs text-gray-500 text-center py-1">
               +{clientWorkflows.length - 3} more workflows
             </div>
           )}
         </div>
       </div>
 
-      <div className="client-card-footer">
-        <div className="client-value">
-          <DollarSign size={14} />
-          <span>High Value Client</span>
+      {/* Footer */}
+      <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+        <div className="flex items-center gap-2 text-sm">
+          <Star size={14} className="text-yellow-500" />
+          <span className="text-gray-600 font-medium">High Value Client</span>
         </div>
         
-        <div className="status-toggle">
-          <label className="toggle-switch">
-            <input
-              type="checkbox"
-              checked={client.isActive}
-              onChange={(e) => onStatusChange(client.id, e.target.checked)}
-            />
-            <span className="toggle-slider"></span>
-          </label>
-        </div>
+        <label className="relative inline-flex items-center cursor-pointer">
+          <input
+            type="checkbox"
+            checked={client.isActive}
+            onChange={(e) => {
+              e.stopPropagation();
+              onStatusChange(client.id, e.target.checked);
+            }}
+            className="sr-only peer"
+          />
+          <div className="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+        </label>
       </div>
-
-      {isOverdue && (
-        <div className="overdue-indicator">
-          <AlertTriangle size={16} />
-          <span>Has overdue projects</span>
-        </div>
-      )}
     </div>
   );
 };
@@ -229,47 +263,60 @@ const ClientStats: React.FC<ClientStatsProps> = ({ clients, workflows }) => {
       label: 'Total Clients',
       value: totalClients,
       icon: Building2,
-      color: 'blue',
-      trend: '+12%'
+      gradient: 'from-blue-500 to-blue-600',
+      trend: '+12%',
+      trendUp: true
     },
     {
       label: 'Active Clients',
       value: activeClients,
       icon: CheckCircle,
-      color: 'green',
-      trend: '+8%'
+      gradient: 'from-green-500 to-green-600',
+      trend: '+8%',
+      trendUp: true
     },
     {
       label: 'With Active Projects',
       value: clientsWithActiveProjects,
       icon: WorkflowIcon,
-      color: 'purple',
-      trend: '+15%'
+      gradient: 'from-purple-500 to-purple-600',
+      trend: '+15%',
+      trendUp: true
     },
     {
       label: 'Avg Workflows/Client',
       value: avgWorkflowsPerClient,
       icon: TrendingUp,
-      color: 'orange',
-      trend: '+5%'
+      gradient: 'from-orange-500 to-orange-600',
+      trend: '+5%',
+      trendUp: true
     }
   ];
 
   return (
-    <div className="client-stats">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
       {stats.map((stat) => {
         const Icon = stat.icon;
+        const TrendIcon = stat.trendUp ? ArrowUpRight : AlertTriangle;
         return (
-          <div key={stat.label} className={`stat-card ${stat.color}`}>
-            <div className="stat-header">
-              <div className="stat-icon">
-                <Icon size={24} />
+          <div key={stat.label} className="group relative bg-white rounded-2xl p-5 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 border border-gray-100">
+            <div className="flex items-start justify-between mb-3">
+              <div className={`w-12 h-12 bg-gradient-to-br ${stat.gradient} rounded-xl flex items-center justify-center shadow-md group-hover:scale-110 transition-transform duration-300`}>
+                <Icon size={20} className="text-white" />
               </div>
-              <span className="stat-trend">{stat.trend}</span>
+              <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold ${
+                stat.trendUp ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+              }`}>
+                <TrendIcon size={12} />
+                {stat.trend}
+              </div>
             </div>
-            <div className="stat-content">
-              <div className="stat-value">{stat.value}</div>
-              <div className="stat-label">{stat.label}</div>
+            
+            <div className="space-y-1">
+              <h3 className="text-2xl font-bold text-gray-900 group-hover:text-primary transition-colors duration-300">
+                {stat.value.toLocaleString()}
+              </h3>
+              <p className="text-sm font-medium text-gray-600">{stat.label}</p>
             </div>
           </div>
         );
@@ -282,26 +329,45 @@ const DeleteModal: React.FC<DeleteModalProps> = ({ client, isOpen, onClose, onCo
   if (!isOpen) return null;
 
   return (
-    <div className="modal-overlay">
-      <div className="modal-content delete-modal">
-        <div className="modal-header">
-          <h2>Delete Client</h2>
-          <button onClick={onClose} className="modal-close">×</button>
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 modal-content">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-bold text-gray-900">Delete Client</h2>
+          <button 
+            onClick={onClose} 
+            className="w-8 h-8 bg-gray-100 hover:bg-gray-200 rounded-lg flex items-center justify-center transition-colors duration-200"
+          >
+            ×
+          </button>
         </div>
         
-        <div className="modal-body">
-          <div className="delete-warning">
-            <AlertCircle size={48} className="warning-icon" />
-            <p>Are you sure you want to delete <strong>{client.name}</strong> from <strong>{client.company}</strong>?</p>
-            <p className="warning-text">This action cannot be undone and will remove all associated workflows and tasks.</p>
+        <div className="mb-6">
+          <div className="flex flex-col items-center text-center space-y-4">
+            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center">
+              <AlertCircle size={32} className="text-red-600" />
+            </div>
+            <div className="space-y-2">
+              <p className="text-gray-700">
+                Are you sure you want to delete <strong className="text-gray-900">{client.name}</strong> from <strong className="text-gray-900">{client.company}</strong>?
+              </p>
+              <p className="text-sm text-red-600">
+                This action cannot be undone and will remove all associated workflows and tasks.
+              </p>
+            </div>
           </div>
         </div>
 
-        <div className="modal-actions">
-          <button onClick={onClose} className="btn-secondary">
+        <div className="flex gap-3">
+          <button 
+            onClick={onClose} 
+            className="flex-1 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-medium transition-colors duration-200"
+          >
             Cancel
           </button>
-          <button onClick={onConfirm} className="btn-danger">
+          <button 
+            onClick={onConfirm} 
+            className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl font-medium transition-colors duration-200"
+          >
             Delete Client
           </button>
         </div>
@@ -360,74 +426,115 @@ export function ClientsView({
   };
 
   return (
-    <div className="clients-view">
-      <div className="clients-header">
-        <div className="header-content">
-          <h1>Clients</h1>
-          <p>Manage client relationships and track project progress</p>
-        </div>
-        <button className="create-client-btn" onClick={onClientCreate}>
-          <Plus size={20} />
-          Add Client
-        </button>
-      </div>
-
-      <ClientStats 
-        clients={clients}
-        workflows={workflows}
-      />
-
-      <div className="clients-controls">
-        <div className="clients-filters">
-          <div className="search-bar">
-            <Search size={20} />
-            <input
-              type="text"
-              placeholder="Search clients..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-          
-          <div className="filter-group">
-            <select 
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
+    <div className="min-h-full bg-gray-50">
+      {/* Header Section */}
+      <div className="relative overflow-hidden bg-gradient-to-r from-primary via-accent to-primary text-white pt-16 lg:pt-0">
+        <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-black/10 pointer-events-none"></div>
+        <div className="absolute -top-10 -right-10 w-32 h-32 bg-tertiary/10 rounded-full blur-2xl pointer-events-none"></div>
+        
+        <div className="relative z-10 px-6 py-8">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-10 h-10 bg-gradient-to-br from-tertiary to-secondary rounded-xl flex items-center justify-center shadow-lg">
+                  <Building2 className="w-6 h-6 text-primary" />
+                </div>
+                <h1 className="text-3xl font-bold text-white">Clients</h1>
+              </div>
+              <p className="text-lg text-white/90 font-medium">
+                Manage client relationships and track project progress
+              </p>
+            </div>
+            
+            <button 
+              className="flex items-center gap-2 px-6 py-3 bg-tertiary hover:bg-tertiary/90 text-primary rounded-xl font-medium transition-all duration-200 shadow-lg"
+              onClick={onClientCreate}
             >
-              <option value="all">All Status</option>
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
-            </select>
-
-            <select 
-              value={projectFilter}
-              onChange={(e) => setProjectFilter(e.target.value)}
-            >
-              <option value="all">All Projects</option>
-              <option value="with-active">With Active Projects</option>
-              <option value="without-projects">No Projects</option>
-              <option value="overdue">Has Overdue</option>
-            </select>
+              <Plus size={20} />
+              Add Client
+            </button>
           </div>
-        </div>
-
-        <div className="view-controls">
-          <button 
-            className={`view-btn ${viewMode === 'grid' ? 'active' : ''}`}
-            onClick={() => setViewMode('grid')}
-          >
-            Grid
-          </button>
-          <button 
-            className={`view-btn ${viewMode === 'list' ? 'active' : ''}`}
-            onClick={() => setViewMode('list')}
-          >
-            List
-          </button>
         </div>
       </div>
 
-      <div className={`clients-grid ${viewMode}`}>
+      <div className="px-6 pb-6">
+        {/* Stats */}
+        <div className="-mt-6 mb-6">
+          <ClientStats 
+            clients={clients}
+            workflows={workflows}
+          />
+        </div>
+
+        {/* Controls */}
+        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 mb-6">
+          <div className="flex flex-col lg:flex-row lg:items-center gap-4">
+            <div className="flex-1 flex flex-col sm:flex-row gap-4">
+              <div className="relative flex-1">
+                <Search size={20} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Search clients..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200"
+                />
+              </div>
+              
+              <div className="flex gap-3">
+                <select 
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200"
+                >
+                  <option value="all">All Status</option>
+                  <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
+                </select>
+
+                <select 
+                  value={projectFilter}
+                  onChange={(e) => setProjectFilter(e.target.value)}
+                  className="px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200"
+                >
+                  <option value="all">All Projects</option>
+                  <option value="with-active">With Active Projects</option>
+                  <option value="without-projects">No Projects</option>
+                  <option value="overdue">Has Overdue</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="flex bg-gray-100 rounded-xl p-1">
+              <button 
+                className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
+                  viewMode === 'grid' 
+                    ? 'bg-white text-primary shadow-sm' 
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+                onClick={() => setViewMode('grid')}
+              >
+                Grid
+              </button>
+              <button 
+                className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
+                  viewMode === 'list' 
+                    ? 'bg-white text-primary shadow-sm' 
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+                onClick={() => setViewMode('list')}
+              >
+                List
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className={`grid gap-6 ${
+          viewMode === 'grid' 
+            ? 'grid-cols-1 md:grid-cols-2 xl:grid-cols-3' 
+            : 'grid-cols-1'
+        }`}>
         {filteredClients.map((client) => {
           return (
             <ClientCard
@@ -442,26 +549,32 @@ export function ClientsView({
             />
           );
         })}
-      </div>
-
-      {filteredClients.length === 0 && (
-        <div className="empty-state">
-          <Building2 size={48} />
-          <h3>No clients found</h3>
-          <p>Try adjusting your filters or add a new client to get started.</p>
-          <button className="create-client-btn" onClick={onClientCreate}>
-            <Plus size={20} />
-            Add Your First Client
-          </button>
         </div>
-      )}
 
-      <DeleteModal
-        client={deletingClient!}
-        isOpen={!!deletingClient}
-        onClose={() => setDeletingClient(null)}
-        onConfirm={handleDeleteClient}
-      />
+        {filteredClients.length === 0 && (
+          <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-12 text-center">
+            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Building2 size={32} className="text-gray-400" />
+            </div>
+            <h3 className="text-xl font-bold text-gray-900 mb-2">No clients found</h3>
+            <p className="text-gray-600 mb-6">Try adjusting your filters or add a new client to get started.</p>
+            <button 
+              className="flex items-center gap-2 px-6 py-3 bg-primary hover:bg-primary/90 text-white rounded-xl font-medium transition-all duration-200 shadow-lg mx-auto"
+              onClick={onClientCreate}
+            >
+              <Plus size={20} />
+              Add Your First Client
+            </button>
+          </div>
+        )}
+
+        <DeleteModal
+          client={deletingClient!}
+          isOpen={!!deletingClient}
+          onClose={() => setDeletingClient(null)}
+          onConfirm={handleDeleteClient}
+        />
+      </div>
     </div>
   );
 }
