@@ -9,19 +9,16 @@ import {
   Award,
   Users,
   Edit2,
-  Trash2,
-  XCircle,
   AlertCircle,
-  Briefcase,
-  Star
+  AlertTriangle,
+  LayoutGrid,
+  List
 } from 'lucide-react';
-import { TeamMember, Workflow, KanbanTask } from '../types';
+import { TeamMember, Workflow } from '../types';
 
 interface TeamViewProps {
   teamMembers: TeamMember[];
-  workflows: Workflow[];
-  tasks: KanbanTask[];
-  onMemberCreate: (member: CreateMemberData) => void;
+  onMemberCreate: () => void;
   onMemberEdit: (member: TeamMember) => void;
   onMemberDelete: (memberId: string) => void;
   onMemberStatusChange: (memberId: string, isActive: boolean) => void;
@@ -29,25 +26,8 @@ interface TeamViewProps {
 
 interface TeamMemberCardProps {
   member: TeamMember;
-  assignedTasks: KanbanTask[];
-  activeWorkflows: Workflow[];
   onEdit: (member: TeamMember) => void;
   onStatusChange: (memberId: string, isActive: boolean) => void;
-}
-
-interface CreateMemberData {
-  name: string;
-  email: string;
-  role: string;
-  skills: string[];
-  isActive: boolean;
-}
-
-interface MemberModalProps {
-  member?: TeamMember;
-  isOpen: boolean;
-  onClose: () => void;
-  onSubmit: (data: CreateMemberData) => void;
 }
 
 interface DeleteModalProps {
@@ -59,18 +39,16 @@ interface DeleteModalProps {
 
 const TeamMemberCard: React.FC<TeamMemberCardProps> = ({ 
   member, 
-  assignedTasks, 
-  activeWorkflows,
   onEdit, 
   onStatusChange 
 }) => {
-  const completedTasks = assignedTasks.filter(task => task.status === 'done').length;
-  const inProgressTasks = assignedTasks.filter(task => task.status === 'in-progress').length;
-  const overdueTasks = assignedTasks.filter(task => 
-    task.dueDate && new Date(task.dueDate) < new Date() && task.status !== 'done'
-  ).length;
+  // Mock data for tasks - in real app this would come from props
+  const assignedTasks = 5;
+  const completedTasks = 3;
+  const inProgressTasks = 2;
+  const overdueTasks = 0;
 
-  const workloadScore = assignedTasks.length;
+  const workloadScore = assignedTasks;
   const getWorkloadColor = (score: number) => {
     if (score >= 8) return 'bg-red-500 text-red-700';
     if (score >= 5) return 'bg-yellow-500 text-yellow-700';
@@ -85,17 +63,9 @@ const TeamMemberCard: React.FC<TeamMemberCardProps> = ({
       <div className="flex items-start justify-between mb-4">
         <div className="flex items-center gap-4">
           <div className="relative">
-            {member.avatar ? (
-              <img 
-                src={member.avatar} 
-                alt={member.name}
-                className="w-14 h-14 rounded-xl object-cover shadow-md"
-              />
-            ) : (
-              <div className="w-14 h-14 bg-gradient-to-br from-primary to-accent rounded-xl flex items-center justify-center shadow-md text-lg font-bold text-white">
-                {member.name.charAt(0)}
-              </div>
-            )}
+            <div className="w-14 h-14 bg-gradient-to-br from-primary to-accent rounded-xl flex items-center justify-center shadow-md text-lg font-bold text-white">
+              {member.name.charAt(0)}
+            </div>
             {member.isActive && (
               <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white"></div>
             )}
@@ -125,7 +95,6 @@ const TeamMemberCard: React.FC<TeamMemberCardProps> = ({
           >
             <Edit2 size={14} />
           </button>
-          
         </div>
       </div>
 
@@ -194,34 +163,11 @@ const TeamMemberCard: React.FC<TeamMemberCardProps> = ({
         </div>
       </div>
 
-      {/* Projects */}
-      <div className="mb-4">
-        <h4 className="text-sm font-bold text-gray-900 mb-2">Active Workflows</h4>
-        <div className="space-y-2">
-          {activeWorkflows.slice(0, 3).map((workflow) => (
-            <div key={workflow.id} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
-              <div className="flex-1 min-w-0">
-                <div className="text-sm font-medium text-gray-900 truncate">{workflow.name}</div>
-                <div className="text-xs text-gray-500">Client Project</div>
-              </div>
-            </div>
-          ))}
-          {activeWorkflows.length === 0 && (
-            <div className="text-sm text-gray-500 text-center py-2">No active workflows</div>
-          )}
-          {activeWorkflows.length > 3 && (
-            <div className="text-xs text-gray-500 text-center py-1">
-              +{activeWorkflows.length - 3} more workflows
-            </div>
-          )}
-        </div>
-      </div>
-
       {/* Footer */}
       <div className="flex items-center justify-between pt-3 border-t border-gray-100">
         <div className="flex items-center gap-2 text-sm">
           <Award size={14} className="text-yellow-500" />
-          <span className="text-gray-600 font-medium">Top Performer</span>
+          <span className="text-gray-600 font-medium">Team Member</span>
         </div>
         
         <label className="relative inline-flex items-center cursor-pointer">
@@ -243,15 +189,14 @@ const TeamMemberCard: React.FC<TeamMemberCardProps> = ({
 
 interface TeamStatsProps {
   teamMembers: TeamMember[];
-  tasks: KanbanTask[];
-  workflows: Workflow[];
+  workflows?: Workflow[];
 }
 
-const TeamStats: React.FC<TeamStatsProps> = ({ teamMembers, tasks, workflows }) => {
+const TeamStats: React.FC<TeamStatsProps> = ({ teamMembers }) => {
   const activeMembers = teamMembers.filter(m => m.isActive).length;
   const totalMembers = teamMembers.length;
-  const avgTasksPerMember = activeMembers > 0 ? Math.round(tasks.length / activeMembers) : 0;
-  const activeWorkflows = workflows.filter(w => w.status === 'active').length;
+  const avgTasksPerMember = 5; // Mock data
+  const uniqueSkills = new Set(teamMembers.flatMap(m => m.skills)).size;
 
   const stats = [
     {
@@ -276,8 +221,8 @@ const TeamStats: React.FC<TeamStatsProps> = ({ teamMembers, tasks, workflows }) 
       iconBg: 'bg-purple-100 text-purple-600'
     },
     {
-      label: 'Active Workflows',
-      value: activeWorkflows,
+      label: 'Unique Skills',
+      value: uniqueSkills,
       icon: Award,
       gradient: 'from-orange-500 to-orange-600',
       iconBg: 'bg-orange-100 text-orange-600'
@@ -303,240 +248,6 @@ const TeamStats: React.FC<TeamStatsProps> = ({ teamMembers, tasks, workflows }) 
           </div>
         );
       })}
-    </div>
-  );
-};
-
-const ROLE_OPTIONS = [
-  'Project Manager',
-  'Frontend Developer', 
-  'Backend Developer',
-  'Full Stack Developer',
-  'UI/UX Designer',
-  'DevOps Engineer',
-  'QA Engineer',
-  'Business Analyst',
-  'Scrum Master',
-  'Product Manager'
-];
-
-const SKILL_OPTIONS = [
-  'React', 'Vue.js', 'Angular', 'Node.js', 'Python', 'Java', 'PHP', 'C#',
-  'JavaScript', 'TypeScript', 'HTML/CSS', 'MongoDB', 'PostgreSQL', 'MySQL',
-  'Docker', 'Kubernetes', 'AWS', 'Azure', 'Git', 'CI/CD', 'Testing', 'Agile',
-  'Scrum', 'Design Systems', 'Figma', 'Adobe Creative Suite', 'Project Management'
-];
-
-const MemberModal: React.FC<MemberModalProps> = ({ member, isOpen, onClose, onSubmit }) => {
-  const [formData, setFormData] = useState<CreateMemberData>({
-    name: member?.name || '',
-    email: member?.email || '',
-    role: member?.role || '',
-    skills: member?.skills || [],
-    isActive: member?.isActive ?? true
-  });
-
-  const [errors, setErrors] = useState<Partial<CreateMemberData>>({});
-  const [skillInput, setSkillInput] = useState('');
-
-  const validateForm = () => {
-    const newErrors: Partial<CreateMemberData> = {};
-    
-    if (!formData.name.trim()) newErrors.name = 'Name is required';
-    if (!formData.email.trim()) newErrors.email = 'Email is required';
-    else if (!/\S+@\S+\.\S+/.test(formData.email)) newErrors.email = 'Email is invalid';
-    if (!formData.role.trim()) newErrors.role = 'Role is required';
-    
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (validateForm()) {
-      onSubmit(formData);
-      onClose();
-    }
-  };
-
-  const addSkill = () => {
-    if (skillInput.trim() && !formData.skills.includes(skillInput.trim())) {
-      setFormData(prev => ({ 
-        ...prev, 
-        skills: [...prev.skills, skillInput.trim()] 
-      }));
-      setSkillInput('');
-    }
-  };
-
-  const removeSkill = (skillToRemove: string) => {
-    setFormData(prev => ({ 
-      ...prev, 
-      skills: prev.skills.filter(skill => skill !== skillToRemove) 
-    }));
-  };
-
-  const addPresetSkill = (skill: string) => {
-    if (!formData.skills.includes(skill)) {
-      setFormData(prev => ({ 
-        ...prev, 
-        skills: [...prev.skills, skill] 
-      }));
-    }
-  };
-
-  if (!isOpen) return null;
-
-  return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between p-6 border-b border-gray-100">
-          <h2 className="text-2xl font-bold text-gray-900">
-            {member ? 'Edit Team Member' : 'Add New Team Member'}
-          </h2>
-          <button 
-            onClick={onClose} 
-            className="w-10 h-10 bg-gray-100 hover:bg-gray-200 rounded-lg flex items-center justify-center transition-colors duration-200"
-          >
-            ×
-          </button>
-        </div>
-        
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">Full Name *</label>
-              <input
-                type="text"
-                value={formData.name}
-                onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                placeholder="John Smith"
-                className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all duration-200 ${
-                  errors.name ? 'border-red-300 focus:border-red-500 focus:ring-red/20 bg-red-50' : 'border-gray-200 focus:border-primary'
-                }`}
-              />
-              {errors.name && <span className="text-sm text-red-600">{errors.name}</span>}
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">Email *</label>
-              <input
-                type="email"
-                value={formData.email}
-                onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-                placeholder="john@company.com"
-                className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all duration-200 ${
-                  errors.email ? 'border-red-300 focus:border-red-500 focus:ring-red/20 bg-red-50' : 'border-gray-200 focus:border-primary'
-                }`}
-              />
-              {errors.email && <span className="text-sm text-red-600">{errors.email}</span>}
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-gray-700">Role *</label>
-            <select
-              value={formData.role}
-              onChange={(e) => setFormData(prev => ({ ...prev, role: e.target.value }))}
-              className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all duration-200 ${
-                errors.role ? 'border-red-300 focus:border-red-500 focus:ring-red/20 bg-red-50' : 'border-gray-200 focus:border-primary'
-              }`}
-            >
-              <option value="">Select a role</option>
-              {ROLE_OPTIONS.map(role => (
-                <option key={role} value={role}>{role}</option>
-              ))}
-            </select>
-            {errors.role && <span className="text-sm text-red-600">{errors.role}</span>}
-          </div>
-
-          <div className="space-y-4">
-            <label className="text-sm font-medium text-gray-700">Skills</label>
-            
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={skillInput}
-                onChange={(e) => setSkillInput(e.target.value)}
-                placeholder="Add a skill..."
-                className="flex-1 px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
-                onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addSkill())}
-              />
-              <button 
-                type="button" 
-                onClick={addSkill} 
-                className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors duration-200"
-              >
-                Add
-              </button>
-            </div>
-            
-            <div className="space-y-3">
-              <p className="text-sm text-gray-600">Quick add:</p>
-              <div className="flex flex-wrap gap-2">
-                {SKILL_OPTIONS.filter(skill => !formData.skills.includes(skill)).map(skill => (
-                  <button
-                    key={skill}
-                    type="button"
-                    onClick={() => addPresetSkill(skill)}
-                    className="px-3 py-1 text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-full transition-colors duration-200"
-                  >
-                    {skill}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {formData.skills.length > 0 && (
-              <div className="space-y-2">
-                <p className="text-sm text-gray-600">Selected skills:</p>
-                <div className="flex flex-wrap gap-2">
-                  {formData.skills.map(skill => (
-                    <div key={skill} className="flex items-center gap-2 px-3 py-1 bg-primary/10 text-primary rounded-full text-sm">
-                      <span>{skill}</span>
-                      <button
-                        type="button"
-                        onClick={() => removeSkill(skill)}
-                        className="hover:bg-primary/20 rounded-full p-1 transition-colors duration-200"
-                      >
-                        ×
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <label className="flex items-center gap-3">
-              <input
-                type="checkbox"
-                checked={formData.isActive}
-                onChange={(e) => setFormData(prev => ({ ...prev, isActive: e.target.checked }))}
-                className="w-5 h-5 text-primary bg-gray-100 border-gray-300 rounded focus:ring-primary/20 focus:ring-2"
-              />
-              <span className="text-sm font-medium text-gray-700">Active member</span>
-            </label>
-          </div>
-
-          <div className="flex gap-3 pt-4 border-t border-gray-100">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 px-6 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-medium transition-colors duration-200"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="flex-1 px-6 py-3 bg-primary hover:bg-primary/90 text-white rounded-xl font-medium transition-colors duration-200"
-            >
-              {member ? 'Update Member' : 'Add Member'}
-            </button>
-          </div>
-        </form>
-      </div>
     </div>
   );
 };
@@ -585,28 +296,22 @@ const DeleteModal: React.FC<DeleteModalProps> = ({ member, isOpen, onClose, onCo
 
 export function TeamView({ 
   teamMembers, 
-  workflows,
-  tasks,
   onMemberCreate, 
   onMemberEdit,
   onMemberDelete,
   onMemberStatusChange 
 }: TeamViewProps) {
   const [searchTerm, setSearchTerm] = useState('');
-  const [roleFilter, setRoleFilter] = useState<string>('all');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
+  const [roleFilter, setRoleFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [departmentFilter, setDepartmentFilter] = useState('all');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [editingMember, setEditingMember] = useState<TeamMember | null>(null);
   const [deletingMember, setDeletingMember] = useState<TeamMember | null>(null);
-
-  const uniqueRoles = Array.from(new Set(teamMembers.map(member => member.role)));
 
   const filteredMembers = teamMembers.filter(member => {
     const matchesSearch = member.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          member.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         member.role.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         member.skills.some(skill => skill.toLowerCase().includes(searchTerm.toLowerCase()));
+                         member.role.toLowerCase().includes(searchTerm.toLowerCase());
     
     const matchesRole = roleFilter === 'all' || member.role === roleFilter;
     const matchesStatus = statusFilter === 'all' || 
@@ -616,32 +321,9 @@ export function TeamView({
     return matchesSearch && matchesRole && matchesStatus;
   });
 
-  const getMemberStats = (memberId: string) => {
-    const memberTasks = tasks.filter(task => 
-      task.assignedMembers && task.assignedMembers.includes(memberId)
-    );
-    const memberWorkflows = workflows.filter(workflow =>
-      workflow.steps && workflow.steps.some(step => 
-        step.assignedMembers && step.assignedMembers.includes(memberId)
-      )
-    );
-
-    return {
-      totalTasks: memberTasks.length,
-      completedTasks: memberTasks.filter(t => t.status === 'done').length,
-      activeWorkflows: memberWorkflows.filter(w => w.status === 'active').length
-    };
-  };
-
-  const handleCreateMember = (data: CreateMemberData) => {
-    onMemberCreate(data);
-    setIsCreateModalOpen(false);
-  };
-
-  const handleEditMember = (member: TeamMember) => {
-    onMemberEdit(member);
-    setEditingMember(null);
-  };
+  const sortedMembers = [...filteredMembers].sort((a, b) => {
+    return a.name.localeCompare(b.name);
+  });
 
   const handleDeleteMember = () => {
     if (deletingMember) {
@@ -651,287 +333,191 @@ export function TeamView({
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-primary via-accent to-primary rounded-2xl p-6 text-white shadow-lg">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold mb-2">Team Members</h1>
-            <p className="text-white/90">Manage your team, track workloads, and optimize assignments</p>
-          </div>
-          <button 
-            className="bg-white/20 hover:bg-white/30 backdrop-blur-sm px-6 py-3 rounded-xl font-medium transition-all duration-200 flex items-center gap-2"
-            onClick={() => setIsCreateModalOpen(true)}
-          >
-            <Plus size={20} />
-            Add Team Member
-          </button>
-        </div>
-      </div>
-
-      <TeamStats 
-        teamMembers={teamMembers}
-        tasks={tasks}
-        workflows={workflows}
-      />
-
-      {/* Controls */}
-      <div className="flex flex-col lg:flex-row gap-4 lg:items-center lg:justify-between bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
-        <div className="flex flex-col sm:flex-row gap-4">
-          {/* Search */}
-          <div className="relative">
-            <Search size={20} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search team members..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200 w-full sm:w-64"
-            />
-          </div>
-          
-          {/* Role Filter */}
-          <select 
-            value={roleFilter}
-            onChange={(e) => setRoleFilter(e.target.value)}
-            className="px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200 bg-white"
-          >
-            <option value="all">All Roles</option>
-            {uniqueRoles.map(role => (
-              <option key={role} value={role}>{role}</option>
-            ))}
-          </select>
-
-          {/* Status Filter Tabs */}
-          <div className="flex bg-gray-100 rounded-xl p-1">
-            <button 
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-                statusFilter === 'all' 
-                  ? 'bg-white text-primary shadow-sm' 
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-              onClick={() => setStatusFilter('all')}
-            >
-              All ({teamMembers.length})
-            </button>
-            <button 
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-                statusFilter === 'active' 
-                  ? 'bg-white text-primary shadow-sm' 
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-              onClick={() => setStatusFilter('active')}
-            >
-              Active ({teamMembers.filter(m => m.isActive).length})
-            </button>
-            <button 
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-                statusFilter === 'inactive' 
-                  ? 'bg-white text-primary shadow-sm' 
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-              onClick={() => setStatusFilter('inactive')}
-            >
-              Inactive ({teamMembers.filter(m => !m.isActive).length})
-            </button>
-          </div>
-        </div>
-
-        {/* View Controls */}
-        <div className="flex bg-gray-100 rounded-xl p-1">
-          <button 
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-              viewMode === 'grid' 
-                ? 'bg-white text-primary shadow-sm' 
-                : 'text-gray-600 hover:text-gray-900'
-            }`}
-            onClick={() => setViewMode('grid')}
-          >
-            Grid
-          </button>
-          <button 
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-              viewMode === 'list' 
-                ? 'bg-white text-primary shadow-sm' 
-                : 'text-gray-600 hover:text-gray-900'
-            }`}
-            onClick={() => setViewMode('list')}
-          >
-            List
-          </button>
-        </div>
-      </div>
-
-      {/* Team Grid */}
-      <div className={`${
-        viewMode === 'grid' 
-          ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6' 
-          : 'space-y-4'
-      }`}>
-        {filteredMembers.map((member) => {
-          const stats = getMemberStats(member.id);
-          
-          return (
-            <div 
-              key={member.id} 
-              className={`bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 border border-gray-100 ${
-                !member.isActive ? 'opacity-75 bg-gray-50' : ''
-              } ${
-                viewMode === 'list' ? 'flex items-center gap-6' : ''
-              }`}
-            >
-              {/* Member Header */}
-              <div className={`flex items-center gap-4 ${viewMode === 'list' ? 'flex-1' : 'mb-4'}`}>
-                <div className="relative">
-                  <div className="w-12 h-12 bg-gradient-to-br from-primary to-accent rounded-xl flex items-center justify-center text-white font-bold text-lg shadow-md">
-                    {member.name.charAt(0)}
-                  </div>
-                  {member.isActive && (
-                    <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white"></div>
-                  )}
+    <div className="min-h-full bg-gray-50">
+      {/* Header Section - matching other pages */}
+      <div className="relative overflow-hidden bg-gradient-to-r from-primary via-accent to-primary text-white pt-16 lg:pt-0">
+        <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-black/10 pointer-events-none"></div>
+        <div className="absolute -top-10 -right-10 w-32 h-32 bg-tertiary/10 rounded-full blur-2xl pointer-events-none"></div>
+        
+        <div className="relative z-10 px-6 py-8">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-12 h-12 bg-gradient-to-br from-tertiary to-secondary rounded-2xl flex items-center justify-center shadow-lg">
+                  <Users className="w-7 h-7 text-primary" />
                 </div>
-                <div className="flex-1 min-w-0">
-                  <h3 className="text-lg font-bold text-gray-900 truncate">{member.name}</h3>
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
-                    <Briefcase size={14} />
-                    <span>{member.role}</span>
-                  </div>
-                  <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium mt-1 ${
-                    member.isActive 
-                      ? 'bg-green-100 text-green-700' 
-                      : 'bg-gray-100 text-gray-600'
-                  }`}>
-                    {member.isActive ? 'Active' : 'Inactive'}
-                  </span>
-                </div>
-                
-                {/* Actions */}
-                <div className="flex items-center gap-2">
-                  <button 
-                    className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-200 ${
-                      member.isActive 
-                        ? 'bg-green-100 text-green-600 hover:bg-green-200' 
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                    }`}
-                    onClick={() => onMemberStatusChange(member.id, !member.isActive)}
-                    title={member.isActive ? 'Deactivate member' : 'Activate member'}
-                  >
-                    {member.isActive ? <CheckCircle size={16} /> : <XCircle size={16} />}
-                  </button>
-                  <button 
-                    className="w-8 h-8 bg-gray-100 hover:bg-primary hover:text-white rounded-lg flex items-center justify-center transition-all duration-200"
-                    onClick={() => setEditingMember(member)}
-                  >
-                    <Edit2 size={14} />
-                  </button>
-                  <button 
-                    className="w-8 h-8 bg-gray-100 hover:bg-red-500 hover:text-white rounded-lg flex items-center justify-center transition-all duration-200"
-                    onClick={() => setDeletingMember(member)}
-                  >
-                    <Trash2 size={14} />
-                  </button>
+                <div>
+                  <h1 className="text-3xl lg:text-4xl font-bold text-white">Team Management</h1>
+                  <p className="text-lg text-white/90 font-medium">Manage your team members and track their performance</p>
                 </div>
               </div>
-
-              {viewMode === 'grid' && (
-                <>
-                  {/* Contact Info */}
-                  <div className="space-y-2 mb-4 p-3 bg-gray-50 rounded-xl">
-                    <div className="flex items-center gap-2 text-sm text-gray-600">
-                      <Mail size={14} className="text-gray-400" />
-                      <span className="truncate">{member.email}</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-sm text-gray-600">
-                      <Calendar size={14} className="text-gray-400" />
-                      <span>Joined {new Date(member.createdAt || Date.now()).toLocaleDateString()}</span>
-                    </div>
-                  </div>
-
-                  {/* Skills */}
-                  <div className="mb-4">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Star size={12} className="text-gray-400" />
-                      <h4 className="text-sm font-medium text-gray-900">Skills</h4>
-                    </div>
-                    <div className="flex flex-wrap gap-1">
-                      {member.skills.slice(0, 4).map((skill, index) => (
-                        <span key={index} className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full font-medium">
-                          {skill}
-                        </span>
-                      ))}
-                      {member.skills.length > 4 && (
-                        <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-full font-medium">
-                          +{member.skills.length - 4} more
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Stats */}
-                  <div className="grid grid-cols-3 gap-2">
-                    <div className="text-center p-2 bg-green-50 rounded-lg">
-                      <div className="text-sm font-bold text-green-600">{stats.completedTasks}/{stats.totalTasks}</div>
-                      <div className="text-xs text-gray-600">Tasks Done</div>
-                    </div>
-                    <div className="text-center p-2 bg-blue-50 rounded-lg">
-                      <div className="text-sm font-bold text-blue-600">{stats.activeWorkflows}</div>
-                      <div className="text-xs text-gray-600">Projects</div>
-                    </div>
-                    <div className="text-center p-2 bg-purple-50 rounded-lg">
-                      <div className="text-sm font-bold text-purple-600">
-                        {stats.totalTasks > 0 ? Math.round((stats.completedTasks / stats.totalTasks) * 100) : 0}%
-                      </div>
-                      <div className="text-xs text-gray-600">Complete</div>
-                    </div>
-                  </div>
-                </>
-              )}
+              
+              <div className="flex items-center gap-6 text-white/90">
+                <div className="flex items-center gap-2">
+                  <Users size={18} className="text-white/70" />
+                  <span className="font-medium">{teamMembers.length} Total Members</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <CheckCircle size={18} className="text-white/70" />
+                  <span className="font-medium">{teamMembers.filter(m => m.isActive).length} Active</span>
+                </div>
+              </div>
             </div>
-          );
-        })}
+            
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm rounded-xl p-1">
+                <button
+                  onClick={() => setViewMode('grid')}
+                  className={`flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
+                    viewMode === 'grid'
+                      ? 'bg-white text-gray-900 shadow-sm'
+                      : 'text-white/90 hover:bg-white/10'
+                  }`}
+                >
+                  <LayoutGrid size={16} />
+                  Grid
+                </button>
+                <button
+                  onClick={() => setViewMode('list')}
+                  className={`flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
+                    viewMode === 'list'
+                      ? 'bg-white text-gray-900 shadow-sm'
+                      : 'text-white/90 hover:bg-white/10'
+                  }`}
+                >
+                  <List size={16} />
+                  List
+                </button>
+              </div>
+              
+              <button
+                onClick={onMemberCreate}
+                className="flex items-center gap-2 px-6 py-3 bg-tertiary hover:bg-tertiary/90 text-primary rounded-2xl font-semibold transition-all duration-200 shadow-xl hover:scale-105"
+              >
+                <Plus className="w-5 h-5" />
+                Add Team Member
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* Empty State */}
-      {filteredMembers.length === 0 && (
-        <div className="text-center py-16 bg-white rounded-2xl shadow-lg border border-gray-100">
-          <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <Users size={32} className="text-gray-400" />
+      {/* Stats Section */}
+      <div className="px-6 py-6">
+        <TeamStats teamMembers={teamMembers} />
+      </div>
+
+      <div className="px-6 pb-6">
+        {/* Filters Section - positioned like other pages */}
+        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 -mt-6 mb-6 relative z-10">
+          <div className="flex flex-col lg:flex-row gap-4">
+            {/* Search Bar */}
+            <div className="flex-1 relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+              <input
+                type="text"
+                placeholder="Search team members..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors duration-200 bg-white"
+              />
+            </div>
+            
+            {/* Filters */}
+            <div className="flex gap-3">
+              <select
+                value={roleFilter}
+                onChange={(e) => setRoleFilter(e.target.value)}
+                className="px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors duration-200 bg-white min-w-[140px]"
+              >
+                <option value="all">All Roles</option>
+                <option value="admin">Admin</option>
+                <option value="project-manager">Project Manager</option>
+                <option value="developer">Developer</option>
+                <option value="designer">Designer</option>
+                <option value="analyst">Analyst</option>
+              </select>
+              
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors duration-200 bg-white min-w-[120px]"
+              >
+                <option value="all">All Status</option>
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+              </select>
+              
+              <select
+                value={departmentFilter}
+                onChange={(e) => setDepartmentFilter(e.target.value)}
+                className="px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors duration-200 bg-white min-w-[150px]"
+              >
+                <option value="all">All Departments</option>
+                <option value="Engineering">Engineering</option>
+                <option value="Design">Design</option>
+                <option value="Product">Product</option>
+                <option value="Marketing">Marketing</option>
+                <option value="Sales">Sales</option>
+              </select>
+            </div>
           </div>
-          <h3 className="text-xl font-bold text-gray-900 mb-2">No team members found</h3>
-          <p className="text-gray-600 mb-6">
-            {searchTerm || roleFilter !== 'all' || statusFilter !== 'all'
-              ? 'Try adjusting your search or filters'
-              : 'Start building your team by adding members'
-            }
-          </p>
-          {!searchTerm && roleFilter === 'all' && statusFilter === 'all' && (
-            <button 
-              className="bg-primary hover:bg-primary/90 text-white px-6 py-3 rounded-xl font-medium transition-colors duration-200 flex items-center gap-2 mx-auto"
-              onClick={() => setIsCreateModalOpen(true)}
-            >
-              <Plus size={20} />
-              Add First Member
-            </button>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 overflow-hidden">
+          {/* Team Members Grid */}
+          <div className={`${
+            viewMode === 'grid' 
+              ? 'grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6' 
+              : 'space-y-4'
+          }`}>
+            {sortedMembers.map((member) => (
+              <TeamMemberCard
+                key={member.id}
+                member={member}
+                onEdit={onMemberEdit}
+                onStatusChange={onMemberStatusChange}
+              />
+            ))}
+          </div>
+
+          {/* Empty State */}
+          {sortedMembers.length === 0 && (
+            <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-12 text-center">
+              <div className="w-24 h-24 bg-gray-100 rounded-3xl flex items-center justify-center mx-auto mb-6">
+                <Users className="w-12 h-12 text-gray-400" />
+              </div>
+              <h3 className="text-2xl font-bold text-gray-900 mb-2">No team members found</h3>
+              <p className="text-gray-600 mb-6 max-w-md mx-auto">
+                {searchTerm || roleFilter !== 'all'
+                  ? 'Try adjusting your search or filters'
+                  : 'Start building your team by adding your first member'
+                }
+              </p>
+              {!searchTerm && roleFilter === 'all' && (
+                <button 
+                  className="flex items-center gap-2 bg-gradient-to-r from-primary to-accent text-white px-4 py-2 rounded-xl font-medium hover:shadow-lg transition-all duration-200 hover:-translate-y-0.5 mx-auto"
+                  onClick={onMemberCreate}
+                >
+                  <Plus className="w-5 h-5" />
+                  Add First Member
+                </button>
+              )}
+            </div>
           )}
         </div>
+      </div>
+
+      {/* Delete Modal */}
+      {deletingMember && (
+        <DeleteModal
+          member={deletingMember}
+          isOpen={!!deletingMember}
+          onClose={() => setDeletingMember(null)}
+          onConfirm={handleDeleteMember}
+        />
       )}
-
-      <MemberModal
-        member={editingMember}
-        isOpen={isCreateModalOpen || !!editingMember}
-        onClose={() => {
-          setIsCreateModalOpen(false);
-          setEditingMember(null);
-        }}
-        onSubmit={editingMember ? handleEditMember : handleCreateMember}
-      />
-
-      <DeleteModal
-        member={deletingMember!}
-        isOpen={!!deletingMember}
-        onClose={() => setDeletingMember(null)}
-        onConfirm={handleDeleteMember}
-      />
     </div>
   );
-} 
+}

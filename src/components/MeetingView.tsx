@@ -85,9 +85,13 @@ export function MeetingView({
     new Date(meeting.scheduledDate) > new Date() && meeting.status === 'scheduled'
   );
 
+  const totalMeetings = meetings.length;
+  const scheduledMeetings = meetings.filter(m => m.status === 'scheduled').length;
+  const completedMeetings = meetings.filter(m => m.status === 'completed').length;
+
   return (
     <div className="min-h-full bg-gray-50">
-      {/* Header Section */}
+      {/* Header */}
       <div className="relative overflow-hidden bg-gradient-to-r from-primary via-accent to-primary text-white pt-16 lg:pt-0">
         <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-black/10 pointer-events-none"></div>
         <div className="absolute -top-10 -right-10 w-32 h-32 bg-tertiary/10 rounded-full blur-2xl pointer-events-none"></div>
@@ -96,21 +100,35 @@ export function MeetingView({
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
             <div>
               <div className="flex items-center gap-3 mb-3">
-                <div className="w-10 h-10 bg-gradient-to-br from-tertiary to-secondary rounded-xl flex items-center justify-center shadow-lg">
-                  <Calendar className="w-6 h-6 text-primary" />
+                <div className="w-12 h-12 bg-gradient-to-br from-tertiary to-secondary rounded-2xl flex items-center justify-center shadow-lg">
+                  <Calendar className="w-7 h-7 text-primary" />
                 </div>
                 <h1 className="text-3xl font-bold text-white">Meetings</h1>
               </div>
-              <p className="text-lg text-white/90 font-medium">
+              <p className="text-lg text-white/90 font-medium mb-4">
                 Schedule and manage client meetings
               </p>
+              <div className="flex items-center gap-6">
+                <div className="flex items-center gap-2">
+                  <Calendar className="w-4 h-4 text-white/70" />
+                  <span className="text-sm text-white/80">{totalMeetings} Total Meetings</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-white/70" />
+                  <span className="text-sm text-white/80">{scheduledMeetings} Scheduled</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <CheckCircle className="w-4 h-4 text-white/70" />
+                  <span className="text-sm text-white/80">{completedMeetings} Completed</span>
+                </div>
+              </div>
             </div>
             
-            <button 
-              className="flex items-center gap-2 px-6 py-3 bg-tertiary hover:bg-tertiary/90 text-primary rounded-xl font-medium transition-all duration-200 shadow-lg"
+            <button
               onClick={onMeetingCreate}
+              className="flex items-center gap-2 px-6 py-3 bg-tertiary hover:bg-tertiary/90 text-primary rounded-2xl font-semibold transition-all duration-200 shadow-xl hover:scale-105"
             >
-              <Plus size={20} />
+              <Plus className="w-5 h-5" />
               Schedule Meeting
             </button>
           </div>
@@ -118,47 +136,43 @@ export function MeetingView({
       </div>
 
       <div className="px-6 pb-6">
-        {/* Controls */}
-        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 -mt-6 mb-6">
-          <div className="flex flex-col lg:flex-row lg:items-center gap-4">
-            <div className="flex-1 flex flex-col sm:flex-row gap-4">
-              <div className="relative flex-1">
-                <Search size={20} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Search meetings..."
-                  value={searchTerm}
-                  onChange={e => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200"
-                />
-              </div>
-              
-              <div className="flex gap-3">
-                <select
-                  value={selectedClient}
-                  onChange={e => setSelectedClient(e.target.value)}
-                  className="px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200"
-                >
-                  <option value="all">All Clients</option>
-                  {clients.map(client => (
-                    <option key={client.id} value={client.id}>
-                      {client.company}
-                    </option>
-                  ))}
-                </select>
-
-                <select
-                  value={selectedStatus}
-                  onChange={e => setSelectedStatus(e.target.value)}
-                  className="px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200"
-                >
-                  <option value="all">All Status</option>
-                  <option value="scheduled">Scheduled</option>
-                  <option value="completed">Completed</option>
-                  <option value="cancelled">Cancelled</option>
-                </select>
-              </div>
+        {/* Filters Section */}
+        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 -mt-6 mb-6 relative z-10">
+          <div className="flex flex-col lg:flex-row gap-4">
+            <div className="relative flex-1">
+              <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search meetings..."
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+                className="form-input pl-10"
+              />
             </div>
+            
+            <select
+              value={selectedClient}
+              onChange={e => setSelectedClient(e.target.value)}
+              className="px-4 py-3 border border-gray-300 rounded-xl text-sm text-gray-900 bg-white transition-all duration-200 focus:outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/10 flex-1 lg:flex-none lg:min-w-[200px]"
+            >
+              <option value="all" className="text-gray-900">All Clients</option>
+              {clients.map(client => (
+                <option key={client.id} value={client.id} className="text-gray-900">
+                  {client.company}
+                </option>
+              ))}
+            </select>
+
+            <select
+              value={selectedStatus}
+              onChange={e => setSelectedStatus(e.target.value)}
+              className="px-4 py-3 border border-gray-300 rounded-xl text-sm text-gray-900 bg-white transition-all duration-200 focus:outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/10 flex-1 lg:flex-none lg:min-w-[150px]"
+            >
+              <option value="all" className="text-gray-900">All Status</option>
+              <option value="scheduled" className="text-gray-900">Scheduled</option>
+              <option value="completed" className="text-gray-900">Completed</option>
+              <option value="cancelled" className="text-gray-900">Cancelled</option>
+            </select>
           </div>
         </div>
 
@@ -183,7 +197,7 @@ export function MeetingView({
                     }`}
                   >
                     <div className="flex items-center gap-2 text-sm text-gray-600 min-w-0">
-                      <Clock size={14} className="text-gray-400 flex-shrink-0" />
+                      <Clock className="w-4 h-4 text-gray-400 flex-shrink-0" />
                       <span className="truncate">
                         {new Date(meeting.scheduledDate).toLocaleString()}
                       </span>
@@ -212,21 +226,21 @@ export function MeetingView({
         {/* Meetings Content */}
         {filteredMeetings.length === 0 ? (
           <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-12 text-center">
-            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Calendar size={32} className="text-gray-400" />
+            <div className="w-24 h-24 bg-gray-100 rounded-3xl flex items-center justify-center mx-auto mb-6">
+              <Calendar className="w-12 h-12 text-gray-400" />
             </div>
-            <h3 className="text-xl font-bold text-gray-900 mb-2">No meetings found</h3>
-            <p className="text-gray-600 mb-6">Schedule your first client meeting to get started.</p>
+            <h3 className="text-2xl font-bold text-gray-900 mb-2">No meetings found</h3>
+            <p className="text-gray-600 mb-6 max-w-md mx-auto">Schedule your first client meeting to get started.</p>
             <button 
-              className="flex items-center gap-2 px-6 py-3 bg-primary hover:bg-primary/90 text-white rounded-xl font-medium transition-all duration-200 shadow-lg mx-auto"
+              className="btn-primary"
               onClick={onMeetingCreate}
             >
-              <Plus size={20} />
+              <Plus className="w-5 h-5" />
               Schedule First Meeting
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
             {filteredMeetings.map(meeting => {
               const client = clients.find(c => c.id === meeting.clientId);
               const meetingDate = new Date(meeting.scheduledDate);
@@ -246,10 +260,10 @@ export function MeetingView({
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex items-center gap-3">
                       {getStatusIcon(meeting.status)}
-                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-bold ${
-                        meeting.status === 'completed' ? 'bg-green-100 text-green-700' :
-                        meeting.status === 'cancelled' ? 'bg-red-100 text-red-700' :
-                        'bg-blue-100 text-blue-700'
+                      <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-bold ${
+                        meeting.status === 'completed' ? 'status-completed' :
+                        meeting.status === 'cancelled' ? 'status-inactive' :
+                        'status-active'
                       }`}>
                         {meeting.status}
                       </span>
@@ -260,10 +274,10 @@ export function MeetingView({
                       )}
                     </div>
                     <button 
-                      className="w-8 h-8 bg-gray-100 hover:bg-primary hover:text-white rounded-lg flex items-center justify-center transition-all duration-200 opacity-0 group-hover:opacity-100"
+                      className="w-8 h-8 bg-gray-100 hover:bg-primary hover:text-white rounded-xl flex items-center justify-center transition-all duration-200 opacity-0 group-hover:opacity-100"
                       onClick={() => onMeetingEdit(meeting)}
                     >
-                      <Edit size={14} />
+                      <Edit className="w-4 h-4" />
                     </button>
                   </div>
 
@@ -280,7 +294,7 @@ export function MeetingView({
                   {/* Client Info */}
                   {client && (
                     <div className="flex items-center gap-2 mb-4 p-3 bg-gray-50 rounded-xl">
-                      <Building size={14} className="text-gray-400" />
+                      <Building className="w-4 h-4 text-gray-400" />
                       <div className="flex-1 min-w-0">
                         <div className="text-sm font-medium text-gray-900 truncate">{client.company}</div>
                         <div className="text-xs text-gray-600 truncate">{client.name}</div>
@@ -291,7 +305,7 @@ export function MeetingView({
                   {/* Meeting Info */}
                   <div className="space-y-2 mb-4">
                     <div className="flex items-center gap-2 text-sm text-gray-600">
-                      <Clock size={14} className="text-gray-400" />
+                      <Clock className="w-4 h-4 text-gray-400" />
                       <span>{meetingDate.toLocaleString()}</span>
                     </div>
                     <div className="flex items-center gap-2 text-sm text-gray-600">
@@ -300,7 +314,7 @@ export function MeetingView({
                     </div>
                     {meeting.duration && (
                       <div className="flex items-center gap-2 text-sm text-gray-600">
-                        <Users size={14} className="text-gray-400" />
+                        <Users className="w-4 h-4 text-gray-400" />
                         <span>{meeting.duration} minutes</span>
                       </div>
                     )}
@@ -313,7 +327,7 @@ export function MeetingView({
                     </div>
                     <div className="flex gap-2">
                       <button 
-                        className="px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-xs font-medium transition-all duration-200"
+                        className="btn-outline text-xs px-3 py-1"
                         onClick={() => onMeetingEdit(meeting)}
                       >
                         Edit
@@ -321,12 +335,12 @@ export function MeetingView({
                       <select
                         value={meeting.status}
                         onChange={(e) => onMeetingStatusChange(meeting.id, e.target.value)}
-                        className="text-xs px-2 py-1 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200"
+                        className="text-xs px-2 py-1 border border-gray-300 rounded-lg bg-white focus:outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/10 transition-all duration-200"
                         onClick={(e) => e.stopPropagation()}
                       >
-                        <option value="scheduled">Scheduled</option>
-                        <option value="completed">Completed</option>
-                        <option value="cancelled">Cancelled</option>
+                        <option value="scheduled" className="text-gray-900">Scheduled</option>
+                        <option value="completed" className="text-gray-900">Completed</option>
+                        <option value="cancelled" className="text-gray-900">Cancelled</option>
                       </select>
                     </div>
                   </div>
@@ -338,4 +352,4 @@ export function MeetingView({
       </div>
     </div>
   );
-} 
+}
