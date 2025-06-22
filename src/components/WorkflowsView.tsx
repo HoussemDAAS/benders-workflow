@@ -16,25 +16,16 @@ import '@xyflow/react/dist/style.css';
 import '../flowchart-nodes.css';
 
 import { 
-  Plus, 
-  Calendar,
-  Search,
-  Filter,
-  Edit2,
-  Trash2,
-  MoreVertical,
-  Building,
-  Target,
-  Workflow as WorkflowIcon,
-  Play,
-  CheckCircle,
-  Pause,
-  Clock,
-  AlertCircle
+  AlertTriangle,
+  X,
 } from 'lucide-react';
 import { Workflow, Client, TeamMember, WorkflowStep, KanbanTask } from '../types';
 import { nodeTypes } from '../nodes';
 import { TaskFlowView } from './TaskFlowView';
+import { WorkflowHeader } from './WorkflowHeader';
+import { WorkflowFilters } from './WorkflowFilters';
+import { WorkflowCard } from './WorkflowCard';
+import { EmptyState } from './EmptyState';
 
 interface WorkflowsViewProps {
   workflows: Workflow[];
@@ -56,16 +47,6 @@ interface CreateWorkflowData {
   expectedEndDate?: string;
 }
 
-interface WorkflowCardProps {
-  workflow: Workflow;
-  client: Client | undefined;
-  teamMembers: TeamMember[];
-  workflowTasks: KanbanTask[];
-  onEdit: (workflow: Workflow) => void;
-  onStatusChange: (workflowId: string, status: string) => void;
-  onViewFlowchart: (workflow: Workflow) => void;
-}
-
 interface WorkflowModalProps {
   workflow?: Workflow;
   clients: Client[];
@@ -80,9 +61,6 @@ interface DeleteModalProps {
   onClose: () => void;
   onConfirm: () => void;
 }
-
-// Unused WorkflowCard component - keeping interface for potential future use
-// Currently using inline rendering in the main component
 
 interface FlowchartViewProps {
   workflow: Workflow;
@@ -155,49 +133,57 @@ const FlowchartView: React.FC<FlowchartViewProps> = ({ workflow, onClose, onWork
   }, [nodes, edges, workflow, steps, onWorkflowUpdate, onClose]);
 
   return (
-    <div className="flowchart-overlay">
-      <div className="flowchart-header">
-        <div>
-          <h2>{workflow.name} - Flowchart</h2>
-          <p>Design and visualize your workflow steps</p>
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-7xl h-[90vh] flex flex-col overflow-hidden">
+        <div className="flex items-center justify-between p-6 border-b border-gray-200 bg-gradient-to-r from-primary to-accent text-white">
+          <div>
+            <h2 className="text-2xl font-bold">{workflow.name} - Flowchart</h2>
+            <p className="text-white/80">Design and visualize your workflow steps</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <button 
+              onClick={onClose}
+              className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-xl font-medium transition-colors duration-200"
+            >
+              Cancel
+            </button>
+            <button 
+              onClick={handleSave}
+              className="px-6 py-2 bg-tertiary hover:bg-tertiary/90 text-primary rounded-xl font-semibold transition-colors duration-200"
+            >
+              Save Changes
+            </button>
+          </div>
         </div>
-        <div className="flowchart-actions">
-          <button className="action-btn secondary" onClick={onClose}>
-            Cancel
-          </button>
-          <button className="action-btn primary" onClick={handleSave}>
-            Save Changes
-          </button>
+        
+        <div className="flex-1 relative">
+          <ReactFlow
+            nodes={nodes}
+            nodeTypes={nodeTypes}
+            onNodesChange={onNodesChange}
+            edges={edges}
+            onEdgesChange={onEdgesChange}
+            onConnect={onConnect}
+            fitView
+            attributionPosition="bottom-left"
+          >
+            <Background color="#f1f5f9" />
+            <MiniMap 
+              nodeColor={(node) => {
+                switch (node.type) {
+                  case 'start-end': return '#22c55e';
+                  case 'process': return '#3b82f6';
+                  case 'decision': return '#f59e0b';
+                  case 'input-output': return '#8b5cf6';
+                  default: return '#6b7280';
+                }
+              }}
+              maskColor="rgba(255, 255, 255, 0.2)"
+              position="bottom-right"
+            />
+            <Controls position="bottom-right" style={{ bottom: 100 }} />
+          </ReactFlow>
         </div>
-      </div>
-      
-      <div className="flowchart-container">
-        <ReactFlow
-          nodes={nodes}
-          nodeTypes={nodeTypes}
-          onNodesChange={onNodesChange}
-          edges={edges}
-          onEdgesChange={onEdgesChange}
-          onConnect={onConnect}
-          fitView
-          attributionPosition="bottom-left"
-        >
-          <Background color="#f1f5f9" />
-          <MiniMap 
-            nodeColor={(node) => {
-              switch (node.type) {
-                case 'start-end': return '#22c55e';
-                case 'process': return '#3b82f6';
-                case 'decision': return '#f59e0b';
-                case 'input-output': return '#8b5cf6';
-                default: return '#6b7280';
-              }
-            }}
-            maskColor="rgba(255, 255, 255, 0.2)"
-            position="bottom-right"
-          />
-          <Controls position="bottom-right" style={{ bottom: 100 }} />
-        </ReactFlow>
       </div>
     </div>
   );
@@ -243,45 +229,47 @@ const WorkflowModal: React.FC<WorkflowModalProps> = ({ workflow, clients, isOpen
   if (!isOpen) return null;
 
   return (
-    <div className="modal-overlay">
-      <div className="modal-content large">
-        <div className="modal-header">
-          <h2>{workflow ? 'Edit Workflow' : 'Create New Workflow'}</h2>
-          <button onClick={onClose} className="modal-close">×</button>
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gradient-to-r from-primary to-accent text-white -m-px -mb-0 rounded-t-2xl">
+          <h2 className="text-xl font-semibold">{workflow ? 'Edit Workflow' : 'Create New Workflow'}</h2>
+          <button onClick={onClose} className="p-1.5 hover:bg-white/10 rounded-lg transition-colors">
+            <X className="w-5 h-5" />
+          </button>
         </div>
         
-        <form onSubmit={handleSubmit} className="modal-form">
-          <div className="form-group">
-            <label>Workflow Name *</label>
+        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+          <div>
+            <label className="form-label">Workflow Name *</label>
             <input
               type="text"
               value={formData.name}
               onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
               placeholder="E-commerce Platform Development"
-              className={errors.name ? 'error' : ''}
+              className={`form-input ${errors.name ? 'form-input-error' : ''}`}
             />
-            {errors.name && <span className="error-text">{errors.name}</span>}
+            {errors.name && <span className="form-error">{errors.name}</span>}
           </div>
 
-          <div className="form-group">
-            <label>Description *</label>
+          <div>
+            <label className="form-label">Description *</label>
             <textarea
               value={formData.description}
               onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
               placeholder="Describe the workflow objectives and deliverables..."
               rows={4}
-              className={errors.description ? 'error' : ''}
+              className={`form-input resize-none ${errors.description ? 'form-input-error' : ''}`}
             />
-            {errors.description && <span className="error-text">{errors.description}</span>}
+            {errors.description && <span className="form-error">{errors.description}</span>}
           </div>
 
-          <div className="form-row">
-            <div className="form-group">
-              <label>Client *</label>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label className="form-label">Client *</label>
               <select
                 value={formData.clientId}
                 onChange={(e) => setFormData(prev => ({ ...prev, clientId: e.target.value }))}
-                className={errors.clientId ? 'error' : ''}
+                className={`form-input ${errors.clientId ? 'form-input-error' : ''}`}
               >
                 <option value="">Select a client</option>
                 {clients.filter(c => c.isActive).map(client => (
@@ -290,14 +278,15 @@ const WorkflowModal: React.FC<WorkflowModalProps> = ({ workflow, clients, isOpen
                   </option>
                 ))}
               </select>
-              {errors.clientId && <span className="error-text">{errors.clientId}</span>}
+              {errors.clientId && <span className="form-error">{errors.clientId}</span>}
             </div>
 
-            <div className="form-group">
-              <label>Status</label>
+            <div>
+              <label className="form-label">Status</label>
               <select
                 value={formData.status}
                 onChange={(e) => setFormData(prev => ({ ...prev, status: e.target.value as any }))}
+                className="form-input"
               >
                 <option value="draft">Draft</option>
                 <option value="active">Active</option>
@@ -307,30 +296,31 @@ const WorkflowModal: React.FC<WorkflowModalProps> = ({ workflow, clients, isOpen
             </div>
           </div>
 
-          <div className="form-row">
-            <div className="form-group">
-              <label>Start Date</label>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label className="form-label">Start Date</label>
               <input
                 type="date"
                 value={formData.startDate}
                 onChange={(e) => setFormData(prev => ({ ...prev, startDate: e.target.value }))}
+                className="form-input"
               />
             </div>
 
-            <div className="form-group">
-              <label>Expected End Date</label>
+            <div>
+              <label className="form-label">Expected End Date</label>
               <input
                 type="date"
                 value={formData.expectedEndDate}
                 onChange={(e) => setFormData(prev => ({ ...prev, expectedEndDate: e.target.value }))}
-                className={errors.expectedEndDate ? 'error' : ''}
+                className={`form-input ${errors.expectedEndDate ? 'form-input-error' : ''}`}
               />
-              {errors.expectedEndDate && <span className="error-text">{errors.expectedEndDate}</span>}
+              {errors.expectedEndDate && <span className="form-error">{errors.expectedEndDate}</span>}
             </div>
           </div>
 
-          <div className="modal-actions">
-            <button type="button" onClick={onClose} className="btn-secondary">
+          <div className="flex items-center justify-end gap-3 pt-4">
+            <button type="button" onClick={onClose} className="btn-outline">
               Cancel
             </button>
             <button type="submit" className="btn-primary">
@@ -347,23 +337,29 @@ const DeleteModal: React.FC<DeleteModalProps> = ({ workflow, isOpen, onClose, on
   if (!isOpen) return null;
 
   return (
-    <div className="modal-overlay">
-      <div className="modal-content delete-modal">
-        <div className="modal-header">
-          <h2>Delete Workflow</h2>
-          <button onClick={onClose} className="modal-close">×</button>
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+          <h2 className="text-xl font-bold text-gray-900">Delete Workflow</h2>
+          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-xl transition-colors">
+            <X className="w-5 h-5" />
+          </button>
         </div>
         
-        <div className="modal-body">
-          <div className="delete-warning">
-            <AlertCircle size={48} className="warning-icon" />
-            <p>Are you sure you want to delete the workflow <strong>"{workflow.name}"</strong>?</p>
-            <p className="warning-text">This will permanently remove all workflow steps, connections, and associated tasks.</p>
+        <div className="p-6">
+          <div className="text-center space-y-4">
+            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto">
+              <AlertTriangle className="w-8 h-8 text-red-500" />
+            </div>
+            <div>
+              <p className="text-gray-900 font-medium">Are you sure you want to delete the workflow <strong>"{workflow.name}"</strong>?</p>
+              <p className="text-gray-600 text-sm mt-2">This will permanently remove all workflow steps, connections, and associated tasks. This action cannot be undone.</p>
+            </div>
           </div>
         </div>
 
-        <div className="modal-actions">
-          <button onClick={onClose} className="btn-secondary">
+        <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-200">
+          <button onClick={onClose} className="btn-outline">
             Cancel
           </button>
           <button onClick={onConfirm} className="btn-danger">
@@ -408,23 +404,7 @@ export function WorkflowsView({
     return matchesSearch && matchesStatus && matchesClient;
   });
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'active': return <Play className="status-icon active" size={16} />;
-      case 'completed': return <CheckCircle className="status-icon completed" size={16} />;
-      case 'on-hold': return <Pause className="status-icon on-hold" size={16} />;
-      default: return <Clock className="status-icon draft" size={16} />;
-    }
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'active': return '#10b981';
-      case 'completed': return '#3b82f6';
-      case 'on-hold': return '#f59e0b';
-      default: return '#6b7280';
-    }
-  };
+  const hasFilters = searchTerm !== '' || statusFilter !== 'all' || clientFilter !== 'all';
 
   const handleCreateWorkflow = (data: CreateWorkflowData) => {
     onWorkflowCreate(data);
@@ -444,230 +424,58 @@ export function WorkflowsView({
   };
 
   return (
-    <div className="workflows-view">
-      <div className="page-header">
-        <div className="header-content">
-          <h1>
-            <WorkflowIcon size={24} />
-            Workflow Management
-          </h1>
-          <p>Create and manage project workflows for your clients</p>
-        </div>
-        
-        <button 
-          className="btn-primary"
-          onClick={() => setIsCreateModalOpen(true)}
-        >
-          <Plus size={20} />
-          Create Workflow
-        </button>
-      </div>
+    <div className="min-h-full bg-gray-50">
+      {/* Header Section */}
+      <WorkflowHeader
+        totalWorkflows={workflows.length}
+        activeWorkflows={statusCounts.active || 0}
+        onCreateWorkflow={() => setIsCreateModalOpen(true)}
+      />
 
-      <div className="page-controls">
-        <div className="search-bar">
-          <Search size={20} />
-          <input
-            type="text"
-            placeholder="Search workflows..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-        </div>
+      <div className="px-6 pb-6">
+        {/* Filters Section */}
+        <WorkflowFilters
+          searchTerm={searchTerm}
+          statusFilter={statusFilter}
+          clientFilter={clientFilter}
+          statusCounts={statusCounts}
+          totalWorkflows={workflows.length}
+          clients={clients}
+          onSearchChange={setSearchTerm}
+          onStatusFilterChange={setStatusFilter}
+          onClientFilterChange={setClientFilter}
+        />
 
-        <div className="filter-controls">
-          <select 
-            value={clientFilter}
-            onChange={(e) => setClientFilter(e.target.value)}
-            className="filter-select"
-          >
-            <option value="all">All Clients</option>
-            {clients.map(client => (
-              <option key={client.id} value={client.id}>
-                {client.company}
-              </option>
-            ))}
-          </select>
-
-          <div className="filter-tabs">
-            <button 
-              className={statusFilter === 'all' ? 'active' : ''}
-              onClick={() => setStatusFilter('all')}
-            >
-              All ({workflows.length})
-            </button>
-            <button 
-              className={statusFilter === 'active' ? 'active' : ''}
-              onClick={() => setStatusFilter('active')}
-            >
-              Active ({statusCounts.active || 0})
-            </button>
-            <button 
-              className={statusFilter === 'draft' ? 'active' : ''}
-              onClick={() => setStatusFilter('draft')}
-            >
-              Draft ({statusCounts.draft || 0})
-            </button>
-            <button 
-              className={statusFilter === 'on-hold' ? 'active' : ''}
-              onClick={() => setStatusFilter('on-hold')}
-            >
-              On Hold ({statusCounts['on-hold'] || 0})
-            </button>
-            <button 
-              className={statusFilter === 'completed' ? 'active' : ''}
-              onClick={() => setStatusFilter('completed')}
-            >
-              Completed ({statusCounts.completed || 0})
-            </button>
+        {/* Workflows Grid */}
+        {filteredWorkflows.length > 0 ? (
+          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+            {filteredWorkflows.map((workflow) => {
+              const client = clients.find(c => c.id === workflow.clientId);
+              const workflowTasks = tasks.filter(task => task.workflowId === workflow.id);
+              
+              return (
+                <WorkflowCard
+                  key={workflow.id}
+                  workflow={workflow}
+                  client={client}
+                  tasks={workflowTasks}
+                  onEdit={setEditingWorkflow}
+                  onDelete={setDeletingWorkflow}
+                  onViewFlow={setTaskFlowWorkflow}
+                  onStatusChange={onWorkflowStatusChange}
+                />
+              );
+            })}
           </div>
-        </div>
+        ) : (
+          <EmptyState
+            hasFilters={hasFilters}
+            onCreateWorkflow={() => setIsCreateModalOpen(true)}
+          />
+        )}
       </div>
 
-      <div className="workflows-grid">
-        {filteredWorkflows.map((workflow) => {
-          const client = clients.find(c => c.id === workflow.clientId);
-          const workflowTasks = tasks.filter(task => task.workflowId === workflow.id);
-          const totalTasks = workflowTasks.length;
-          const completedTasks = workflowTasks.filter(task => task.status === 'done').length;
-          const progressPercentage = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
-          
-          return (
-            <div key={workflow.id} className="workflow-card">
-              <div className="workflow-header">
-                <div className="workflow-title">
-                  <h3>{workflow.name}</h3>
-                  <div className="workflow-status">
-                    {getStatusIcon(workflow.status)}
-                    <span className={`status-text ${workflow.status}`}>
-                      {workflow.status.replace('-', ' ')}
-                    </span>
-                  </div>
-                </div>
-                <div className="workflow-actions">
-                  <div className="status-selector">
-                    <select
-                      value={workflow.status}
-                      onChange={(e) => onWorkflowStatusChange(workflow.id, e.target.value)}
-                      className="status-select"
-                    >
-                      <option value="draft">Draft</option>
-                      <option value="active">Active</option>
-                      <option value="on-hold">On Hold</option>
-                      <option value="completed">Completed</option>
-                    </select>
-                  </div>
-                  <div className="dropdown">
-                    <button className="dropdown-trigger">
-                      <MoreVertical size={16} />
-                    </button>
-                    <div className="dropdown-menu">
-                      <button onClick={() => setEditingWorkflow(workflow)}>
-                        <Edit2 size={14} />
-                        Edit
-                      </button>
-                      <button 
-                        onClick={() => setTaskFlowWorkflow(workflow)}
-                      >
-                        <WorkflowIcon size={14} />
-                        View Task Flow
-                      </button>
-                      <button 
-                        onClick={() => setDeletingWorkflow(workflow)}
-                        className="danger"
-                      >
-                        <Trash2 size={14} />
-                        Delete
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <p className="workflow-description">{workflow.description}</p>
-
-              <div className="workflow-client">
-                <Building size={14} />
-                <span>{client?.company || 'Unknown Client'}</span>
-                <span className="client-name">({client?.name})</span>
-              </div>
-
-              <div className="workflow-progress">
-                <div className="progress-header">
-                  <span>Progress</span>
-                  <span className="progress-percentage">{progressPercentage}%</span>
-                </div>
-                <div className="progress-bar">
-                  <div 
-                    className="progress-fill"
-                    style={{ 
-                      width: `${progressPercentage}%`,
-                      backgroundColor: getStatusColor(workflow.status)
-                    }}
-                  />
-                </div>
-                <div className="progress-details">
-                  <span>{completedTasks} of {totalTasks} tasks completed</span>
-                </div>
-              </div>
-
-              <div className="workflow-dates">
-                {workflow.startDate && (
-                  <div className="date-item">
-                    <Calendar size={14} />
-                    <span>Started: {new Date(workflow.startDate).toLocaleDateString()}</span>
-                  </div>
-                )}
-                {workflow.expectedEndDate && (
-                  <div className="date-item">
-                    <Target size={14} />
-                    <span>Due: {new Date(workflow.expectedEndDate).toLocaleDateString()}</span>
-                  </div>
-                )}
-              </div>
-
-              <div className="workflow-stats">
-                <div className="stat-item">
-                  <span className="stat-value">{totalTasks}</span>
-                  <span className="stat-label">Tasks</span>
-                </div>
-                <div className="stat-item">
-                  <span className="stat-value">{workflow.connections?.length || 0}</span>
-                  <span className="stat-label">Connections</span>
-                </div>
-                <div className="stat-item">
-                  <span className="stat-value">
-                    {Math.ceil((new Date().getTime() - new Date(workflow.createdAt).getTime()) / (1000 * 60 * 60 * 24))}
-                  </span>
-                  <span className="stat-label">Days Active</span>
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {filteredWorkflows.length === 0 && (
-        <div className="empty-state">
-          <WorkflowIcon size={48} />
-          <h3>No workflows found</h3>
-          <p>
-            {searchTerm || statusFilter !== 'all' || clientFilter !== 'all'
-              ? 'Try adjusting your search or filters'
-              : 'Create your first workflow to get started'
-            }
-          </p>
-          {!searchTerm && statusFilter === 'all' && clientFilter === 'all' && (
-            <button 
-              className="btn-primary"
-              onClick={() => setIsCreateModalOpen(true)}
-            >
-              <Plus size={20} />
-              Create First Workflow
-            </button>
-          )}
-        </div>
-      )}
-
+      {/* Modals */}
       <WorkflowModal
         workflow={editingWorkflow}
         clients={clients}
@@ -696,4 +504,4 @@ export function WorkflowsView({
       )}
     </div>
   );
-} 
+}
