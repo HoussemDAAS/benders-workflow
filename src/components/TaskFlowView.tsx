@@ -1,4 +1,4 @@
-import React, { useMemo, useCallback, useState } from 'react';
+import  { useMemo, useCallback, useState } from 'react';
 import {
   ReactFlow,
   Background,
@@ -12,7 +12,7 @@ import {
 import '@xyflow/react/dist/style.css';
 import '../flowchart-nodes.css';
 
-import { X, Download, RotateCcw, Maximize2 } from 'lucide-react';
+import { X, Download, RotateCcw, Maximize2, Minimize2 } from 'lucide-react';
 import { KanbanTask, TeamMember, Workflow } from '../types';
 import { nodeTypes } from '../nodes';
 import type { TaskNodeData } from '../nodes/TaskNode';
@@ -234,116 +234,126 @@ export function TaskFlowView({ workflow, tasks, teamMembers, onClose }: TaskFlow
     return statusColors[task?.status as keyof typeof statusColors] || '#6b7280';
   };
 
-  const containerClass = isFullscreen 
-    ? 'task-flow-container fullscreen' 
-    : 'task-flow-container';
+  const statusLabels = {
+    'todo': 'To Do',
+    'in-progress': 'In Progress',
+    'review': 'Review',
+    'done': 'Done'
+  };
 
   return (
-    <div className={containerClass}>
-      <div className="task-flow-header">
-        <div className="task-flow-title">
-          <h2>{workflow.name} - Task Flow</h2>
-          <p>Visual representation of {tasks.length} tasks in workflow</p>
+    <div className={`fixed inset-0 bg-black/60 backdrop-blur-sm z-50 ${isFullscreen ? 'p-0' : 'p-4'}`}>
+      <div className={`bg-white shadow-2xl w-full h-full flex flex-col overflow-hidden ${isFullscreen ? 'rounded-none' : 'rounded-2xl max-w-7xl max-h-[95vh] mx-auto'}`}>
+        {/* Header */}
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gradient-to-r from-primary to-accent text-white">
+          <div>
+            <h2 className="text-xl font-semibold">{workflow.name} - Task Flow</h2>
+            <p className="text-white/80 text-sm">Visual representation of {tasks.length} tasks in workflow</p>
+          </div>
+          
+          <div className="flex items-center gap-1.5">
+            <button 
+              onClick={handleReset}
+              className="p-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors duration-200"
+              title="Reset Layout"
+            >
+              <RotateCcw className="w-4 h-4" />
+            </button>
+            
+            <button 
+              onClick={() => setIsFullscreen(!isFullscreen)}
+              className="p-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors duration-200"
+              title={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
+            >
+              {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+            </button>
+            
+            <button 
+              onClick={handleExport}
+              className="p-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors duration-200"
+              title="Export Flow"
+            >
+              <Download className="w-4 h-4" />
+            </button>
+            
+            <button 
+              onClick={onClose}
+              className="p-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors duration-200"
+              title="Close"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
         </div>
-        
-        <div className="task-flow-actions">
-          <button 
-            className="action-btn secondary"
-            onClick={handleReset}
-            title="Reset Layout"
-          >
-            <RotateCcw size={16} />
-          </button>
-          
-          <button 
-            className="action-btn secondary"
-            onClick={() => setIsFullscreen(!isFullscreen)}
-            title={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
-          >
-            <Maximize2 size={16} />
-          </button>
-          
-          <button 
-            className="action-btn secondary"
-            onClick={handleExport}
-            title="Export Flow"
-          >
-            <Download size={16} />
-          </button>
-          
-          <button 
-            className="action-btn secondary" 
-            onClick={onClose}
-            title="Close"
-          >
-            <X size={16} />
-          </button>
-        </div>
-      </div>
 
-      <div className="task-flow-legend">
-        <div className="legend-section">
-          <div className="legend-title">Task Status:</div>
-          {Object.entries(statusColors).map(([status, color]) => (
-            <div key={status} className="legend-item">
-              <div 
-                className="legend-color" 
-                style={{ backgroundColor: color }}
-              />
-              <span>{status.replace('-', ' ')}</span>
+        {/* Legend */}
+        <div className="flex flex-wrap items-center gap-6 p-4 bg-gray-50 border-b border-gray-200 text-sm">
+          <div className="flex items-center gap-4">
+            <span className="font-medium text-gray-700">Task Status:</span>
+            {Object.entries(statusColors).map(([status, color]) => (
+              <div key={status} className="flex items-center gap-2">
+                <div 
+                  className="w-3 h-3 rounded-full" 
+                  style={{ backgroundColor: color }}
+                />
+                <span className="text-gray-600">{statusLabels[status as keyof typeof statusLabels]}</span>
+              </div>
+            ))}
+          </div>
+          
+          <div className="flex items-center gap-4">
+            <span className="font-medium text-gray-700">Connections:</span>
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-0.5 bg-green-500" />
+              <span className="text-gray-600">Completed</span>
             </div>
-          ))}
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-0.5 bg-gray-400" style={{ backgroundImage: 'repeating-linear-gradient(to right, #94a3b8, #94a3b8 3px, transparent 3px, transparent 6px)' }} />
+              <span className="text-gray-600">In Progress</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-0.5 bg-purple-500" style={{ backgroundImage: 'repeating-linear-gradient(to right, #8b5cf6, #8b5cf6 2px, transparent 2px, transparent 4px)' }} />
+              <span className="text-gray-600">Collaboration</span>
+            </div>
+          </div>
         </div>
         
-        <div className="legend-section">
-          <div className="legend-title">Connections:</div>
-          <div className="legend-item">
-            <div className="legend-line solid" style={{ backgroundColor: '#22c55e' }} />
-            <span>Done Tasks (animated)</span>
-          </div>
-          <div className="legend-item">
-            <div className="legend-line dashed" style={{ backgroundColor: '#94a3b8' }} />
-            <span>Workflow Progress</span>
-          </div>
-          <div className="legend-item">
-            <div className="legend-line dotted" style={{ backgroundColor: '#8b5cf6' }} />
-            <span>Team Collaboration</span>
-          </div>
+        {/* Flow Viewport */}
+        <div className="flex-1 relative">
+          <ReactFlow
+            nodes={nodes}
+            edges={edges}
+            nodeTypes={nodeTypes}
+            onNodesChange={onNodesChange}
+            onEdgesChange={onEdgesChange}
+            fitView
+            attributionPosition="bottom-left"
+            proOptions={{ hideAttribution: true }}
+          >
+            <Background 
+              color="#f1f5f9" 
+              gap={20}
+              size={1}
+            />
+            <MiniMap 
+              nodeColor={getNodeColor}
+              maskColor="rgba(255, 255, 255, 0.2)"
+              position="bottom-right"
+              style={{
+                width: 200,
+                height: 150,
+                border: '1px solid #e5e7eb',
+                borderRadius: '8px'
+              }}
+            />
+            <Controls 
+              position="bottom-right" 
+              style={{ bottom: 170 }}
+              showInteractive={false}
+            />
+          </ReactFlow>
         </div>
-      </div>
-      
-      <div className="task-flow-viewport">
-        <ReactFlow
-          nodes={nodes}
-          edges={edges}
-          nodeTypes={nodeTypes}
-          onNodesChange={onNodesChange}
-          onEdgesChange={onEdgesChange}
-          fitView
-          attributionPosition="bottom-left"
-          proOptions={{ hideAttribution: true }}
-        >
-          <Background 
-            color="#f1f5f9" 
-            gap={20}
-            size={1}
-          />
-          <MiniMap 
-            nodeColor={getNodeColor}
-            maskColor="rgba(255, 255, 255, 0.2)"
-            position="bottom-right"
-            style={{
-              width: 200,
-              height: 150,
-            }}
-          />
-          <Controls 
-            position="bottom-right" 
-            style={{ bottom: 170 }}
-            showInteractive={false}
-          />
-        </ReactFlow>
       </div>
     </div>
   );
-} 
+}
