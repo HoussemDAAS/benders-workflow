@@ -4,7 +4,7 @@ import {
   taskService,
   CreateTaskRequest,
 } from '../services';
-import { KanbanTask, WorkflowStep } from '../types';
+import { KanbanTask } from '../types';
 
 export const useTaskActions = () => {
   const { refresh, workflows, kanbanTasks } = useAppContext();

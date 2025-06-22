@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Building, Mail, Phone, Globe, User } from 'lucide-react';
+import { X, Building, Mail, Phone, User } from 'lucide-react';
 import { Client } from '../types';
 
 interface ClientModalProps {
@@ -68,7 +68,7 @@ export function ClientModal({ client, isOpen, onClose, onSubmit }: ClientModalPr
       newErrors.email = 'Please enter a valid email address';
     }
     
-    if (formData.phone && !/^[\+]?[1-9][\d]{0,15}$/.test(formData.phone.replace(/\s/g, ''))) {
+    if (formData.phone && !/^[+]?[1-9][\d]{0,15}$/.test(formData.phone.replace(/\s/g, ''))) {
       newErrors.phone = 'Please enter a valid phone number';
     }
     
@@ -76,7 +76,7 @@ export function ClientModal({ client, isOpen, onClose, onSubmit }: ClientModalPr
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleInputChange = (field: keyof CreateClientData, value: any) => {
+  const handleInputChange = (field: keyof CreateClientData, value: string | boolean) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
@@ -236,4 +236,4 @@ export function ClientModal({ client, isOpen, onClose, onSubmit }: ClientModalPr
       </div>
     </div>
   );
-} 
+}
