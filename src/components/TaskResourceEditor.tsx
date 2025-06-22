@@ -1,11 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
+import ReactQuill from 'react-quill';
+import 'react-quill/dist/quill.snow.css';
+import '../styles/quill-custom.css';
 import { 
   X, 
-  Bold, 
-  Italic, 
-  Underline, 
-  List, 
-  ListOrdered, 
   Link2, 
   Image, 
   FileText, 
@@ -16,8 +14,8 @@ import {
   Download,
   Plus,
   Edit2,
-  Type,
-  Quote
+  Menu,
+  ChevronLeft
 } from 'lucide-react';
 import { KanbanTask } from '../types';
 import { taskResourceService, TaskResource } from '../services/taskResourceService';
@@ -43,10 +41,45 @@ export function TaskResourceEditor({ task, isOpen, onClose, onSave }: TaskResour
   const [linkTitle, setLinkTitle] = useState('');
   const [showLinkDialog, setShowLinkDialog] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [activeFormats, setActiveFormats] = useState<Set<string>>(new Set());
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false); // Default to closed on mobile
   
-  const editorRef = useRef<HTMLDivElement>(null);
+  const quillRef = useRef<ReactQuill>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Quill modules configuration
+  const modules = {
+    toolbar: [
+      [{ 'header': ['1', '2', '3', false] }],
+      ['bold', 'italic', 'underline'],
+      [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+      ['blockquote', 'code-block'],
+      ['link', 'image'],
+      [{ 'align': [] }],
+      [{ 'color': [] }, { 'background': [] }],
+      ['clean']
+    ],
+  };
+
+  const formats = [
+    'header', 'bold', 'italic', 'underline',
+    'list', 'bullet', 'blockquote', 'code-block',
+    'link', 'image', 'align', 'color', 'background'
+  ];
+
+  // Close sidebar when clicking outside on mobile
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth >= 1024) {
+        setIsSidebarOpen(true); // Always open on desktop
+      } else {
+        setIsSidebarOpen(false); // Closed by default on mobile
+      }
+    };
+
+    handleResize(); // Set initial state
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // Load resources for the task
   useEffect(() => {
@@ -54,6 +87,28 @@ export function TaskResourceEditor({ task, isOpen, onClose, onSave }: TaskResour
       loadResources();
     }
   }, [isOpen, task]);
+
+  // Update editor content when active resource changes
+  useEffect(() => {
+    if (activeResource) {
+      setEditorContent(activeResource.content || '');
+    }
+  }, [activeResource]);
+
+  // Add keyboard shortcut for saving (Cmd+S / Ctrl+S)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 's' && activeResource?.type === 'document' && isEditing) {
+        e.preventDefault();
+        handleSaveResource();
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener('keydown', handleKeyDown);
+      return () => document.removeEventListener('keydown', handleKeyDown);
+    }
+  }, [isOpen, activeResource, isEditing]);
 
   const loadResources = async () => {
     try {
@@ -74,50 +129,20 @@ export function TaskResourceEditor({ task, isOpen, onClose, onSave }: TaskResour
     }
   };
 
-  const handleFormatText = (command: string, value?: string) => {
-    document.execCommand(command, false, value);
-    editorRef.current?.focus();
-    checkActiveFormats();
-  };
-
-  const checkActiveFormats = () => {
-    if (!editorRef.current) return;
-    
-    const formats = new Set<string>();
-    
-    // Check various formatting states
-    if (document.queryCommandState('bold')) formats.add('bold');
-    if (document.queryCommandState('italic')) formats.add('italic');
-    if (document.queryCommandState('underline')) formats.add('underline');
-    if (document.queryCommandState('insertUnorderedList')) formats.add('insertUnorderedList');
-    if (document.queryCommandState('insertOrderedList')) formats.add('insertOrderedList');
-    
-    setActiveFormats(formats);
-  };
-
-  const handleEditorFocus = () => {
-    checkActiveFormats();
-  };
-
-  const handleEditorKeyUp = () => {
-    checkActiveFormats();
-  };
-
-  const handleEditorClick = () => {
-    checkActiveFormats();
+  const handleContentChange = (content: string) => {
+    setEditorContent(content);
+    setIsEditing(true);
   };
 
   const handleSaveResource = async () => {
     if (!activeResource) return;
 
     try {
-      const updatedContent = editorRef.current?.innerHTML || editorContent;
-      
       // Filter out null/undefined values to avoid validation errors
       const updateData = {
         type: activeResource.type,
         title: activeResource.title,
-        content: updatedContent,
+        content: editorContent,
         ...(activeResource.url && { url: activeResource.url }),
         ...(activeResource.fileName && { fileName: activeResource.fileName }),
         ...(activeResource.fileSize !== undefined && activeResource.fileSize !== null && { fileSize: activeResource.fileSize }),
@@ -136,7 +161,6 @@ export function TaskResourceEditor({ task, isOpen, onClose, onSave }: TaskResour
 
       setResources(updatedResources);
       setActiveResource(updatedResource);
-      setEditorContent(updatedResource.content || '');
       setIsEditing(false);
       
       // Call optional onSave callback
@@ -345,6 +369,18 @@ export function TaskResourceEditor({ task, isOpen, onClose, onSave }: TaskResour
     }
   };
 
+  const handleResourceSelect = (resource: TaskResource) => {
+    if (editingSidebarResourceId !== resource.id) {
+      setActiveResource(resource);
+      setEditorContent(resource.content || '');
+      setIsEditing(false);
+      // Close sidebar on mobile after selection
+      if (window.innerWidth < 1024) {
+        setIsSidebarOpen(false);
+      }
+    }
+  };
+
   const getResourceIcon = (type: string) => {
     switch (type) {
       case 'document': return <FileText className="w-4 h-4" />;
@@ -366,108 +402,35 @@ export function TaskResourceEditor({ task, isOpen, onClose, onSave }: TaskResour
   if (!isOpen) return null;
 
   return (
-    <>
-      {/* Custom styles for the rich text editor */}
-      <style dangerouslySetInnerHTML={{
-        __html: `
-          .rich-text-editor {
-            font-family: system-ui, -apple-system, sans-serif;
-          }
-          
-          .rich-text-editor ul {
-            list-style-type: disc;
-            margin-left: 1.5rem;
-            margin-bottom: 1rem;
-            padding-left: 0;
-          }
-          
-          .rich-text-editor ol {
-            list-style-type: decimal;
-            margin-left: 1.5rem;
-            margin-bottom: 1rem;
-            padding-left: 0;
-          }
-          
-          .rich-text-editor li {
-            margin-bottom: 0.25rem;
-            line-height: 1.6;
-          }
-          
-          .rich-text-editor ul ul,
-          .rich-text-editor ol ol,
-          .rich-text-editor ul ol,
-          .rich-text-editor ol ul {
-            margin-top: 0.25rem;
-            margin-bottom: 0.25rem;
-          }
-          
-          .rich-text-editor p {
-            margin-bottom: 1rem;
-            line-height: 1.6;
-          }
-          
-          .rich-text-editor h1,
-          .rich-text-editor h2,
-          .rich-text-editor h3,
-          .rich-text-editor h4,
-          .rich-text-editor h5,
-          .rich-text-editor h6 {
-            margin-top: 1.5rem;
-            margin-bottom: 0.75rem;
-            font-weight: 600;
-          }
-          
-          .rich-text-editor h1 { font-size: 1.875rem; }
-          .rich-text-editor h2 { font-size: 1.5rem; }
-          .rich-text-editor h3 { font-size: 1.25rem; }
-          
-          .rich-text-editor blockquote {
-            border-left: 4px solid #e5e7eb;
-            padding-left: 1rem;
-            margin: 1rem 0;
-            font-style: italic;
-            color: #6b7280;
-          }
-          
-          .rich-text-editor strong {
-            font-weight: 600;
-          }
-          
-          .rich-text-editor em {
-            font-style: italic;
-          }
-          
-          .rich-text-editor u {
-            text-decoration: underline;
-          }
-          
-          .rich-text-editor br {
-            display: block;
-            margin: 0.5rem 0;
-            content: "";
-          }
-        `
-      }} />
-      
-      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-6xl h-[90vh] flex flex-col">
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-2 sm:p-4">
+      <div className="bg-white rounded-2xl sm:rounded-3xl shadow-2xl w-full max-w-7xl h-[95vh] sm:h-[90vh] flex flex-col relative">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <div className="flex-1">
-            <h2 className="text-2xl font-bold text-gray-900">{task.title}</h2>
-            <p className="text-gray-600 mt-1">Task Resources & Documentation</p>
+        <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-200 relative z-30">
+          <div className="flex items-center gap-3 flex-1 min-w-0">
+            {/* Mobile sidebar toggle */}
+            <button
+              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+              className="lg:hidden w-8 h-8 bg-gray-100 hover:bg-gray-200 rounded-lg flex items-center justify-center transition-colors shrink-0"
+            >
+              {isSidebarOpen ? <ChevronLeft className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
+            </button>
             
-            {/* Active Resource Title Editor */}
-            {activeResource && (
-              <div className="mt-4 flex items-center gap-3">
-                <span className="text-sm text-gray-500">Editing:</span>
+            <div className="flex-1 min-w-0">
+              <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900 truncate">{task.title}</h2>
+              <p className="text-gray-600 mt-1 text-sm sm:text-base hidden sm:block">Task Resources & Documentation</p>
+            </div>
+
+            {/* Active Resource Title Editor - Hidden on mobile when sidebar is open */}
+            {activeResource && !isSidebarOpen && (
+              <div className="flex items-center gap-2 min-w-0 flex-1 max-w-sm lg:max-w-md xl:max-w-lg">
+                <span className="text-sm text-gray-500 hidden md:inline shrink-0">Editing:</span>
                 {isEditingTitle ? (
-                  <div className="flex items-center gap-2 flex-1">
+                  <div className="flex items-center gap-2 min-w-0 flex-1">
                     <input
                       type="text"
                       value={editableTitle}
                       onChange={(e) => setEditableTitle(e.target.value)}
-                      className="px-3 py-1 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-primary flex-1 max-w-md"
+                      className="px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:border-primary flex-1 min-w-0"
                       placeholder="Resource title"
                       onKeyDown={(e) => {
                         if (e.key === 'Enter') {
@@ -478,23 +441,27 @@ export function TaskResourceEditor({ task, isOpen, onClose, onSave }: TaskResour
                       }}
                       autoFocus
                     />
-                    <button
-                      onClick={handleSaveTitle}
-                      className="px-3 py-1 bg-primary text-white rounded-lg text-sm hover:bg-primary/90 transition-colors"
-                    >
-                      Save
-                    </button>
-                    <button
-                      onClick={handleCancelEditingTitle}
-                      className="px-3 py-1 bg-gray-100 text-gray-700 rounded-lg text-sm hover:bg-gray-200 transition-colors"
-                    >
-                      Cancel
-                    </button>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button
+                        onClick={handleSaveTitle}
+                        className="px-2 py-1 bg-primary text-white rounded text-sm hover:bg-primary/90 transition-colors whitespace-nowrap"
+                        title="Save (Enter)"
+                      >
+                        Save
+                      </button>
+                      <button
+                        onClick={handleCancelEditingTitle}
+                        className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-sm hover:bg-gray-200 transition-colors whitespace-nowrap"
+                        title="Cancel (Esc)"
+                      >
+                        Cancel
+                      </button>
+                    </div>
                   </div>
                 ) : (
                   <button
                     onClick={handleStartEditingTitle}
-                    className="text-sm font-medium text-gray-900 hover:text-primary transition-colors cursor-pointer bg-gray-50 hover:bg-gray-100 px-3 py-1 rounded-lg"
+                    className="text-sm font-medium text-gray-900 hover:text-primary transition-colors bg-gray-50 hover:bg-gray-100 px-2 py-1 rounded truncate flex-1 min-w-0 text-left"
                   >
                     {activeResource.title}
                   </button>
@@ -502,17 +469,37 @@ export function TaskResourceEditor({ task, isOpen, onClose, onSave }: TaskResour
               </div>
             )}
           </div>
+
           <button
             onClick={onClose}
-            className="w-10 h-10 bg-gray-100 hover:bg-gray-200 rounded-xl flex items-center justify-center transition-colors duration-200"
+            className="w-8 h-8 sm:w-10 sm:h-10 bg-gray-100 hover:bg-gray-200 rounded-lg sm:rounded-xl flex items-center justify-center transition-colors duration-200 shrink-0"
           >
-            <X className="w-5 h-5 text-gray-600" />
+            <X className="w-4 h-4 sm:w-5 sm:h-5 text-gray-600" />
           </button>
         </div>
 
-        <div className="flex flex-1 overflow-hidden">
+        <div className="flex flex-1 overflow-hidden relative">
+          {/* Sidebar Overlay for mobile */}
+          {isSidebarOpen && (
+            <div 
+              className="absolute inset-0 bg-black/20 z-10 lg:hidden"
+              onClick={() => setIsSidebarOpen(false)}
+            />
+          )}
+
           {/* Sidebar */}
-          <div className="w-80 bg-gray-50 border-r border-gray-200 flex flex-col">
+          <div className={`
+            ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+            lg:translate-x-0
+            absolute lg:relative
+            z-20 lg:z-auto
+            w-80 sm:w-96 lg:w-80 xl:w-96
+            h-full
+            bg-gray-50 border-r border-gray-200 
+            flex flex-col
+            transition-transform duration-300 ease-in-out
+            lg:transition-none
+          `}>
             <div className="p-4 border-b border-gray-200">
               <div className="relative">
                 <button
@@ -570,7 +557,7 @@ export function TaskResourceEditor({ task, isOpen, onClose, onSave }: TaskResour
                   </button>
                 </div>
               ) : (
-                                resources.map((resource) => (
+                resources.map((resource) => (
                   <div
                     key={resource.id}
                     className={`p-3 rounded-xl transition-all duration-200 group ${
@@ -581,42 +568,54 @@ export function TaskResourceEditor({ task, isOpen, onClose, onSave }: TaskResour
                   >
                     <div className="flex items-start justify-between">
                       <div 
-                        className="flex items-start gap-3 flex-1 cursor-pointer"
-                        onClick={() => {
-                          if (editingSidebarResourceId !== resource.id) {
-                            setActiveResource(resource);
-                            setEditorContent(resource.content || '');
-                            setIsEditing(false);
-                          }
-                        }}
+                        className="flex items-start gap-3 flex-1 cursor-pointer min-w-0"
+                        onClick={() => handleResourceSelect(resource)}
                       >
-                        <div className={`${
+                        <div className={`shrink-0 ${
                           activeResource?.id === resource.id ? 'text-white' : 'text-gray-600'
                         }`}>
                           {getResourceIcon(resource.type)}
                         </div>
                         <div className="flex-1 min-w-0">
                           {editingSidebarResourceId === resource.id ? (
-                            <div className="flex items-center gap-1 mb-1">
-                              <input
-                                type="text"
-                                value={sidebarEditTitle}
-                                onChange={(e) => setSidebarEditTitle(e.target.value)}
-                                className="px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:border-primary bg-white text-gray-900 flex-1"
-                                onKeyDown={(e) => {
-                                  if (e.key === 'Enter') {
-                                    handleSaveSidebarTitle(resource.id);
-                                  } else if (e.key === 'Escape') {
-                                    handleCancelSidebarEdit();
-                                  }
-                                }}
-                                onClick={(e) => e.stopPropagation()}
-                                autoFocus
-                              />
+                            <div className="mb-1">
+                              <div className="flex items-center gap-1 mb-2">
+                                <input
+                                  type="text"
+                                  value={sidebarEditTitle}
+                                  onChange={(e) => setSidebarEditTitle(e.target.value)}
+                                  className="px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:border-primary bg-white text-gray-900 flex-1 min-w-0"
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                      handleSaveSidebarTitle(resource.id);
+                                    } else if (e.key === 'Escape') {
+                                      handleCancelSidebarEdit();
+                                    }
+                                  }}
+                                  onClick={(e) => e.stopPropagation()}
+                                  autoFocus
+                                />
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <button
+                                  onClick={() => handleSaveSidebarTitle(resource.id)}
+                                  className="px-2 py-1 bg-green-500 text-white rounded text-xs hover:bg-green-600 transition-colors whitespace-nowrap"
+                                  title="Save"
+                                >
+                                  Save
+                                </button>
+                                <button
+                                  onClick={handleCancelSidebarEdit}
+                                  className="px-2 py-1 bg-gray-500 text-white rounded text-xs hover:bg-gray-600 transition-colors whitespace-nowrap"
+                                  title="Cancel"
+                                >
+                                  Cancel
+                                </button>
+                              </div>
                             </div>
                           ) : (
                             <div className="flex items-center gap-2 group">
-                              <h4 className={`font-medium text-sm line-clamp-2 flex-1 ${
+                              <h4 className={`font-medium text-sm line-clamp-2 flex-1 min-w-0 ${
                                 activeResource?.id === resource.id ? 'text-white' : 'text-gray-900'
                               }`}>
                                 {resource.title}
@@ -626,7 +625,7 @@ export function TaskResourceEditor({ task, isOpen, onClose, onSave }: TaskResour
                                   e.stopPropagation();
                                   handleStartEditingSidebarTitle(resource);
                                 }}
-                                className={`opacity-0 group-hover:opacity-100 transition-opacity duration-200 p-1 rounded hover:bg-gray-100 ${
+                                className={`opacity-0 group-hover:opacity-100 transition-opacity duration-200 p-1 rounded hover:bg-gray-100 shrink-0 ${
                                   activeResource?.id === resource.id ? 'text-white hover:bg-white/20' : 'text-gray-500'
                                 }`}
                               >
@@ -644,25 +643,7 @@ export function TaskResourceEditor({ task, isOpen, onClose, onSave }: TaskResour
                           </p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-1">
-                        {editingSidebarResourceId === resource.id && (
-                          <>
-                            <button
-                              onClick={() => handleSaveSidebarTitle(resource.id)}
-                              className="p-1 bg-green-500 text-white rounded hover:bg-green-600 transition-colors"
-                              title="Save"
-                            >
-                              <Save className="w-3 h-3" />
-                            </button>
-                            <button
-                              onClick={handleCancelSidebarEdit}
-                              className="p-1 bg-gray-500 text-white rounded hover:bg-gray-600 transition-colors"
-                              title="Cancel"
-                            >
-                              <X className="w-3 h-3" />
-                            </button>
-                          </>
-                        )}
+                      <div className="flex items-center gap-1 shrink-0">
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
@@ -683,162 +664,100 @@ export function TaskResourceEditor({ task, isOpen, onClose, onSave }: TaskResour
           </div>
 
           {/* Main Content */}
-          <div className="flex-1 flex flex-col">
+          <div className="flex-1 flex flex-col min-w-0">
             {activeResource ? (
               <>
-                {/* Toolbar */}
-                {activeResource.type === 'document' && (
-                  <div className="p-4 border-b border-gray-200 bg-gray-50">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => handleFormatText('bold')}
-                          className={`w-8 h-8 rounded-lg flex items-center justify-center border transition-all duration-200 ${
-                            activeFormats.has('bold')
-                              ? 'bg-primary text-white border-primary shadow-md'
-                              : 'bg-white hover:bg-gray-100 border-gray-200'
-                          }`}
-                        >
-                          <Bold className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleFormatText('italic')}
-                          className={`w-8 h-8 rounded-lg flex items-center justify-center border transition-all duration-200 ${
-                            activeFormats.has('italic')
-                              ? 'bg-primary text-white border-primary shadow-md'
-                              : 'bg-white hover:bg-gray-100 border-gray-200'
-                          }`}
-                        >
-                          <Italic className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleFormatText('underline')}
-                          className={`w-8 h-8 rounded-lg flex items-center justify-center border transition-all duration-200 ${
-                            activeFormats.has('underline')
-                              ? 'bg-primary text-white border-primary shadow-md'
-                              : 'bg-white hover:bg-gray-100 border-gray-200'
-                          }`}
-                        >
-                          <Underline className="w-4 h-4" />
-                        </button>
-                        <div className="w-px h-6 bg-gray-300 mx-2"></div>
-                        <button
-                          onClick={() => handleFormatText('insertUnorderedList')}
-                          className={`w-8 h-8 rounded-lg flex items-center justify-center border transition-all duration-200 ${
-                            activeFormats.has('insertUnorderedList')
-                              ? 'bg-primary text-white border-primary shadow-md'
-                              : 'bg-white hover:bg-gray-100 border-gray-200'
-                          }`}
-                        >
-                          <List className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleFormatText('insertOrderedList')}
-                          className={`w-8 h-8 rounded-lg flex items-center justify-center border transition-all duration-200 ${
-                            activeFormats.has('insertOrderedList')
-                              ? 'bg-primary text-white border-primary shadow-md'
-                              : 'bg-white hover:bg-gray-100 border-gray-200'
-                          }`}
-                        >
-                          <ListOrdered className="w-4 h-4" />
-                        </button>
-                        
-                        <div className="w-px h-6 bg-gray-300 mx-2"></div>
-                        
-                        <button
-                          onClick={() => handleFormatText('formatBlock', 'h2')}
-                          className="w-8 h-8 bg-white hover:bg-gray-100 rounded-lg flex items-center justify-center border border-gray-200 transition-all duration-200"
-                          title="Heading"
-                        >
-                          <Type className="w-4 h-4" />
-                        </button>
-                        
-                        <button
-                          onClick={() => handleFormatText('formatBlock', 'blockquote')}
-                          className="w-8 h-8 bg-white hover:bg-gray-100 rounded-lg flex items-center justify-center border border-gray-200 transition-all duration-200"
-                          title="Quote"
-                        >
-                          <Quote className="w-4 h-4" />
-                        </button>
+                {/* Content Area */}
+                <div className="flex-1 flex flex-col overflow-hidden">
+                  {activeResource.type === 'document' ? (
+                    <div className="flex-1 flex flex-col relative overflow-hidden">
+                      <div className={`flex-1 overflow-hidden ${isEditing ? 'pb-20' : ''}`}>
+                        <div className={`quill-editor-container ${isEditing ? 'h-[calc(100%-80px)]' : 'h-full'} ${isEditing ? 'has-save-button' : ''}`}>
+                          <ReactQuill
+                            ref={quillRef}
+                            theme="snow"
+                            value={editorContent}
+                            onChange={handleContentChange}
+                            modules={modules}
+                            formats={formats}
+                            style={{ 
+                              height: '100%',
+                              display: 'flex',
+                              flexDirection: 'column'
+                            }}
+                          />
+                        </div>
                       </div>
-                      
                       {isEditing && (
-                        <button
-                          onClick={handleSaveResource}
-                          className="btn-primary"
-                        >
-                          <Save className="w-4 h-4" />
-                          Save
-                        </button>
+                        <div className="absolute bottom-0 left-0 right-0 p-3 sm:p-4 border-t border-gray-200 bg-gray-50 shadow-lg z-10 min-h-[60px]">
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm text-gray-600">Unsaved changes</span>
+                            <button
+                              onClick={handleSaveResource}
+                              className="btn-primary text-sm"
+                            >
+                              <Save className="w-4 h-4" />
+                              <span className="hidden sm:inline ml-2">Save Document</span>
+                            </button>
+                          </div>
+                        </div>
                       )}
                     </div>
-                  </div>
-                )}
-
-                {/* Content Area */}
-                <div className="flex-1 p-6 overflow-y-auto">
-                  {activeResource.type === 'document' ? (
-                    <div
-                      ref={editorRef}
-                      contentEditable
-                      className="rich-text-editor max-w-none min-h-full focus:outline-none focus:ring-2 focus:ring-primary/20 rounded-lg p-4 bg-white"
-                      dangerouslySetInnerHTML={{ __html: editorContent }}
-                      onInput={() => setIsEditing(true)}
-                      onFocus={handleEditorFocus}
-                      onKeyUp={handleEditorKeyUp}
-                      onClick={handleEditorClick}
-                      onMouseUp={handleEditorClick}
-                      style={{ 
-                        minHeight: '100%',
-                        lineHeight: '1.6',
-                        fontSize: '16px'
-                      }}
-                    />
                   ) : activeResource.type === 'link' ? (
-                    <div className="text-center py-12">
-                      <div className="w-16 h-16 bg-blue-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                        <Link2 className="w-8 h-8 text-blue-600" />
+                    <div className="flex-1 flex items-center justify-center p-4 sm:p-6">
+                      <div className="text-center max-w-md">
+                        <div className="w-12 h-12 sm:w-16 sm:h-16 bg-blue-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                          <Link2 className="w-6 h-6 sm:w-8 sm:h-8 text-blue-600" />
+                        </div>
+                        <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-2 break-words">{activeResource.title}</h3>
+                        <p className="text-gray-600 mb-6 text-sm sm:text-base break-all">{activeResource.url}</p>
+                        <a
+                          href={activeResource.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="btn-primary text-sm sm:text-base"
+                        >
+                          <ExternalLink className="w-4 h-4" />
+                          <span className="ml-2">Open Link</span>
+                        </a>
                       </div>
-                      <h3 className="text-xl font-bold text-gray-900 mb-2">{activeResource.title}</h3>
-                      <p className="text-gray-600 mb-6">{activeResource.url}</p>
-                      <a
-                        href={activeResource.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="btn-primary"
-                      >
-                        <ExternalLink className="w-4 h-4" />
-                        Open Link
-                      </a>
                     </div>
                   ) : (
-                    <div className="text-center py-12">
-                      <div className="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                        {getResourceIcon(activeResource.type)}
+                    <div className="flex-1 flex items-center justify-center p-4 sm:p-6">
+                      <div className="text-center max-w-md">
+                        <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                          {getResourceIcon(activeResource.type)}
+                        </div>
+                        <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-2 break-words">{activeResource.title}</h3>
+                        {activeResource.fileSize && (
+                          <p className="text-gray-600 mb-6 text-sm sm:text-base">{formatFileSize(activeResource.fileSize)}</p>
+                        )}
+                        <button className="btn-primary text-sm sm:text-base">
+                          <Download className="w-4 h-4" />
+                          <span className="ml-2">Download</span>
+                        </button>
                       </div>
-                      <h3 className="text-xl font-bold text-gray-900 mb-2">{activeResource.title}</h3>
-                      {activeResource.fileSize && (
-                        <p className="text-gray-600 mb-6">{formatFileSize(activeResource.fileSize)}</p>
-                      )}
-                      <button className="btn-primary">
-                        <Download className="w-4 h-4" />
-                        Download
-                      </button>
                     </div>
                   )}
                 </div>
               </>
             ) : (
-              <div className="flex-1 flex items-center justify-center">
-                <div className="text-center">
-                  <div className="w-24 h-24 bg-gray-100 rounded-3xl flex items-center justify-center mx-auto mb-6">
-                    <FileText className="w-12 h-12 text-gray-400" />
+              <div className="flex-1 flex items-center justify-center p-4 sm:p-6">
+                <div className="text-center max-w-md">
+                  <div className="w-16 h-16 sm:w-24 sm:h-24 bg-gray-100 rounded-2xl sm:rounded-3xl flex items-center justify-center mx-auto mb-4 sm:mb-6">
+                    <FileText className="w-8 h-8 sm:w-12 sm:h-12 text-gray-400" />
                   </div>
-                  <h3 className="text-xl font-bold text-gray-900 mb-2">No resource selected</h3>
-                  <p className="text-gray-600 mb-6">Select a resource from the sidebar or create a new one</p>
-                  <button onClick={handleCreateDocument} className="btn-primary">
+                  <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-2">No resource selected</h3>
+                  <p className="text-gray-600 mb-4 sm:mb-6 text-sm sm:text-base">Select a resource from the sidebar or create a new one</p>
+                  <button 
+                    onClick={() => {
+                      setIsSidebarOpen(true);
+                      handleCreateDocument();
+                    }}
+                    className="btn-primary text-sm sm:text-base"
+                  >
                     <Plus className="w-4 h-4" />
-                    Create Document
+                    <span className="ml-2">Create Document</span>
                   </button>
                 </div>
               </div>
@@ -850,7 +769,7 @@ export function TaskResourceEditor({ task, isOpen, onClose, onSave }: TaskResour
       {/* Link Dialog */}
       {showLinkDialog && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-60 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-md">
+          <div className="bg-white rounded-2xl shadow-xl p-4 sm:p-6 w-full max-w-md mx-4">
             <h3 className="text-lg font-bold text-gray-900 mb-4">Add Link</h3>
             <div className="space-y-4">
               <div>
@@ -902,6 +821,5 @@ export function TaskResourceEditor({ task, isOpen, onClose, onSave }: TaskResour
         multiple
       />
     </div>
-    </>
   );
 } 
