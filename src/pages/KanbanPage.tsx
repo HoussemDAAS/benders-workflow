@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { KanbanBoard } from '../components/KanbanBoard';
 import { TaskEditModal } from '../components/TaskEditModal';
+import { TaskResourceEditor } from '../components/TaskResourceEditor';
 import { useAppContext } from '../hooks/useAppContext';
 import { useTaskActions } from '../hooks/useTaskActions';
 import { taskService } from '../services';
@@ -23,6 +24,15 @@ const KanbanPage: React.FC = () => {
   
   // Task edit modal state
   const [taskEditModal, setTaskEditModal] = useState<{
+    isOpen: boolean;
+    task: KanbanTask | null;
+  }>({
+    isOpen: false,
+    task: null
+  });
+
+  // Task resource editor state
+  const [taskResourceEditor, setTaskResourceEditor] = useState<{
     isOpen: boolean;
     task: KanbanTask | null;
   }>({
@@ -85,6 +95,13 @@ const KanbanPage: React.FC = () => {
     });
   }, []);
 
+  const handleTaskResourcesOpen = useCallback((task: KanbanTask) => {
+    setTaskResourceEditor({
+      isOpen: true,
+      task
+    });
+  }, []);
+
   const handleTaskModalClose = useCallback(() => {
     setTaskEditModal({
       isOpen: false,
@@ -92,6 +109,15 @@ const KanbanPage: React.FC = () => {
     });
     setNewTaskContext({});
   }, []);
+
+  const handleResourceEditorClose = useCallback(() => {
+    setTaskResourceEditor({
+      isOpen: false,
+      task: null
+    });
+  }, []);
+
+
 
   return (
     <>
@@ -104,6 +130,7 @@ const KanbanPage: React.FC = () => {
         onTaskMove={handleTaskMove}
         onTaskCreate={handleTaskCreate}
         onTaskEdit={handleTaskEdit}
+        onTaskResourcesOpen={handleTaskResourcesOpen}
         onRefresh={refresh}
         selectedWorkflow={selectedWorkflow}
         selectedClient={selectedClient}
@@ -123,6 +150,14 @@ const KanbanPage: React.FC = () => {
         defaultColumnId={newTaskContext.columnId}
         defaultWorkflowId={newTaskContext.workflowId}
       />
+
+      {taskResourceEditor.task && (
+        <TaskResourceEditor
+          task={taskResourceEditor.task}
+          isOpen={taskResourceEditor.isOpen}
+          onClose={handleResourceEditorClose}
+        />
+      )}
     </>
   );
 };

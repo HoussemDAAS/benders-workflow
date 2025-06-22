@@ -8,7 +8,9 @@ import {
   Building,
   BarChart3,
   Users,
-  Clock
+  Clock,
+  Edit3,
+  FileText
 } from 'lucide-react';
 import { KanbanTask, KanbanColumn, TeamMember, Workflow, Client } from '../types';
 
@@ -21,6 +23,7 @@ interface KanbanBoardProps {
   onTaskMove: (taskId: string, newStatus: string) => void;
   onTaskCreate: (columnId: string, workflowId?: string, clientId?: string) => void;
   onTaskEdit: (task: KanbanTask) => void;
+  onTaskResourcesOpen: (task: KanbanTask) => void;
   onRefresh: () => void;
   selectedWorkflow?: string;
   selectedClient?: string;
@@ -32,6 +35,7 @@ interface TaskCardProps {
   task: KanbanTask;
   teamMembers: TeamMember[];
   onEdit: (task: KanbanTask) => void;
+  onResourcesOpen: (task: KanbanTask) => void;
 }
 
 interface ColumnProps {
@@ -43,9 +47,10 @@ interface ColumnProps {
   onTaskMove: (taskId: string, newStatus: string) => void;
   onTaskCreate: (columnId: string, workflowId?: string, clientId?: string) => void;
   onTaskEdit: (task: KanbanTask) => void;
+  onTaskResourcesOpen: (task: KanbanTask) => void;
 }
 
-const TaskCard: React.FC<TaskCardProps> = ({ task, teamMembers, onEdit }) => {
+const TaskCard: React.FC<TaskCardProps> = ({ task, teamMembers, onEdit, onResourcesOpen }) => {
   const [{ isDragging }, drag] = useDrag(() => ({
     type: 'task',
     item: { id: task.id },
@@ -79,19 +84,37 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, teamMembers, onEdit }) => {
 
   const isOverdue = dueDate && new Date(dueDate) < new Date();
 
+  const handleEditClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onEdit(task);
+  };
+
+  const handleCardClick = () => {
+    onResourcesOpen(task);
+  };
+
   return (
     <div
       ref={drag}
       className={`group bg-white rounded-2xl p-4 shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer border border-gray-100 hover:border-gray-200 hover:-translate-y-1 ${
         isDragging ? 'opacity-50 transform rotate-2 scale-105' : ''
       } ${isOverdue ? 'ring-2 ring-red-200 border-red-200' : ''}`}
-      onClick={() => onEdit(task)}
+      onClick={handleCardClick}
     >
       <div className="flex items-start justify-between mb-3">
         <h4 className="text-sm font-bold text-gray-900 line-clamp-2 group-hover:text-primary transition-colors duration-300 flex-1">
           {title}
         </h4>
-        <div className={`w-3 h-3 rounded-full flex-shrink-0 ml-2 ${getPriorityColor(priority)} shadow-sm`} />
+        <div className="flex items-center gap-2 ml-2">
+          <div className={`w-3 h-3 rounded-full flex-shrink-0 ${getPriorityColor(priority)} shadow-sm`} />
+          <button
+            onClick={handleEditClick}
+            className="w-6 h-6 bg-gray-100 hover:bg-primary hover:text-white text-gray-500 rounded-lg flex items-center justify-center transition-all duration-200 opacity-0 group-hover:opacity-100 hover:scale-110"
+            title="Edit task"
+          >
+            <Edit3 className="w-3 h-3" />
+          </button>
+        </div>
       </div>
       
       {description && (
@@ -131,16 +154,22 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, teamMembers, onEdit }) => {
           )}
         </div>
         
-        {dueDate && (
-          <div className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium ${
-            isOverdue 
-              ? 'bg-red-100 text-red-700' 
-              : 'bg-blue-100 text-blue-700'
-          }`}>
-            <Calendar className="w-3 h-3" />
-            <span>{new Date(dueDate).toLocaleDateString()}</span>
+        <div className="flex items-center gap-2">
+          {dueDate && (
+            <div className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium ${
+              isOverdue 
+                ? 'bg-red-100 text-red-700' 
+                : 'bg-blue-100 text-blue-700'
+            }`}>
+              <Calendar className="w-3 h-3" />
+              <span>{new Date(dueDate).toLocaleDateString()}</span>
+            </div>
+          )}
+          <div className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium bg-gray-100 text-gray-600 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+            <FileText className="w-3 h-3" />
+            <span>Resources</span>
           </div>
-        )}
+        </div>
       </div>
     </div>
   );
@@ -154,7 +183,8 @@ const Column: React.FC<ColumnProps> = ({
   selectedClient,
   onTaskMove, 
   onTaskCreate, 
-  onTaskEdit 
+  onTaskEdit,
+  onTaskResourcesOpen
 }) => {
   const [{ isOver }, drop] = useDrop(() => ({
     accept: 'task',
@@ -217,6 +247,7 @@ const Column: React.FC<ColumnProps> = ({
               task={task}
               teamMembers={teamMembers}
               onEdit={onTaskEdit}
+              onResourcesOpen={onTaskResourcesOpen}
             />
           ))}
           
@@ -250,6 +281,7 @@ export function KanbanBoard({
   onTaskMove, 
   onTaskCreate, 
   onTaskEdit,
+  onTaskResourcesOpen,
   selectedWorkflow: globalSelectedWorkflow,
   selectedClient: globalSelectedClient,
   onWorkflowChange,
@@ -465,6 +497,7 @@ export function KanbanBoard({
                     onTaskMove={onTaskMove}
                     onTaskCreate={onTaskCreate}
                     onTaskEdit={onTaskEdit}
+                    onTaskResourcesOpen={onTaskResourcesOpen}
                   />
                 );
               })}
