@@ -6,22 +6,14 @@ import {
   Phone, 
   Building2, 
   Calendar,
-  User,
   Search,
-  Filter,
   MoreVertical,
   CheckCircle,
   Clock,
   AlertTriangle,
   DollarSign,
   TrendingUp,
-  MapPin,
-  Globe,
-  Users,
   Workflow as WorkflowIcon,
-  Edit2,
-  Trash2,
-  XCircle,
   AlertCircle
 } from 'lucide-react';
 import { Client, Workflow, KanbanTask, TeamMember } from '../types';
@@ -31,18 +23,10 @@ interface ClientsViewProps {
   workflows: Workflow[];
   tasks: KanbanTask[];
   teamMembers: TeamMember[];
-  onClientCreate: (client: CreateClientData) => void;
+  onClientCreate: () => void;
   onClientEdit: (client: Client) => void;
   onClientDelete: (clientId: string) => void;
   onClientStatusChange: (clientId: string, isActive: boolean) => void;
-}
-
-interface CreateClientData {
-  name: string;
-  company: string;
-  email: string;
-  phone?: string;
-  isActive: boolean;
 }
 
 interface ClientCardProps {
@@ -53,18 +37,16 @@ interface ClientCardProps {
   onStatusChange: (clientId: string, isActive: boolean) => void;
 }
 
-interface ClientModalProps {
-  client?: Client;
-  isOpen: boolean;
-  onClose: () => void;
-  onSubmit: (data: CreateClientData) => void;
-}
-
 interface DeleteModalProps {
   client: Client;
   isOpen: boolean;
   onClose: () => void;
   onConfirm: () => void;
+}
+
+interface ClientStatsProps {
+  clients: Client[];
+  workflows: Workflow[];
 }
 
 const ClientCard: React.FC<ClientCardProps> = ({ 
@@ -234,13 +216,7 @@ const ClientCard: React.FC<ClientCardProps> = ({
   );
 };
 
-interface ClientStatsProps {
-  clients: Client[];
-  workflows: Workflow[];
-  tasks: KanbanTask[];
-}
-
-const ClientStats: React.FC<ClientStatsProps> = ({ clients, workflows, tasks }) => {
+const ClientStats: React.FC<ClientStatsProps> = ({ clients, workflows }) => {
   const totalClients = clients.length;
   const activeClients = clients.filter(c => c.isActive).length;
   const clientsWithActiveProjects = clients.filter(client => 
@@ -302,119 +278,6 @@ const ClientStats: React.FC<ClientStatsProps> = ({ clients, workflows, tasks }) 
   );
 };
 
-const ClientModal: React.FC<ClientModalProps> = ({ client, isOpen, onClose, onSubmit }) => {
-  const [formData, setFormData] = useState<CreateClientData>({
-    name: client?.name || '',
-    company: client?.company || '',
-    email: client?.email || '',
-    phone: client?.phone || '',
-    isActive: client?.isActive ?? true
-  });
-
-  const [errors, setErrors] = useState<Partial<CreateClientData>>({});
-
-  const validateForm = () => {
-    const newErrors: Partial<CreateClientData> = {};
-    
-    if (!formData.name.trim()) newErrors.name = 'Name is required';
-    if (!formData.company.trim()) newErrors.company = 'Company is required';
-    if (!formData.email.trim()) newErrors.email = 'Email is required';
-    else if (!/\S+@\S+\.\S+/.test(formData.email)) newErrors.email = 'Email is invalid';
-    
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (validateForm()) {
-      onSubmit(formData);
-      onClose();
-    }
-  };
-
-  if (!isOpen) return null;
-
-  return (
-    <div className="modal-overlay">
-      <div className="modal-content">
-        <div className="modal-header">
-          <h2>{client ? 'Edit Client' : 'Create New Client'}</h2>
-          <button onClick={onClose} className="modal-close">×</button>
-        </div>
-        
-        <form onSubmit={handleSubmit} className="modal-form">
-          <div className="form-group">
-            <label>Full Name *</label>
-            <input
-              type="text"
-              value={formData.name}
-              onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-              placeholder="John Smith"
-              className={errors.name ? 'error' : ''}
-            />
-            {errors.name && <span className="error-text">{errors.name}</span>}
-          </div>
-
-          <div className="form-group">
-            <label>Company *</label>
-            <input
-              type="text"
-              value={formData.company}
-              onChange={(e) => setFormData(prev => ({ ...prev, company: e.target.value }))}
-              placeholder="TechCorp Solutions"
-              className={errors.company ? 'error' : ''}
-            />
-            {errors.company && <span className="error-text">{errors.company}</span>}
-          </div>
-
-          <div className="form-group">
-            <label>Email *</label>
-            <input
-              type="email"
-              value={formData.email}
-              onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-              placeholder="john@techcorp.com"
-              className={errors.email ? 'error' : ''}
-            />
-            {errors.email && <span className="error-text">{errors.email}</span>}
-          </div>
-
-          <div className="form-group">
-            <label>Phone</label>
-            <input
-              type="tel"
-              value={formData.phone}
-              onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
-              placeholder="+1 (555) 123-4567"
-            />
-          </div>
-
-          <div className="form-group">
-            <label className="checkbox-label">
-              <input
-                type="checkbox"
-                checked={formData.isActive}
-                onChange={(e) => setFormData(prev => ({ ...prev, isActive: e.target.checked }))}
-              />
-              Active Client
-            </label>
-          </div>
-
-          <div className="modal-actions">
-            <button type="button" onClick={onClose} className="btn-secondary">
-              Cancel
-            </button>
-            <button type="submit" className="btn-primary">
-              {client ? 'Update Client' : 'Create Client'}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-};
-
 const DeleteModal: React.FC<DeleteModalProps> = ({ client, isOpen, onClose, onConfirm }) => {
   if (!isOpen) return null;
 
@@ -451,7 +314,6 @@ export function ClientsView({
   clients, 
   workflows,
   tasks,
-  teamMembers,
   onClientCreate, 
   onClientEdit,
   onClientDelete,
@@ -461,8 +323,6 @@ export function ClientsView({
   const [statusFilter, setStatusFilter] = useState('all');
   const [projectFilter, setProjectFilter] = useState('all');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [editingClient, setEditingClient] = useState<Client | null>(null);
   const [deletingClient, setDeletingClient] = useState<Client | null>(null);
 
   const filteredClients = clients.filter(client => {
@@ -492,29 +352,6 @@ export function ClientsView({
     return matchesSearch && matchesStatus && matchesProject;
   });
 
-  const getClientStats = (clientId: string) => {
-    const clientWorkflows = workflows.filter(w => w.clientId === clientId);
-    const clientTasks = tasks.filter(task => 
-      clientWorkflows.some(workflow => workflow.id === task.workflowId)
-    );
-    
-    return {
-      activeWorkflows: clientWorkflows.filter(w => w.status === 'active').length,
-      totalTasks: clientTasks.length,
-      completedTasks: clientTasks.filter(t => t.status === 'done').length
-    };
-  };
-
-  const handleCreateClient = (data: CreateClientData) => {
-    onClientCreate(data);
-    setIsCreateModalOpen(false);
-  };
-
-  const handleEditClient = (client: Client) => {
-    onClientEdit(client);
-    setEditingClient(null);
-  };
-
   const handleDeleteClient = () => {
     if (deletingClient) {
       onClientDelete(deletingClient.id);
@@ -529,7 +366,7 @@ export function ClientsView({
           <h1>Clients</h1>
           <p>Manage client relationships and track project progress</p>
         </div>
-        <button className="create-client-btn" onClick={() => setIsCreateModalOpen(true)}>
+        <button className="create-client-btn" onClick={onClientCreate}>
           <Plus size={20} />
           Add Client
         </button>
@@ -538,7 +375,6 @@ export function ClientsView({
       <ClientStats 
         clients={clients}
         workflows={workflows}
-        tasks={tasks}
       />
 
       <div className="clients-controls">
@@ -593,8 +429,6 @@ export function ClientsView({
 
       <div className={`clients-grid ${viewMode}`}>
         {filteredClients.map((client) => {
-          const stats = getClientStats(client.id);
-          
           return (
             <ClientCard
               key={client.id}
@@ -615,22 +449,12 @@ export function ClientsView({
           <Building2 size={48} />
           <h3>No clients found</h3>
           <p>Try adjusting your filters or add a new client to get started.</p>
-          <button className="create-client-btn" onClick={() => setIsCreateModalOpen(true)}>
+          <button className="create-client-btn" onClick={onClientCreate}>
             <Plus size={20} />
             Add Your First Client
           </button>
         </div>
       )}
-
-      <ClientModal
-        client={editingClient}
-        isOpen={isCreateModalOpen || !!editingClient}
-        onClose={() => {
-          setIsCreateModalOpen(false);
-          setEditingClient(null);
-        }}
-        onSubmit={editingClient ? handleEditClient : handleCreateClient}
-      />
 
       <DeleteModal
         client={deletingClient!}
@@ -640,4 +464,4 @@ export function ClientsView({
       />
     </div>
   );
-} 
+}
