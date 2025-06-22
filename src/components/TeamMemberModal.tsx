@@ -157,12 +157,14 @@ export function TeamMemberModal({ member, isOpen, onClose, onSubmit }: TeamMembe
   if (!isOpen) return null;
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content large" onClick={e => e.stopPropagation()}>
-        <div className="modal-header">
-          <h2>{member ? 'Edit Team Member' : 'Add New Team Member'}</h2>
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto modal-content" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between p-6 border-b border-gray-100">
+          <h2 className="text-2xl font-bold text-gray-900">
+            {member ? 'Edit Team Member' : 'Add New Team Member'}
+          </h2>
           <button 
-            className="close-btn" 
+            className="w-10 h-10 bg-gray-100 hover:bg-gray-200 rounded-lg flex items-center justify-center transition-colors duration-200"
             onClick={onClose}
             type="button"
           >
@@ -170,11 +172,17 @@ export function TeamMemberModal({ member, isOpen, onClose, onSubmit }: TeamMembe
           </button>
         </div>
         
-        <form onSubmit={handleSubmit} className="modal-form">
-          <div className="form-row">
-            <div className="form-group">
-              <label htmlFor="name">
-                <User size={16} />
+        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+          {errors.submit && (
+            <div className="p-4 bg-red-50 border border-red-200 rounded-xl">
+              <p className="text-sm text-red-700">{errors.submit}</p>
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <label htmlFor="name" className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                <User size={16} className="text-gray-400" />
                 Full Name *
               </label>
               <input
@@ -182,16 +190,20 @@ export function TeamMemberModal({ member, isOpen, onClose, onSubmit }: TeamMembe
                 type="text"
                 value={formData.name}
                 onChange={e => handleInputChange('name', e.target.value)}
-                className={errors.name ? 'error' : ''}
+                className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all duration-200 ${
+                  errors.name 
+                    ? 'border-red-300 focus:border-red-500 focus:ring-red/20 bg-red-50' 
+                    : 'border-gray-200 focus:border-primary'
+                }`}
                 placeholder="Jane Smith"
                 disabled={isSubmitting}
               />
-              {errors.name && <span className="error-message">{errors.name}</span>}
+              {errors.name && <span className="text-sm text-red-600">{errors.name}</span>}
             </div>
             
-            <div className="form-group">
-              <label htmlFor="email">
-                <Mail size={16} />
+            <div className="space-y-2">
+              <label htmlFor="email" className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                <Mail size={16} className="text-gray-400" />
                 Email Address *
               </label>
               <input
@@ -199,24 +211,32 @@ export function TeamMemberModal({ member, isOpen, onClose, onSubmit }: TeamMembe
                 type="email"
                 value={formData.email}
                 onChange={e => handleInputChange('email', e.target.value)}
-                className={errors.email ? 'error' : ''}
+                className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all duration-200 ${
+                  errors.email 
+                    ? 'border-red-300 focus:border-red-500 focus:ring-red/20 bg-red-50' 
+                    : 'border-gray-200 focus:border-primary'
+                }`}
                 placeholder="jane@company.com"
                 disabled={isSubmitting}
               />
-              {errors.email && <span className="error-message">{errors.email}</span>}
+              {errors.email && <span className="text-sm text-red-600">{errors.email}</span>}
             </div>
           </div>
-          
-          <div className="form-group">
-            <label htmlFor="role">
-              <Briefcase size={16} />
+
+          <div className="space-y-2">
+            <label htmlFor="role" className="flex items-center gap-2 text-sm font-medium text-gray-700">
+              <Briefcase size={16} className="text-gray-400" />
               Role *
             </label>
             <select
               id="role"
               value={formData.role}
               onChange={e => handleInputChange('role', e.target.value)}
-              className={errors.role ? 'error' : ''}
+              className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all duration-200 ${
+                errors.role 
+                  ? 'border-red-300 focus:border-red-500 focus:ring-red/20 bg-red-50' 
+                  : 'border-gray-200 focus:border-primary'
+              }`}
               disabled={isSubmitting}
             >
               <option value="">Select a role...</option>
@@ -224,97 +244,107 @@ export function TeamMemberModal({ member, isOpen, onClose, onSubmit }: TeamMembe
                 <option key={role} value={role}>{role}</option>
               ))}
             </select>
-            {errors.role && <span className="error-message">{errors.role}</span>}
+            {errors.role && <span className="text-sm text-red-600">{errors.role}</span>}
           </div>
-          
-          <div className="form-group">
-            <label>Skills</label>
-            <div className="skills-input">
-              <div className="skill-adder">
-                <input
-                  type="text"
-                  value={newSkill}
-                  onChange={e => setNewSkill(e.target.value)}
-                  placeholder="Add a skill..."
-                  onKeyPress={e => e.key === 'Enter' && (e.preventDefault(), handleAddSkill())}
-                  disabled={isSubmitting}
-                />
-                <button
-                  type="button"
-                  className="btn-secondary"
-                  onClick={handleAddSkill}
-                  disabled={isSubmitting}
-                >
-                  <Plus size={16} />
-                  Add
-                </button>
-              </div>
-              
-              <div className="skill-presets">
-                <p>Common Skills:</p>
-                <div className="preset-skills">
-                  {PRESET_SKILLS.filter(skill => !formData.skills.includes(skill)).map(skill => (
-                    <button
-                      key={skill}
-                      type="button"
-                      className="skill-preset"
-                      onClick={() => handleAddPresetSkill(skill)}
-                      disabled={isSubmitting}
-                    >
-                      {skill}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              
-              <div className="selected-skills">
-                {formData.skills.map(skill => (
-                  <span key={skill} className="skill-tag">
+
+          <div className="space-y-4">
+            <label className="text-sm font-medium text-gray-700">Skills</label>
+            
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={newSkill}
+                onChange={e => setNewSkill(e.target.value)}
+                placeholder="Add a skill..."
+                className="flex-1 px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                onKeyPress={e => e.key === 'Enter' && (e.preventDefault(), handleAddSkill())}
+                disabled={isSubmitting}
+              />
+              <button
+                type="button"
+                onClick={handleAddSkill}
+                className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors duration-200 flex items-center gap-2"
+                disabled={isSubmitting}
+              >
+                <Plus size={16} />
+                Add
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <div className="text-sm text-gray-600">Quick Add:</div>
+              <div className="flex flex-wrap gap-2">
+                {PRESET_SKILLS.filter(skill => !formData.skills.includes(skill)).map(skill => (
+                  <button
+                    key={skill}
+                    type="button"
+                    onClick={() => handleAddPresetSkill(skill)}
+                    className="px-3 py-1 text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-full transition-colors duration-200"
+                    disabled={isSubmitting}
+                  >
                     {skill}
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveSkill(skill)}
-                      disabled={isSubmitting}
-                    >
-                      <Trash2 size={12} />
-                    </button>
-                  </span>
+                  </button>
                 ))}
               </div>
             </div>
+
+            {formData.skills.length > 0 && (
+              <div className="space-y-2">
+                <div className="text-sm text-gray-600">Selected Skills:</div>
+                <div className="flex flex-wrap gap-2">
+                  {formData.skills.map(skill => (
+                    <div key={skill} className="flex items-center gap-2 px-3 py-1 bg-primary/10 text-primary rounded-full text-sm">
+                      <span>{skill}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveSkill(skill)}
+                        className="hover:bg-primary/20 rounded-full p-1 transition-colors duration-200"
+                        disabled={isSubmitting}
+                      >
+                        <Trash2 size={12} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
-          
-          <div className="form-group">
-            <label className="checkbox-label">
+
+          <div className="space-y-2">
+            <label className="flex items-center gap-3">
               <input
                 type="checkbox"
                 checked={formData.isActive}
                 onChange={e => handleInputChange('isActive', e.target.checked)}
+                className="w-5 h-5 text-primary bg-gray-100 border-gray-300 rounded focus:ring-primary/20 focus:ring-2"
                 disabled={isSubmitting}
               />
-              Active Team Member
+              <span className="text-sm font-medium text-gray-700">Active Team Member</span>
             </label>
           </div>
           
-          {errors.submit && (
-            <div className="error-message">{errors.submit}</div>
-          )}
-          
-          <div className="modal-actions">
-            <button 
-              type="button" 
-              className="btn-secondary" 
+          <div className="flex gap-3 pt-4 border-t border-gray-100">
+            <button
+              type="button"
               onClick={onClose}
+              className="flex-1 px-6 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-medium transition-colors duration-200"
               disabled={isSubmitting}
             >
               Cancel
             </button>
-            <button 
-              type="submit" 
-              className="btn-primary"
+            <button
+              type="submit"
+              className="flex-1 px-6 py-3 bg-primary hover:bg-primary/90 disabled:bg-primary/50 text-white rounded-xl font-medium transition-colors duration-200 flex items-center justify-center gap-2"
               disabled={isSubmitting}
             >
-              {isSubmitting ? 'Saving...' : (member ? 'Update Member' : 'Add Member')}
+              {isSubmitting ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  Saving...
+                </>
+              ) : (
+                member ? 'Update Member' : 'Add Member'
+              )}
             </button>
           </div>
         </form>

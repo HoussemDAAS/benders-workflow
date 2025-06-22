@@ -164,12 +164,14 @@ export function MeetingModal({ meeting, clients, teamMembers, isOpen, onClose, o
   const selectedClient = clients.find(c => c.id === formData.clientId);
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content large" onClick={e => e.stopPropagation()}>
-        <div className="modal-header">
-          <h2>{meeting ? 'Edit Meeting' : 'Schedule New Meeting'}</h2>
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto modal-content" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between p-6 border-b border-gray-100">
+          <h2 className="text-2xl font-bold text-gray-900">
+            {meeting ? 'Edit Meeting' : 'Schedule New Meeting'}
+          </h2>
           <button 
-            className="close-btn" 
+            className="w-10 h-10 bg-gray-100 hover:bg-gray-200 rounded-lg flex items-center justify-center transition-colors duration-200"
             onClick={onClose}
             type="button"
           >
@@ -177,10 +179,16 @@ export function MeetingModal({ meeting, clients, teamMembers, isOpen, onClose, o
           </button>
         </div>
         
-        <form onSubmit={handleSubmit} className="modal-form">
-          <div className="form-group">
-            <label htmlFor="title">
-              <Calendar size={16} />
+        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+          {errors.submit && (
+            <div className="p-4 bg-red-50 border border-red-200 rounded-xl">
+              <p className="text-sm text-red-700">{errors.submit}</p>
+            </div>
+          )}
+
+          <div className="space-y-2">
+            <label htmlFor="title" className="flex items-center gap-2 text-sm font-medium text-gray-700">
+              <Calendar size={16} className="text-gray-400" />
               Meeting Title *
             </label>
             <input
@@ -188,57 +196,71 @@ export function MeetingModal({ meeting, clients, teamMembers, isOpen, onClose, o
               type="text"
               value={formData.title}
               onChange={e => handleInputChange('title', e.target.value)}
-              className={errors.title ? 'error' : ''}
+              className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all duration-200 ${
+                errors.title 
+                  ? 'border-red-300 focus:border-red-500 focus:ring-red/20 bg-red-50' 
+                  : 'border-gray-200 focus:border-primary'
+              }`}
               placeholder="Weekly Project Review"
               disabled={isSubmitting}
             />
-            {errors.title && <span className="error-message">{errors.title}</span>}
+            {errors.title && <span className="text-sm text-red-600">{errors.title}</span>}
           </div>
 
-          <div className="form-row">
-            <div className="form-group">
-              <label htmlFor="client">
-                <Building size={16} />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <label htmlFor="client" className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                <Building size={16} className="text-gray-400" />
                 Client *
               </label>
               <select
                 id="client"
                 value={formData.clientId}
                 onChange={e => handleInputChange('clientId', e.target.value)}
-                className={errors.clientId ? 'error' : ''}
+                className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all duration-200 ${
+                  errors.clientId 
+                    ? 'border-red-300 focus:border-red-500 focus:ring-red/20 bg-red-50' 
+                    : 'border-gray-200 focus:border-primary'
+                }`}
                 disabled={isSubmitting}
               >
                 <option value="">Select a client...</option>
-                {clients.filter(c => c.isActive).map(client => (
+                {clients.map(client => (
                   <option key={client.id} value={client.id}>
-                    {client.company} - {client.name}
+                    {client.name} ({client.company})
                   </option>
                 ))}
               </select>
-              {errors.clientId && <span className="error-message">{errors.clientId}</span>}
+              {errors.clientId && <span className="text-sm text-red-600">{errors.clientId}</span>}
             </div>
 
-            <div className="form-group">
-              <label htmlFor="type">
-                Meeting Type *
-              </label>
-              <select
-                id="type"
-                value={formData.type}
-                onChange={e => handleInputChange('type', e.target.value as 'in-person' | 'video' | 'phone')}
-                disabled={isSubmitting}
-              >
-                <option value="video">🎥 Video Call</option>
-                <option value="phone">📞 Phone Call</option>
-                <option value="in-person">📍 In Person</option>
-              </select>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-700">Meeting Type</label>
+              <div className="flex gap-2">
+                {(['video', 'phone', 'in-person'] as const).map(type => (
+                  <button
+                    key={type}
+                    type="button"
+                    onClick={() => handleInputChange('type', type)}
+                    className={`flex-1 px-4 py-3 rounded-xl border-2 transition-all duration-200 flex items-center justify-center gap-2 ${
+                      formData.type === type
+                        ? 'border-primary bg-primary/10 text-primary'
+                        : 'border-gray-200 hover:border-gray-300 text-gray-600'
+                    }`}
+                    disabled={isSubmitting}
+                  >
+                    {getMeetingTypeIcon(type)}
+                    <span className="capitalize">{type === 'in-person' ? 'In Person' : type}</span>
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 
-          <div className="form-row">
-            <div className="form-group">
-              <label htmlFor="scheduledDate">
-                <Calendar size={16} />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <label htmlFor="scheduledDate" className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                <Clock size={16} className="text-gray-400" />
                 Date & Time *
               </label>
               <input
@@ -246,40 +268,48 @@ export function MeetingModal({ meeting, clients, teamMembers, isOpen, onClose, o
                 type="datetime-local"
                 value={formData.scheduledDate}
                 onChange={e => handleInputChange('scheduledDate', e.target.value)}
-                className={errors.scheduledDate ? 'error' : ''}
+                className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all duration-200 ${
+                  errors.scheduledDate 
+                    ? 'border-red-300 focus:border-red-500 focus:ring-red/20 bg-red-50' 
+                    : 'border-gray-200 focus:border-primary'
+                }`}
                 disabled={isSubmitting}
               />
-              {errors.scheduledDate && <span className="error-message">{errors.scheduledDate}</span>}
+              {errors.scheduledDate && <span className="text-sm text-red-600">{errors.scheduledDate}</span>}
             </div>
 
-            <div className="form-group">
-              <label htmlFor="duration">
-                <Clock size={16} />
+            <div className="space-y-2">
+              <label htmlFor="duration" className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                <Clock size={16} className="text-gray-400" />
                 Duration (minutes) *
               </label>
               <select
                 id="duration"
                 value={formData.duration}
                 onChange={e => handleInputChange('duration', parseInt(e.target.value))}
-                className={errors.duration ? 'error' : ''}
+                className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all duration-200 ${
+                  errors.duration 
+                    ? 'border-red-300 focus:border-red-500 focus:ring-red/20 bg-red-50' 
+                    : 'border-gray-200 focus:border-primary'
+                }`}
                 disabled={isSubmitting}
               >
                 <option value={15}>15 minutes</option>
                 <option value={30}>30 minutes</option>
-                <option value={45}>45 minutes</option>
                 <option value={60}>1 hour</option>
                 <option value={90}>1.5 hours</option>
                 <option value={120}>2 hours</option>
                 <option value={180}>3 hours</option>
+                <option value={240}>4 hours</option>
               </select>
-              {errors.duration && <span className="error-message">{errors.duration}</span>}
+              {errors.duration && <span className="text-sm text-red-600">{errors.duration}</span>}
             </div>
           </div>
 
           {formData.type === 'in-person' && (
-            <div className="form-group">
-              <label htmlFor="location">
-                <MapPin size={16} />
+            <div className="space-y-2">
+              <label htmlFor="location" className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                <MapPin size={16} className="text-gray-400" />
                 Location *
               </label>
               <input
@@ -287,67 +317,77 @@ export function MeetingModal({ meeting, clients, teamMembers, isOpen, onClose, o
                 type="text"
                 value={formData.location}
                 onChange={e => handleInputChange('location', e.target.value)}
-                className={errors.location ? 'error' : ''}
-                placeholder="123 Main St, Conference Room A"
+                className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all duration-200 ${
+                  errors.location 
+                    ? 'border-red-300 focus:border-red-500 focus:ring-red/20 bg-red-50' 
+                    : 'border-gray-200 focus:border-primary'
+                }`}
+                placeholder="123 Business St, Suite 100"
                 disabled={isSubmitting}
               />
-              {errors.location && <span className="error-message">{errors.location}</span>}
+              {errors.location && <span className="text-sm text-red-600">{errors.location}</span>}
             </div>
           )}
 
-          <div className="form-group">
-            <label htmlFor="description">
+          <div className="space-y-2">
+            <label htmlFor="description" className="text-sm font-medium text-gray-700">
               Description
             </label>
             <textarea
               id="description"
               value={formData.description}
               onChange={e => handleInputChange('description', e.target.value)}
-              placeholder="Meeting agenda, notes, or additional details..."
-              disabled={isSubmitting}
               rows={3}
+              className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200"
+              placeholder="Meeting agenda and notes..."
+              disabled={isSubmitting}
             />
           </div>
 
-          <div className="form-group">
-            <label>
-              <Users size={16} />
-              Team Attendees
+          <div className="space-y-3">
+            <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+              <Users size={16} className="text-gray-400" />
+              Attendees
             </label>
-            <div className="attendees-selection">
-              {teamMembers.filter(m => m.isActive).map(member => (
-                <label key={member.id} className="checkbox-label">
+            <div className="space-y-2 max-h-32 overflow-y-auto border border-gray-200 rounded-xl p-3">
+              {teamMembers.map(member => (
+                <label key={member.id} className="flex items-center gap-3 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={formData.attendeeIds.includes(member.id)}
                     onChange={() => handleAttendeeToggle(member.id)}
+                    className="w-4 h-4 text-primary bg-gray-100 border-gray-300 rounded focus:ring-primary/20 focus:ring-2"
                     disabled={isSubmitting}
                   />
-                  <span>{member.name} ({member.role})</span>
+                  <span className="text-sm text-gray-700">{member.name}</span>
+                  <span className="text-xs text-gray-500">({member.role})</span>
                 </label>
               ))}
             </div>
           </div>
-          
-          {errors.submit && (
-            <div className="error-message">{errors.submit}</div>
-          )}
-          
-          <div className="modal-actions">
-            <button 
-              type="button" 
-              className="btn-secondary" 
+
+          <div className="flex gap-3 pt-4 border-t border-gray-100">
+            <button
+              type="button"
               onClick={onClose}
+              className="flex-1 px-6 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-medium transition-colors duration-200"
               disabled={isSubmitting}
             >
               Cancel
             </button>
-            <button 
-              type="submit" 
-              className="btn-primary"
+            <button
+              type="submit"
+              className="flex-1 px-6 py-3 bg-primary hover:bg-primary/90 disabled:bg-primary/50 text-white rounded-xl font-medium transition-colors duration-200 flex items-center justify-center gap-2"
               disabled={isSubmitting}
             >
-              {isSubmitting ? 'Saving...' : (meeting ? 'Update Meeting' : 'Schedule Meeting')}
+              {isSubmitting ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  Saving...
+                </>
+              ) : (
+                meeting ? 'Update Meeting' : 'Schedule Meeting'
+              )}
             </button>
           </div>
         </form>
