@@ -5,6 +5,7 @@ import { StartEndNode } from './StartEndNode';
 import { ProcessNode } from './ProcessNode';
 import { DecisionNode } from './DecisionNode';
 import { InputOutputNode } from './InputOutputNode';
+import { TaskNode } from './TaskNode';
 import { AppNode } from './types';
 
 export const initialNodes: AppNode[] = [
@@ -40,10 +41,31 @@ export const initialNodes: AppNode[] = [
   },
 ];
 
-export const nodeTypes = {
+export const initialEdges = [
+  { id: 'start->process1', source: 'start', target: 'process1' },
+  { id: 'process1->decision1', source: 'process1', target: 'decision1' },
+  { 
+    id: 'decision1->input1', 
+    source: 'decision1', 
+    target: 'input1',
+    sourceHandle: 'yes',
+    label: 'Yes'
+  },
+  { 
+    id: 'decision1->end', 
+    source: 'decision1', 
+    target: 'end',
+    sourceHandle: 'no',
+    label: 'No'
+  },
+  { id: 'input1->end', source: 'input1', target: 'end' },
+];
+
+export const nodeTypes: NodeTypes = {
   'position-logger': PositionLoggerNode,
   'start-end': StartEndNode,
   'process': ProcessNode,
   'decision': DecisionNode,
   'input-output': InputOutputNode,
-} satisfies NodeTypes;
+  'task': TaskNode,
+};
