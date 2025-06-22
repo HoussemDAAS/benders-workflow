@@ -3,17 +3,11 @@ import { useDrag, useDrop, DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { 
   Plus, 
-  MoreHorizontal, 
   Calendar, 
-  User, 
-  Flag,
-  Clock,
   Workflow as WorkflowIcon,
-  Users,
   Building
 } from 'lucide-react';
 import { KanbanTask, KanbanColumn, TeamMember, Workflow, Client } from '../types';
-import { taskService, workflowService } from '../services';
 
 interface KanbanBoardProps {
   columns: KanbanColumn[];
@@ -211,7 +205,7 @@ export function KanbanBoard({
   onTaskMove, 
   onTaskCreate, 
   onTaskEdit,
-  onRefresh,
+  // onRefresh is unused but kept for potential future use
   selectedWorkflow: globalSelectedWorkflow,
   selectedClient: globalSelectedClient,
   onWorkflowChange,
@@ -246,7 +240,7 @@ export function KanbanBoard({
       
       // Filter by workflow and client
       if (selectedWorkflow !== 'all' || selectedClient !== 'all') {
-        let filteredItems = allItems.filter(item => {
+        const filteredItems = allItems.filter(item => {
           const matchesWorkflow = selectedWorkflow === 'all' || item.workflowId === selectedWorkflow;
           const matchesClient = selectedClient === 'all' || 
             workflows.find(w => w.id === item.workflowId)?.clientId === selectedClient;

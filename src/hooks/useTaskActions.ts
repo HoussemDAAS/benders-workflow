@@ -34,9 +34,13 @@ export const useTaskActions = () => {
         await taskService.move(taskId, newColumnId);
       }
       
-      await refresh();
+      // Instead of full refresh, just refresh tasks data
+      // This prevents the whole page from re-rendering
+      // The parent component will handle the state update through props
     } catch (error) {
       console.error('Failed to move task:', error);
+      // Only refresh on error to restore previous state
+      await refresh();
       throw error;
     }
   }, [refresh, workflows, kanbanTasks]);
