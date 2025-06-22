@@ -8,7 +8,7 @@ import { Client } from '../types';
 
 const ClientsPage: React.FC = () => {
   const { clients, workflows, kanbanTasks, teamMembers } = useAppContext();
-  const { createClient, updateClient, deleteClient, updateClientStatus } = useClientActions();
+  const { createClient, updateClient, updateClientStatus } = useClientActions();
   
   // Client modal state
   const [clientModal, setClientModal] = useState<{
@@ -60,7 +60,6 @@ const ClientsPage: React.FC = () => {
         teamMembers={teamMembers}
         onClientCreate={handleClientCreate}
         onClientEdit={handleClientEdit}
-        onClientDelete={deleteClient}
         onClientStatusChange={updateClientStatus}
       />
       

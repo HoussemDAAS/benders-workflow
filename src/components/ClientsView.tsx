@@ -26,7 +26,6 @@ interface ClientsViewProps {
   teamMembers: TeamMember[];
   onClientCreate: () => void;
   onClientEdit: (client: Client) => void;
-  onClientDelete: (clientId: string) => void;
   onClientStatusChange: (clientId: string, isActive: boolean) => void;
 }
 
@@ -36,13 +35,6 @@ interface ClientCardProps {
   clientTasks: KanbanTask[];
   onEdit: (client: Client) => void;
   onStatusChange: (clientId: string, isActive: boolean) => void;
-}
-
-interface DeleteModalProps {
-  client: Client;
-  isOpen: boolean;
-  onClose: () => void;
-  onConfirm: () => void;
 }
 
 interface ClientStatsProps {
@@ -55,7 +47,7 @@ const ClientCard: React.FC<ClientCardProps> = ({
   clientWorkflows, 
   clientTasks,
   onEdit, 
-  onStatusChange 
+  onStatusChange,
 }) => {
   const activeWorkflows = clientWorkflows.filter(w => w.status === 'active').length;
   const completedWorkflows = clientWorkflows.filter(w => w.status === 'completed').length;
@@ -71,7 +63,7 @@ const ClientCard: React.FC<ClientCardProps> = ({
   );
 
   return (
-    <div className={`group relative bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer hover:-translate-y-1 border border-gray-100 ${
+    <div className={`group relative bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 border border-gray-100 ${
       !client.isActive ? 'opacity-75 bg-gray-50' : ''
     } ${isOverdue ? 'ring-2 ring-red-200 border-red-200' : ''}`}>
       {/* Header */}
@@ -117,9 +109,6 @@ const ClientCard: React.FC<ClientCardProps> = ({
             }}
           >
             <Edit3 size={14} />
-          </button>
-          <button className="w-8 h-8 bg-gray-100 hover:bg-gray-200 rounded-lg flex items-center justify-center transition-colors duration-200 opacity-0 group-hover:opacity-100">
-            <MoreVertical size={14} />
           </button>
         </div>
       </div>
@@ -227,12 +216,7 @@ const ClientCard: React.FC<ClientCardProps> = ({
       </div>
 
       {/* Footer */}
-      <div className="flex items-center justify-between pt-3 border-t border-gray-100">
-        <div className="flex items-center gap-2 text-sm">
-          <Star size={14} className="text-yellow-500" />
-          <span className="text-gray-600 font-medium">High Value Client</span>
-        </div>
-        
+      {/* <div className="flex items-center justify-end pt-3 border-t border-gray-100">
         <label className="relative inline-flex items-center cursor-pointer">
           <input
             type="checkbox"
@@ -245,7 +229,7 @@ const ClientCard: React.FC<ClientCardProps> = ({
           />
           <div className="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
         </label>
-      </div>
+      </div> */}
     </div>
   );
 };
@@ -325,71 +309,18 @@ const ClientStats: React.FC<ClientStatsProps> = ({ clients, workflows }) => {
   );
 };
 
-const DeleteModal: React.FC<DeleteModalProps> = ({ client, isOpen, onClose, onConfirm }) => {
-  if (!isOpen) return null;
-
-  return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 modal-content">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-bold text-gray-900">Delete Client</h2>
-          <button 
-            onClick={onClose} 
-            className="w-8 h-8 bg-gray-100 hover:bg-gray-200 rounded-lg flex items-center justify-center transition-colors duration-200"
-          >
-            ×
-          </button>
-        </div>
-        
-        <div className="mb-6">
-          <div className="flex flex-col items-center text-center space-y-4">
-            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center">
-              <AlertCircle size={32} className="text-red-600" />
-            </div>
-            <div className="space-y-2">
-              <p className="text-gray-700">
-                Are you sure you want to delete <strong className="text-gray-900">{client.name}</strong> from <strong className="text-gray-900">{client.company}</strong>?
-              </p>
-              <p className="text-sm text-red-600">
-                This action cannot be undone and will remove all associated workflows and tasks.
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className="flex gap-3">
-          <button 
-            onClick={onClose} 
-            className="flex-1 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-medium transition-colors duration-200"
-          >
-            Cancel
-          </button>
-          <button 
-            onClick={onConfirm} 
-            className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl font-medium transition-colors duration-200"
-          >
-            Delete Client
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
-
 export function ClientsView({ 
   clients, 
   workflows,
   tasks,
   onClientCreate, 
   onClientEdit,
-  onClientDelete,
   onClientStatusChange 
 }: ClientsViewProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [projectFilter, setProjectFilter] = useState('all');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-  const [deletingClient, setDeletingClient] = useState<Client | null>(null);
 
   const filteredClients = clients.filter(client => {
     const matchesSearch = client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -418,12 +349,11 @@ export function ClientsView({
     return matchesSearch && matchesStatus && matchesProject;
   });
 
-  const handleDeleteClient = () => {
-    if (deletingClient) {
-      onClientDelete(deletingClient.id);
-      setDeletingClient(null);
-    }
-  };
+  const totalClients = clients.length;
+  const activeClients = clients.filter(c => c.isActive).length;
+  const clientsWithActiveProjects = clients.filter(client => 
+    workflows.some(w => w.clientId === client.id && w.status === 'active')
+  ).length;
 
   return (
     <div className="min-h-full bg-gray-50">
@@ -436,21 +366,35 @@ export function ClientsView({
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
             <div>
               <div className="flex items-center gap-3 mb-3">
-                <div className="w-10 h-10 bg-gradient-to-br from-tertiary to-secondary rounded-xl flex items-center justify-center shadow-lg">
-                  <Building2 className="w-6 h-6 text-primary" />
+                <div className="w-12 h-12 bg-gradient-to-br from-tertiary to-secondary rounded-2xl flex items-center justify-center shadow-lg">
+                  <Building2 className="w-7 h-7 text-primary" />
                 </div>
                 <h1 className="text-3xl font-bold text-white">Clients</h1>
               </div>
-              <p className="text-lg text-white/90 font-medium">
+              <p className="text-lg text-white/90 font-medium mb-4">
                 Manage client relationships and track project progress
               </p>
+              <div className="flex items-center gap-6">
+                <div className="flex items-center gap-2">
+                  <Building2 className="w-4 h-4 text-white/70" />
+                  <span className="text-sm text-white/80">{totalClients} Total Clients</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <CheckCircle className="w-4 h-4 text-white/70" />
+                  <span className="text-sm text-white/80">{activeClients} Active</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <WorkflowIcon className="w-4 h-4 text-white/70" />
+                  <span className="text-sm text-white/80">{clientsWithActiveProjects} With Projects</span>
+                </div>
+              </div>
             </div>
             
-            <button 
-              className="flex items-center gap-2 px-6 py-3 bg-tertiary hover:bg-tertiary/90 text-primary rounded-xl font-medium transition-all duration-200 shadow-lg"
+            <button
               onClick={onClientCreate}
+              className="flex items-center gap-2 px-6 py-3 bg-tertiary hover:bg-tertiary/90 text-primary rounded-2xl font-semibold transition-all duration-200 shadow-xl hover:scale-105"
             >
-              <Plus size={20} />
+              <Plus className="w-5 h-5" />
               Add Client
             </button>
           </div>
@@ -466,48 +410,44 @@ export function ClientsView({
           />
         </div>
 
-        {/* Controls */}
+        {/* Filters Section */}
         <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 mb-6">
-          <div className="flex flex-col lg:flex-row lg:items-center gap-4">
-            <div className="flex-1 flex flex-col sm:flex-row gap-4">
-              <div className="relative flex-1">
-                <Search size={20} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Search clients..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200"
-                />
-              </div>
-              
-              <div className="flex gap-3">
-                <select 
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                  className="px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200"
-                >
-                  <option value="all">All Status</option>
-                  <option value="active">Active</option>
-                  <option value="inactive">Inactive</option>
-                </select>
-
-                <select 
-                  value={projectFilter}
-                  onChange={(e) => setProjectFilter(e.target.value)}
-                  className="px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200"
-                >
-                  <option value="all">All Projects</option>
-                  <option value="with-active">With Active Projects</option>
-                  <option value="without-projects">No Projects</option>
-                  <option value="overdue">Has Overdue</option>
-                </select>
-              </div>
+          <div className="flex flex-col lg:flex-row gap-4">
+            <div className="relative flex-1">
+              <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search clients..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="form-input pl-10"
+              />
             </div>
+            
+            <select 
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="px-4 py-3 border border-gray-300 rounded-xl text-sm text-gray-900 bg-white transition-all duration-200 focus:outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/10 flex-1 lg:flex-none lg:min-w-[150px]"
+            >
+              <option value="all" className="text-gray-900">All Status</option>
+              <option value="active" className="text-gray-900">Active</option>
+              <option value="inactive" className="text-gray-900">Inactive</option>
+            </select>
+
+            <select 
+              value={projectFilter}
+              onChange={(e) => setProjectFilter(e.target.value)}
+              className="px-4 py-3 border border-gray-300 rounded-xl text-sm text-gray-900 bg-white transition-all duration-200 focus:outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/10 flex-1 lg:flex-none lg:min-w-[170px]"
+            >
+              <option value="all" className="text-gray-900">All Projects</option>
+              <option value="with-active" className="text-gray-900">With Active Projects</option>
+              <option value="without-projects" className="text-gray-900">No Projects</option>
+              <option value="overdue" className="text-gray-900">Has Overdue</option>
+            </select>
 
             <div className="flex bg-gray-100 rounded-xl p-1">
               <button 
-                className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
                   viewMode === 'grid' 
                     ? 'bg-white text-primary shadow-sm' 
                     : 'text-gray-600 hover:text-gray-900'
@@ -517,7 +457,7 @@ export function ClientsView({
                 Grid
               </button>
               <button 
-                className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
                   viewMode === 'list' 
                     ? 'bg-white text-primary shadow-sm' 
                     : 'text-gray-600 hover:text-gray-900'
@@ -530,50 +470,55 @@ export function ClientsView({
           </div>
         </div>
 
-        <div className={`grid gap-6 ${
+        {/* Clients Grid */}
+        <div className={`${
           viewMode === 'grid' 
-            ? 'grid-cols-1 md:grid-cols-2 xl:grid-cols-3' 
-            : 'grid-cols-1'
+            ? 'grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6' 
+            : 'space-y-4'
         }`}>
-        {filteredClients.map((client) => {
-          return (
-            <ClientCard
-              key={client.id}
-              client={client}
-              clientWorkflows={workflows.filter(w => w.clientId === client.id)}
-              clientTasks={tasks.filter(task => 
-                workflows.filter(w => w.clientId === client.id).some(workflow => workflow.id === task.workflowId)
-              )}
-              onEdit={onClientEdit}
-              onStatusChange={onClientStatusChange}
-            />
-          );
-        })}
+          {filteredClients.map((client) => {
+            const clientWorkflows = workflows.filter(w => w.clientId === client.id);
+            const clientTasks = tasks.filter(task => 
+              clientWorkflows.some(workflow => workflow.id === task.workflowId)
+            );
+            
+            return (
+              <ClientCard
+                key={client.id}
+                client={client}
+                clientWorkflows={clientWorkflows}
+                clientTasks={clientTasks}
+                onEdit={onClientEdit}
+                onStatusChange={onClientStatusChange}
+              />
+            );
+          })}
         </div>
 
+        {/* Empty State */}
         {filteredClients.length === 0 && (
           <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-12 text-center">
-            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Building2 size={32} className="text-gray-400" />
+            <div className="w-24 h-24 bg-gray-100 rounded-3xl flex items-center justify-center mx-auto mb-6">
+              <Building2 className="w-12 h-12 text-gray-400" />
             </div>
-            <h3 className="text-xl font-bold text-gray-900 mb-2">No clients found</h3>
-            <p className="text-gray-600 mb-6">Try adjusting your filters or add a new client to get started.</p>
-            <button 
-              className="flex items-center gap-2 px-6 py-3 bg-primary hover:bg-primary/90 text-white rounded-xl font-medium transition-all duration-200 shadow-lg mx-auto"
-              onClick={onClientCreate}
-            >
-              <Plus size={20} />
-              Add Your First Client
-            </button>
+            <h3 className="text-2xl font-bold text-gray-900 mb-2">No clients found</h3>
+            <p className="text-gray-600 mb-6 max-w-md mx-auto">
+              {searchTerm || statusFilter !== 'all' || projectFilter !== 'all'
+                ? 'Try adjusting your search or filters'
+                : 'Start building your client base by adding your first client'
+              }
+            </p>
+            {!searchTerm && statusFilter === 'all' && projectFilter === 'all' && (
+              <button 
+                className="btn-primary"
+                onClick={onClientCreate}
+              >
+                <Plus className="w-5 h-5" />
+                Add First Client
+              </button>
+            )}
           </div>
         )}
-
-        <DeleteModal
-          client={deletingClient!}
-          isOpen={!!deletingClient}
-          onClose={() => setDeletingClient(null)}
-          onConfirm={handleDeleteClient}
-        />
       </div>
     </div>
   );
