@@ -24,3 +24,4 @@ dist-ssr
 *.sw?
 # sqlite files
 *.db
+server/src/data/benders_workflow.db

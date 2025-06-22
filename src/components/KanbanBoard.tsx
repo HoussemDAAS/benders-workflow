@@ -5,7 +5,10 @@ import {
   Plus, 
   Calendar, 
   Workflow as WorkflowIcon,
-  Building
+  Building,
+  BarChart3,
+  Users,
+  Clock
 } from 'lucide-react';
 import { KanbanTask, KanbanColumn, TeamMember, Workflow, Client } from '../types';
 
@@ -60,10 +63,10 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, teamMembers, onEdit }) => {
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case 'urgent': return 'bg-red-500';
-      case 'high': return 'bg-orange-500';
-      case 'medium': return 'bg-yellow-500';
-      case 'low': return 'bg-green-500';
+      case 'urgent': return 'priority-urgent';
+      case 'high': return 'priority-high';
+      case 'medium': return 'priority-medium';
+      case 'low': return 'priority-low';
       default: return 'bg-gray-500';
     }
   };
@@ -79,36 +82,40 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, teamMembers, onEdit }) => {
   return (
     <div
       ref={drag}
-      className={`group bg-white rounded-xl p-4 shadow-md hover:shadow-lg transition-all duration-300 cursor-pointer border border-gray-100 hover:border-gray-200 ${
+      className={`group bg-white rounded-2xl p-4 shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer border border-gray-100 hover:border-gray-200 hover:-translate-y-1 ${
         isDragging ? 'opacity-50 transform rotate-2 scale-105' : ''
       } ${isOverdue ? 'ring-2 ring-red-200 border-red-200' : ''}`}
       onClick={() => onEdit(task)}
     >
       <div className="flex items-start justify-between mb-3">
-        <h4 className="text-sm font-bold text-gray-900 line-clamp-2 group-hover:text-primary transition-colors duration-300">
+        <h4 className="text-sm font-bold text-gray-900 line-clamp-2 group-hover:text-primary transition-colors duration-300 flex-1">
           {title}
         </h4>
-        <div className={`w-3 h-3 rounded-full flex-shrink-0 ml-2 ${getPriorityColor(priority)}`} />
+        <div className={`w-3 h-3 rounded-full flex-shrink-0 ml-2 ${getPriorityColor(priority)} shadow-sm`} />
       </div>
       
-      <p className="text-sm text-gray-600 mb-3 line-clamp-2">{description}</p>
+      {description && (
+        <p className="text-sm text-gray-600 mb-3 line-clamp-2">{description}</p>
+      )}
       
-      <div className="flex flex-wrap gap-1 mb-3">
-        {tags.slice(0, 3).map((tag, index) => (
-          <span key={index} className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
-            {tag}
-          </span>
-        ))}
-        {tags.length > 3 && (
-          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-500">
-            +{tags.length - 3}
-          </span>
-        )}
-      </div>
+      {tags.length > 0 && (
+        <div className="flex flex-wrap gap-1 mb-3">
+          {tags.slice(0, 2).map((tag, index) => (
+            <span key={index} className="inline-flex items-center px-2 py-1 rounded-lg text-xs font-medium bg-gray-100 text-gray-700">
+              {tag}
+            </span>
+          ))}
+          {tags.length > 2 && (
+            <span className="inline-flex items-center px-2 py-1 rounded-lg text-xs font-medium bg-primary/10 text-primary">
+              +{tags.length - 2}
+            </span>
+          )}
+        </div>
+      )}
 
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between mt-auto">
         <div className="flex items-center -space-x-2">
-          {assignedMemberNames.map((name, index) => (
+          {assignedMemberNames.slice(0, 3).map((name, index) => (
             <div 
               key={index} 
               className="w-7 h-7 bg-gradient-to-br from-primary to-accent rounded-full flex items-center justify-center text-xs font-bold text-white border-2 border-white shadow-sm"
@@ -130,7 +137,7 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, teamMembers, onEdit }) => {
               ? 'bg-red-100 text-red-700' 
               : 'bg-blue-100 text-blue-700'
           }`}>
-            <Calendar size={12} />
+            <Calendar className="w-3 h-3" />
             <span>{new Date(dueDate).toLocaleDateString()}</span>
           </div>
         )}
@@ -168,53 +175,67 @@ const Column: React.FC<ColumnProps> = ({
   };
 
   return (
-    <div 
-      ref={drop} 
-      className={`bg-gray-50 rounded-2xl p-4 min-h-[600px] transition-all duration-300 ${
-        isOver ? 'bg-blue-50 ring-2 ring-blue-200' : ''
-      }`}
-    >
-      <div className="flex items-center justify-between mb-4 pb-3 border-b-4 border-gray-200" style={{ borderTopColor: column.color, borderBottomColor: column.color }}>
-        <div className="flex items-center gap-3">
-          <div className="w-3 h-3 rounded-full" style={{ backgroundColor: column.color }}></div>
-          <h3 className="font-bold text-gray-900">{column.title}</h3>
-          <span className="px-2 py-1 bg-white rounded-full text-sm font-bold text-gray-600 shadow-sm">
-            {tasks.length}
-          </span>
-        </div>
-        <button 
-          className="w-8 h-8 bg-white hover:bg-primary hover:text-white text-gray-600 rounded-lg flex items-center justify-center transition-all duration-200 shadow-sm"
-          onClick={handleCreateTask}
-        >
-          <Plus size={16} />
-        </button>
-      </div>
-      
-      <div className="space-y-3">
-        {tasks.map((task) => (
-          <TaskCard
-            key={task.id}
-            task={task}
-            teamMembers={teamMembers}
-            onEdit={onTaskEdit}
-          />
-        ))}
-        
-        {tasks.length === 0 && (
-          <div className="text-center py-8">
-            <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center mx-auto mb-3 shadow-sm">
-              <Plus size={20} className="text-gray-400" />
+    <div className="flex-shrink-0 w-80">
+      <div 
+        ref={drop} 
+        className={`bg-white rounded-2xl shadow-lg border border-gray-100 min-h-[600px] transition-all duration-300 ${
+          isOver ? 'ring-2 ring-primary/30 bg-primary/5' : ''
+        }`}
+      >
+        <div className="p-4 border-b border-gray-100">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-3">
+              <div className="w-4 h-4 rounded-full shadow-sm" style={{ backgroundColor: column.color }}></div>
+              <h3 className="font-bold text-gray-900 text-lg">{column.title}</h3>
             </div>
-            <p className="text-sm text-gray-500 mb-3">No tasks yet</p>
             <button 
-              className="inline-flex items-center gap-2 px-4 py-2 bg-white hover:bg-primary hover:text-white text-gray-600 rounded-xl font-medium transition-all duration-200 shadow-sm border border-gray-200"
+              className="w-8 h-8 bg-gray-100 hover:bg-primary hover:text-white text-gray-600 rounded-xl flex items-center justify-center transition-all duration-200 shadow-sm hover:scale-105"
               onClick={handleCreateTask}
             >
-              <Plus size={14} />
-              Add first task
+              <Plus className="w-4 h-4" />
             </button>
           </div>
-        )}
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+            <span className="px-3 py-1 bg-gray-100 rounded-full text-sm font-bold text-gray-700 whitespace-nowrap">
+              {tasks.length} {tasks.length === 1 ? 'task' : 'tasks'}
+            </span>
+            {tasks.length > 0 && (
+              <div className="flex-1 bg-gray-200 rounded-full h-2 min-w-0">
+                <div 
+                  className="h-2 rounded-full bg-gradient-to-r from-primary to-accent transition-all duration-500"
+                  style={{ width: `${Math.min(100, (tasks.length / 10) * 100)}%` }}
+                />
+              </div>
+            )}
+          </div>
+        </div>
+        
+        <div className="p-4 space-y-3 max-h-[520px] overflow-y-auto nav-scrollbar-hide">
+          {tasks.map((task) => (
+            <TaskCard
+              key={task.id}
+              task={task}
+              teamMembers={teamMembers}
+              onEdit={onTaskEdit}
+            />
+          ))}
+          
+          {tasks.length === 0 && (
+            <div className="text-center py-12">
+              <div className="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <Plus className="w-8 h-8 text-gray-400" />
+              </div>
+              <p className="text-sm text-gray-500 mb-4 font-medium">No tasks yet</p>
+              <button 
+                className="btn-primary"
+                onClick={handleCreateTask}
+              >
+                <Plus className="w-4 h-4" />
+                Add first task
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -229,7 +250,6 @@ export function KanbanBoard({
   onTaskMove, 
   onTaskCreate, 
   onTaskEdit,
-  // onRefresh is unused but kept for potential future use
   selectedWorkflow: globalSelectedWorkflow,
   selectedClient: globalSelectedClient,
   onWorkflowChange,
@@ -310,6 +330,11 @@ export function KanbanBoard({
     return columns.sort((a, b) => (a.order || a.order_index || 0) - (b.order || b.order_index || 0));
   }, [columns]);
 
+  // Calculate stats
+  const totalTasks = workflowTasks.length;
+  const activeTasks = workflowTasks.filter(t => t.status === 'in-progress').length;
+  const completedTasks = workflowTasks.filter(t => t.status === 'done').length;
+
   return (
     <DndProvider backend={HTML5Backend}>
       <div className="min-h-full bg-gray-50">
@@ -322,50 +347,58 @@ export function KanbanBoard({
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
               <div>
                 <div className="flex items-center gap-3 mb-3">
-                  <div className="w-10 h-10 bg-gradient-to-br from-tertiary to-secondary rounded-xl flex items-center justify-center shadow-lg">
-                    <WorkflowIcon className="w-6 h-6 text-primary" />
+                  <div className="w-12 h-12 bg-gradient-to-br from-tertiary to-secondary rounded-2xl flex items-center justify-center shadow-lg">
+                    <WorkflowIcon className="w-7 h-7 text-primary" />
                   </div>
                   <h1 className="text-3xl font-bold text-white">Kanban Board</h1>
                 </div>
-                <p className="text-lg text-white/90 font-medium">
+                <p className="text-lg text-white/90 font-medium mb-4">
                   Manage tasks and workflow steps by status
                 </p>
+                <div className="flex items-center gap-6">
+                  <div className="flex items-center gap-2">
+                    <BarChart3 className="w-4 h-4 text-white/70" />
+                    <span className="text-sm text-white/80">{totalTasks} Total Tasks</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Clock className="w-4 h-4 text-white/70" />
+                    <span className="text-sm text-white/80">{activeTasks} In Progress</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Users className="w-4 h-4 text-white/70" />
+                    <span className="text-sm text-white/80">{completedTasks} Completed</span>
+                  </div>
+                </div>
               </div>
               
               <div className="flex flex-col sm:flex-row gap-3">
-                <div className="flex items-center gap-2 px-4 py-2 bg-white/10 rounded-xl backdrop-blur-sm">
-                  <Building size={16} className="text-white/80" />
-                  <select 
-                    value={selectedClient}
-                    onChange={(e) => handleClientChange(e.target.value)}
-                    className="bg-transparent text-white font-medium outline-none"
-                  >
-                    <option value="all" className="text-gray-900">All Clients</option>
-                    {clients.map(client => (
-                      <option key={client.id} value={client.id} className="text-gray-900">
-                        {client.company || client.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="flex items-center gap-2 px-4 py-2 bg-white/10 rounded-xl backdrop-blur-sm">
-                  <WorkflowIcon size={16} className="text-white/80" />
-                  <select 
-                    value={selectedWorkflow}
-                    onChange={(e) => handleWorkflowChange(e.target.value)}
-                    className="bg-transparent text-white font-medium outline-none"
-                  >
-                    <option value="all" className="text-gray-900">
-                      {selectedClient === 'all' ? 'All Workflows' : 'All Client Workflows'}
+                <select 
+                  value={selectedClient}
+                  onChange={(e) => handleClientChange(e.target.value)}
+                  className="px-4 py-3 border border-gray-300 rounded-xl text-sm text-gray-900 bg-white transition-all duration-200 focus:outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/10 min-w-[180px]"
+                >
+                  <option value="all" className="text-gray-900">All Clients</option>
+                  {clients.map(client => (
+                    <option key={client.id} value={client.id} className="text-gray-900">
+                      {client.company || client.name}
                     </option>
-                    {clientWorkflows.map(workflow => (
-                      <option key={workflow.id} value={workflow.id} className="text-gray-900">
-                        {workflow.name} ({workflow.status})
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                  ))}
+                </select>
+
+                <select 
+                  value={selectedWorkflow}
+                  onChange={(e) => handleWorkflowChange(e.target.value)}
+                  className="px-4 py-3 border border-gray-300 rounded-xl text-sm text-gray-900 bg-white transition-all duration-200 focus:outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/10 min-w-[200px]"
+                >
+                  <option value="all" className="text-gray-900">
+                    {selectedClient === 'all' ? 'All Workflows' : 'All Client Workflows'}
+                  </option>
+                  {clientWorkflows.map(workflow => (
+                    <option key={workflow.id} value={workflow.id} className="text-gray-900">
+                      {workflow.name}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
           </div>
@@ -374,23 +407,23 @@ export function KanbanBoard({
         <div className="px-6 pb-6">
           {/* Workflow Info */}
           {currentWorkflow && (
-            <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 -mt-6 mb-6">
+            <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 -mt-6 mb-6 relative z-10">
               <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                 <div>
                   <h3 className="text-xl font-bold text-gray-900 mb-2">{currentWorkflow.name}</h3>
                   <p className="text-gray-600 mb-3">{currentWorkflow.description}</p>
                   <div className="flex items-center gap-3">
                     <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-bold ${
-                      currentWorkflow.status === 'active' ? 'bg-green-100 text-green-700' :
-                      currentWorkflow.status === 'completed' ? 'bg-blue-100 text-blue-700' :
-                      currentWorkflow.status === 'on-hold' ? 'bg-yellow-100 text-yellow-700' :
-                      'bg-gray-100 text-gray-700'
+                      currentWorkflow.status === 'active' ? 'status-active' :
+                      currentWorkflow.status === 'completed' ? 'status-completed' :
+                      currentWorkflow.status === 'on-hold' ? 'status-pending' :
+                      'status-inactive'
                     }`}>
-                      {currentWorkflow.status}
+                      {currentWorkflow.status.replace('-', ' ')}
                     </span>
                     {currentClient && (
                       <div className="flex items-center gap-2 text-gray-600">
-                        <Building size={14} />
+                        <Building className="w-4 h-4" />
                         <span className="font-medium">{currentClient.company || currentClient.name}</span>
                       </div>
                     )}
@@ -404,7 +437,7 @@ export function KanbanBoard({
           {loading ? (
             <div className="flex items-center justify-center py-12">
               <div className="flex items-center gap-3">
-                <div className="loading-spinner-container w-6 h-6 border-2 border-primary border-t-transparent rounded-full"></div>
+                <div className="loading-spinner"></div>
                 <span className="text-gray-600 font-medium">Loading tasks...</span>
               </div>
             </div>
@@ -412,7 +445,6 @@ export function KanbanBoard({
             <div className="flex gap-6 overflow-x-auto pb-4">
               {kanbanColumns.map((column) => {
                 const columnItems = workflowTasks.filter(item => {
-                  // For regular tasks, match by status
                   if ('status' in item) {
                     return item.status === column.id;
                   }
@@ -439,25 +471,25 @@ export function KanbanBoard({
           {/* Empty State */}
           {!loading && workflowTasks.length === 0 && (
             <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-12 text-center">
-              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <WorkflowIcon size={32} className="text-gray-400" />
+              <div className="w-24 h-24 bg-gray-100 rounded-3xl flex items-center justify-center mx-auto mb-6">
+                <WorkflowIcon className="w-12 h-12 text-gray-400" />
               </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-2">No tasks found</h3>
-              <p className="text-gray-600 mb-6">
+              <h3 className="text-2xl font-bold text-gray-900 mb-2">No tasks found</h3>
+              <p className="text-gray-600 mb-6 max-w-md mx-auto">
                 {selectedWorkflow !== 'all' || selectedClient !== 'all'
-                  ? 'No tasks for this selection. Create your first task!'
-                  : 'Create your first task to get started.'
+                  ? 'No tasks for this selection. Create your first task to get started!'
+                  : 'Create your first task to organize your workflow processes.'
                 }
               </p>
               <button 
-                className="flex items-center gap-2 px-6 py-3 bg-primary hover:bg-primary/90 text-white rounded-xl font-medium transition-all duration-200 shadow-lg mx-auto"
+                className="btn-primary"
                 onClick={() => onTaskCreate(
                   kanbanColumns[0]?.id || 'todo', 
                   currentWorkflow?.id, 
                   currentClient?.id
                 )}
               >
-                <Plus size={20} />
+                <Plus className="w-5 h-5" />
                 Create First Task
               </button>
             </div>
@@ -466,4 +498,4 @@ export function KanbanBoard({
       </div>
     </DndProvider>
   );
-} 
+}

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useCallback } from 'react';
 import {
   ReactFlow,
@@ -7,7 +8,7 @@ import {
   addEdge,
   useNodesState,
   useEdgesState,
-  ReactFlowProvider,
+
   type OnConnect,
   type Node,
   type Edge,
@@ -95,7 +96,7 @@ const FlowchartView: React.FC<FlowchartViewProps> = ({ workflow, onClose, onWork
     label: conn.label,
   }));
 
-  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
+  const [nodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
 
   const onConnect: OnConnect = useCallback(
