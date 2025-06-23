@@ -7,7 +7,7 @@ import { taskService } from '../services';
 import { KanbanTask, WorkflowStep } from '../types';
 
 const KanbanPage: React.FC = () => {
-  const { kanbanColumns, kanbanTasks, teamMembers, workflows, clients, refresh } = useAppContext();
+  const { kanbanColumns, kanbanTasks, workflows, clients, refresh } = useAppContext(); // TODO: Removed teamMembers for user auth implementation
   const { moveTask, saveTask, deleteTask } = useTaskActions();
   
   const [selectedWorkflow, setSelectedWorkflow] = useState<string | undefined>();
@@ -98,7 +98,7 @@ const KanbanPage: React.FC = () => {
       <KanbanBoard
         columns={kanbanColumns}
         tasks={localTasks}
-        teamMembers={teamMembers}
+        teamMembers={[]} // TODO: Pass empty array for now during user auth implementation
         workflows={workflows}
         clients={clients}
         onTaskMove={handleTaskMove}
@@ -117,7 +117,7 @@ const KanbanPage: React.FC = () => {
         onClose={handleTaskModalClose}
         onSave={saveTask}
         onDelete={deleteTask}
-        teamMembers={teamMembers}
+        teamMembers={[]} // TODO: Pass empty array for now during user auth implementation
         workflows={workflows}
         columns={kanbanColumns}
         defaultColumnId={newTaskContext.columnId}

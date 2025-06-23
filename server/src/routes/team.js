@@ -1,3 +1,8 @@
+/* TODO: Team routes temporarily commented out for user authentication implementation
+ * Team members will be replaced with authenticated users
+ */
+
+/*
 const express = require('express');
 const { body, validationResult } = require('express-validator');
 const TeamMember = require('../models/TeamMember');
@@ -278,4 +283,8 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
-module.exports = router; 
+module.exports = router;
+*/
+
+// TODO: Export empty router until user authentication is implemented
+module.exports = require('express').Router();

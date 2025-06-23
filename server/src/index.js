@@ -14,7 +14,7 @@ const { createTables } = require('./scripts/initDatabase');
 const clientsRoutes = require('./routes/clients');
 const workflowsRoutes = require('./routes/workflows');
 const tasksRoutes = require('./routes/tasks');
-const teamRoutes = require('./routes/team');
+// const teamRoutes = require('./routes/team'); // TODO: Commented out for user auth implementation
 const meetingsRoutes = require('./routes/meetings');
 const dashboardRoutes = require('./routes/dashboard');
 
@@ -62,7 +62,7 @@ app.get('/health', (req, res) => {
 app.use('/api/clients', clientsRoutes);
 app.use('/api/workflows', workflowsRoutes);
 app.use('/api/tasks', tasksRoutes);
-app.use('/api/team', teamRoutes);
+// app.use('/api/team', teamRoutes); // TODO: Commented out for user auth implementation
 app.use('/api/meetings', meetingsRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 
@@ -223,4 +223,4 @@ process.on('unhandledRejection', (reason, promise) => {
 // Start the server
 startServer();
 
-module.exports = app; 
+module.exports = app;

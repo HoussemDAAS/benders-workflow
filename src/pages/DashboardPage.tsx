@@ -6,7 +6,7 @@ import { useAppContext } from '../hooks/useAppContext';
 
 const DashboardPage: React.FC = () => {
   const navigate = useNavigate();
-  const { dashboardStats, clients, workflows, teamMembers } = useAppContext();
+  const { dashboardStats, clients, workflows } = useAppContext(); // TODO: Removed teamMembers for user auth implementation
 
   const handleViewChange = (view: string) => {
     navigate(`/${view}`);
@@ -23,7 +23,7 @@ const DashboardPage: React.FC = () => {
       stats={dashboardStats}
       recentClients={clients}
       activeWorkflows={activeWorkflows}
-      teamMembers={teamMembers}
+      teamMembers={[]} // TODO: Pass empty array for now during user auth implementation
       onViewChange={handleViewChange}
       onClientSelect={handleClientSelect}
     />

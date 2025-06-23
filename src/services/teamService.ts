@@ -1,3 +1,8 @@
+/* TODO: Team service temporarily commented out for user authentication implementation
+ * Team members will be replaced with authenticated users
+ */
+
+/*
 import { apiService } from './api';
 import type { TeamMember } from '../types';
 
@@ -28,59 +33,74 @@ export class TeamService {
     includeInactive?: boolean;
     role?: string;
   }): Promise<TeamMember[]> {
-    const searchParams = new URLSearchParams();
+    const queryParams = new URLSearchParams();
+    if (params?.includeInactive) queryParams.append('includeInactive', 'true');
+    if (params?.role) queryParams.append('role', params.role);
     
-    if (params?.includeInactive) searchParams.append('includeInactive', 'true');
-    if (params?.role) searchParams.append('role', params.role);
-    
-    const queryString = searchParams.toString();
-    return apiService.get<TeamMember[]>(`/team${queryString ? `?${queryString}` : ''}`);
+    return apiService.get(`/team?${queryParams.toString()}`);
   }
 
   async getById(id: string): Promise<TeamMember> {
-    return apiService.get<TeamMember>(`/team/${id}`);
+    return apiService.get(`/team/${id}`);
   }
 
   async create(member: CreateTeamMemberRequest): Promise<TeamMember> {
-    return apiService.post<TeamMember>('/team', member);
+    return apiService.post('/team', member);
   }
 
   async update(id: string, member: Partial<CreateTeamMemberRequest>): Promise<TeamMember> {
-    return apiService.put<TeamMember>(`/team/${id}`, member);
+    return apiService.put(`/team/${id}`, member);
   }
 
   async updateStatus(id: string, isActive: boolean): Promise<TeamMember> {
-    return apiService.patch<TeamMember>(`/team/${id}/status`, { isActive });
+    return apiService.patch(`/team/${id}/status`, { isActive });
   }
 
   async updateSkills(id: string, skills: string[]): Promise<TeamMember> {
-    return apiService.patch<TeamMember>(`/team/${id}/skills`, { skills });
+    return apiService.patch(`/team/${id}/skills`, { skills });
   }
 
   async delete(id: string): Promise<void> {
-    return apiService.delete<void>(`/team/${id}`);
+    return apiService.delete(`/team/${id}`);
   }
 
   // Workload and assignments
   async getWorkload(id: string): Promise<TeamMemberWorkload> {
-    return apiService.get<TeamMemberWorkload>(`/team/${id}/workload`);
+    return apiService.get(`/team/${id}/workload`);
   }
 
   async getAssignments(id: string): Promise<TeamMemberAssignments> {
-    return apiService.get<TeamMemberAssignments>(`/team/${id}/assignments`);
+    return apiService.get(`/team/${id}/assignments`);
   }
 
-  async getSteps(id: string) {
+  async getSteps(id: string): Promise<any[]> {
     return apiService.get(`/team/${id}/steps`);
   }
 
-  async getTasks(id: string) {
+  async getTasks(id: string): Promise<any[]> {
     return apiService.get(`/team/${id}/tasks`);
   }
 
-  async getMeetings(id: string) {
+  async getMeetings(id: string): Promise<any[]> {
     return apiService.get(`/team/${id}/meetings`);
   }
 }
 
-export const teamService = new TeamService(); 
+export const teamService = new TeamService();
+*/
+
+// TODO: Export mock service until user authentication is implemented
+export const teamService = {
+  getAll: () => Promise.resolve([]),
+  getById: () => Promise.resolve({}),
+  create: () => Promise.resolve({}),
+  update: () => Promise.resolve({}),
+  updateStatus: () => Promise.resolve({}),
+  updateSkills: () => Promise.resolve({}),
+  delete: () => Promise.resolve(),
+  getWorkload: () => Promise.resolve({}),
+  getAssignments: () => Promise.resolve({ steps: [], tasks: [], meetings: [] }),
+  getSteps: () => Promise.resolve([]),
+  getTasks: () => Promise.resolve([]),
+  getMeetings: () => Promise.resolve([])
+};

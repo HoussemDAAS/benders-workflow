@@ -295,7 +295,7 @@ const DeleteModal: React.FC<DeleteModalProps> = ({ member, isOpen, onClose, onCo
 };
 
 export function TeamView({ 
-  teamMembers, 
+  teamMembers = [], // TODO: Add default empty array for user auth implementation
   onMemberCreate, 
   onMemberEdit,
   onMemberDelete,
@@ -308,7 +308,10 @@ export function TeamView({
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [deletingMember, setDeletingMember] = useState<TeamMember | null>(null);
 
-  const filteredMembers = teamMembers.filter(member => {
+  // TODO: Add null checks for teamMembers during user auth implementation
+  const safeTeamMembers = Array.isArray(teamMembers) ? teamMembers : [];
+
+  const filteredMembers = safeTeamMembers.filter(member => {
     const matchesSearch = member.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          member.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          member.role.toLowerCase().includes(searchTerm.toLowerCase());
@@ -355,11 +358,11 @@ export function TeamView({
               <div className="flex items-center gap-6 text-white/90">
                 <div className="flex items-center gap-2">
                   <Users size={18} className="text-white/70" />
-                  <span className="font-medium">{teamMembers.length} Total Members</span>
+                  <span className="font-medium">{safeTeamMembers.length} Total Members</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <CheckCircle size={18} className="text-white/70" />
-                  <span className="font-medium">{teamMembers.filter(m => m.isActive).length} Active</span>
+                  <span className="font-medium">{safeTeamMembers.filter(m => m.isActive).length} Active</span>
                 </div>
               </div>
             </div>
@@ -404,7 +407,7 @@ export function TeamView({
 
       {/* Stats Section */}
       <div className="px-6 py-6">
-        <TeamStats teamMembers={teamMembers} />
+        <TeamStats teamMembers={safeTeamMembers} />
       </div>
 
       <div className="px-6 pb-6">

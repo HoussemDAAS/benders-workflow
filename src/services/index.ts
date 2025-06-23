@@ -2,7 +2,7 @@ export { apiService, ApiError } from './api';
 export { clientService } from './clientService';
 export { taskService } from './taskService';
 export { workflowService } from './workflowService';
-export { teamService } from './teamService';
+export { teamService } from './teamService'; // Re-export the mock teamService
 export { dashboardService } from './dashboardService';
 export { meetingService } from './meetingService';
 
@@ -18,16 +18,17 @@ export type {
 
 export type {
   CreateWorkflowRequest,
-  WorkflowStep,
   WorkflowConnection,
   WorkflowProgress
 } from './workflowService';
 
+/*
 export type {
   CreateTeamMemberRequest,
   TeamMemberWorkload,
   TeamMemberAssignments
 } from './teamService';
+*/
 
 export type {
   DashboardData
@@ -37,4 +38,4 @@ export type {
   CreateMeetingRequest,
   Meeting,
   MeetingWithDetails
-} from './meetingService'; 
+} from './meetingService';
