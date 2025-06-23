@@ -20,6 +20,7 @@ async function seedTestData() {
       'DELETE FROM team_members',
       'DELETE FROM clients',
       'DELETE FROM activity_log'
+      // Note: Not clearing users table - users will be created through OAuth
     ];
     
     for (const query of clearQueries) {
@@ -30,6 +31,9 @@ async function seedTestData() {
         console.log(`Note: ${query} - ${error.message}`);
       }
     }
+    
+    // Note: No longer seeding test users - users will be created through Google OAuth
+    console.log('👤 Users will be created through Google OAuth authentication');
     
     // Seed Clients
     console.log('👥 Seeding clients...');
@@ -465,4 +469,4 @@ if (require.main === module) {
   }
   
   runSeeding();
-} 
+}

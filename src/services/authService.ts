@@ -127,15 +127,23 @@ class AuthService {
 
   // Google OAuth login
   async loginWithGoogle(): Promise<void> {
-    const googleAuthUrl = `https://accounts.google.com/oauth/authorize?` +
-      `client_id=${import.meta.env.VITE_GOOGLE_CLIENT_ID}&` +
-      `redirect_uri=${encodeURIComponent(window.location.origin + '/auth/callback/google')}&` +
-      `response_type=code&` +
-      `scope=openid email profile&` +
-      `access_type=offline&` +
-      `prompt=consent`
-
-    window.location.href = googleAuthUrl
+    try {
+      // Get Google OAuth URL from our backend
+      const response = await fetch(`${this.baseUrl}/auth/google/url`)
+      
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to get Google OAuth URL')
+      }
+      
+      const { authUrl } = await response.json()
+      
+      // Redirect to Google OAuth
+      window.location.href = authUrl
+    } catch (error) {
+      console.error('Google OAuth URL error:', error)
+      throw error
+    }
   }
 
   // GitHub OAuth login

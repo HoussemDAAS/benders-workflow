@@ -7,6 +7,58 @@ const createTables = async () => {
   try {
     console.log('Creating database tables...');
 
+    // Users table for authentication
+    await db.run(`
+      CREATE TABLE IF NOT EXISTS users (
+        id TEXT PRIMARY KEY,
+        email TEXT UNIQUE NOT NULL,
+        password TEXT, -- Allow NULL for OAuth users
+        name TEXT NOT NULL,
+        role TEXT DEFAULT 'user' CHECK (role IN ('admin', 'manager', 'user')),
+        is_active BOOLEAN DEFAULT 1,
+        email_verified BOOLEAN DEFAULT 0,
+        last_login_at DATETIME,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // Check if password column needs to be updated to allow NULL
+    const columnInfo = await db.all("PRAGMA table_info(users)");
+    const passwordColumn = columnInfo.find(col => col.name === 'password');
+    
+    if (passwordColumn && passwordColumn.notnull === 1) {
+      console.log('🔧 Updating users table to allow NULL passwords for OAuth users...');
+      
+      // SQLite doesn't support ALTER COLUMN, so we need to recreate the table
+      await db.run(`
+        CREATE TABLE users_new (
+          id TEXT PRIMARY KEY,
+          email TEXT UNIQUE NOT NULL,
+          password TEXT, -- Allow NULL for OAuth users
+          name TEXT NOT NULL,
+          role TEXT DEFAULT 'user' CHECK (role IN ('admin', 'manager', 'user')),
+          is_active BOOLEAN DEFAULT 1,
+          email_verified BOOLEAN DEFAULT 0,
+          last_login_at DATETIME,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
+      
+      // Copy existing data
+      await db.run(`
+        INSERT INTO users_new 
+        SELECT * FROM users
+      `);
+      
+      // Drop old table and rename new one
+      await db.run('DROP TABLE users');
+      await db.run('ALTER TABLE users_new RENAME TO users');
+      
+      console.log('✅ Users table updated successfully');
+    }
+
     // Clients table
     await db.run(`
       CREATE TABLE IF NOT EXISTS clients (
@@ -201,4 +253,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { createTables }; 
+module.exports = { createTables };
