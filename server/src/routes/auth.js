@@ -16,6 +16,13 @@ const googleConfig = {
   redirectUri: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/oauth/callback/google`
 };
 
+// GitHub OAuth configuration
+const githubConfig = {
+  clientId: process.env.GITHUB_CLIENT_ID,
+  clientSecret: process.env.GITHUB_CLIENT_SECRET,
+  redirectUri: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/oauth/callback/github`
+};
+
 // Create Google OAuth client
 const createGoogleOAuthClient = () => {
   return new google.auth.OAuth2(
@@ -376,21 +383,179 @@ router.post('/callback/google', async (req, res) => {
   }
 });
 
-// GitHub OAuth callback handlers (placeholder for future implementation)
+// GitHub OAuth - Get authorization URL
+router.get('/github/url', async (req, res) => {
+  try {
+    if (!githubConfig.clientId || !githubConfig.clientSecret) {
+      return res.status(500).json({ error: 'GitHub OAuth not configured' });
+    }
+
+    const scopes = ['user:email', 'read:user'];
+    const state = require('crypto').randomBytes(16).toString('hex'); // CSRF protection
+    
+    const authUrl = `https://github.com/login/oauth/authorize?` +
+      `client_id=${githubConfig.clientId}&` +
+      `redirect_uri=${encodeURIComponent(githubConfig.redirectUri)}&` +
+      `scope=${scopes.join(' ')}&` +
+      `state=${state}`;
+
+    res.json({ authUrl, state });
+  } catch (error) {
+    console.error('GitHub OAuth URL generation error:', error);
+    res.status(500).json({ error: 'Failed to generate GitHub OAuth URL' });
+  }
+});
+
+// GitHub OAuth callback
 router.post('/callback/github', async (req, res) => {
   try {
-    const { code } = req.body;
+    const { code, state } = req.body;
     
-    // TODO: Implement GitHub OAuth flow
-    // 1. Exchange code for access token
-    // 2. Get user profile from GitHub
-    // 3. Create or find user in database
-    // 4. Generate JWT token
+    if (!code) {
+      return res.status(400).json({ error: 'Authorization code is required' });
+    }
+
+    if (!githubConfig.clientId || !githubConfig.clientSecret) {
+      return res.status(500).json({ error: 'GitHub OAuth not configured' });
+    }
+
+    console.log('🔧 GitHub OAuth Debug:', {
+      clientId: githubConfig.clientId,
+      redirectUri: githubConfig.redirectUri,
+      codeReceived: !!code
+    });
+
+    // Exchange authorization code for access token
+    const tokenResponse = await fetch('https://github.com/login/oauth/access_token', {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        client_id: githubConfig.clientId,
+        client_secret: githubConfig.clientSecret,
+        code: code,
+        redirect_uri: githubConfig.redirectUri
+      })
+    });
+
+    if (!tokenResponse.ok) {
+      throw new Error(`GitHub token exchange failed: ${tokenResponse.statusText}`);
+    }
+
+    const tokenData = await tokenResponse.json();
     
-    res.status(501).json({ error: 'GitHub OAuth not yet implemented' });
+    if (tokenData.error) {
+      throw new Error(`GitHub OAuth error: ${tokenData.error_description || tokenData.error}`);
+    }
+
+    const accessToken = tokenData.access_token;
+
+    // Get user profile from GitHub
+    const userResponse = await fetch('https://api.github.com/user', {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Accept': 'application/vnd.github.v3+json',
+        'User-Agent': 'Benders-Workflow-App'
+      }
+    });
+
+    if (!userResponse.ok) {
+      throw new Error(`GitHub user API failed: ${userResponse.statusText}`);
+    }
+
+    const profile = await userResponse.json();
+
+    // Get user emails from GitHub (since email might be private)
+    const emailResponse = await fetch('https://api.github.com/user/emails', {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Accept': 'application/vnd.github.v3+json',
+        'User-Agent': 'Benders-Workflow-App'
+      }
+    });
+
+    let email = profile.email;
+    if (!email && emailResponse.ok) {
+      const emails = await emailResponse.json();
+      const primaryEmail = emails.find(e => e.primary) || emails[0];
+      email = primaryEmail?.email;
+    }
+
+    console.log('✅ GitHub Profile Retrieved:', {
+      login: profile.login,
+      name: profile.name,
+      email: email,
+      verified: true
+    });
+
+    if (!email) {
+      return res.status(400).json({ 
+        error: 'Unable to get email from GitHub profile. Please make sure your email is public or primary.' 
+      });
+    }
+
+    // Check if user already exists
+    let user = await User.findByEmail(email);
+    
+    if (!user) {
+      // Create new user from GitHub profile
+      user = new User({
+        email: email.toLowerCase(),
+        name: profile.name || profile.login || email.split('@')[0],
+        role: 'user', // Default role for OAuth users
+        emailVerified: true, // GitHub emails are considered verified
+        isActive: true
+      });
+      
+      // Don't set password for OAuth users
+      await user.save();
+      
+      console.log(`✓ Created new user from GitHub OAuth: ${email}`);
+    } else {
+      // Update last login for existing user
+      await user.updateLastLogin();
+      
+      // Update user info if changed
+      if (user.name !== profile.name && profile.name) {
+        user.name = profile.name;
+        await user.save();
+      }
+      
+      console.log(`✓ Existing user logged in via GitHub OAuth: ${email}`);
+    }
+
+    // Generate JWT token
+    const token = user.generateToken();
+
+    console.log('🎉 GitHub OAuth Success:', {
+      userId: user.id,
+      email: user.email,
+      tokenGenerated: !!token
+    });
+
+    res.json({
+      user: user.toSafeJSON(),
+      token,
+      expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+    });
   } catch (error) {
-    console.error('GitHub OAuth error:', error);
-    res.status(500).json({ error: 'GitHub OAuth failed' });
+    console.error('❌ GitHub OAuth callback error:', error);
+    
+    let errorMessage = 'GitHub authentication failed';
+    if (error.message?.includes('invalid_grant')) {
+      errorMessage = 'Authorization code expired. Please try again.';
+    } else if (error.message?.includes('redirect_uri_mismatch')) {
+      errorMessage = 'OAuth configuration error. Please contact support.';
+      console.error('🔴 Redirect URI Mismatch - Expected:', githubConfig.redirectUri);
+    } else if (error.message?.includes('invalid_client')) {
+      errorMessage = 'OAuth client configuration error. Please contact support.';
+    } else if (error.message?.includes('email')) {
+      errorMessage = 'Unable to access your email from GitHub. Please make sure your email is public.';
+    }
+    
+    res.status(500).json({ error: errorMessage });
   }
 });
 
