@@ -149,6 +149,24 @@ const createTables = async () => {
       )
     `);
 
+    // Task resources table
+    await db.run(`
+      CREATE TABLE IF NOT EXISTS task_resources (
+        id TEXT PRIMARY KEY,
+        task_id TEXT NOT NULL,
+        type TEXT NOT NULL CHECK (type IN ('document', 'link', 'image', 'file')),
+        title TEXT NOT NULL,
+        content TEXT, -- For documents, this stores HTML content
+        url TEXT, -- For links and files
+        file_name TEXT, -- Original file name
+        file_size INTEGER, -- File size in bytes
+        mime_type TEXT, -- File MIME type
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (task_id) REFERENCES kanban_tasks (id) ON DELETE CASCADE
+      )
+    `);
+
     // Insert default kanban columns
     const defaultColumns = [
       { id: 'todo', title: 'To Do', color: '#64748b', order_index: 1 },

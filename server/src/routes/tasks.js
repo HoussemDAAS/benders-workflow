@@ -1,6 +1,7 @@
 const express = require('express');
 const { body, validationResult } = require('express-validator');
 const KanbanTask = require('../models/KanbanTask');
+const TaskResource = require('../models/TaskResource');
 const Workflow = require('../models/Workflow');
 const Client = require('../models/Client');
 const { getDatabase } = require('../config/database');
@@ -487,5 +488,146 @@ router.delete('/columns/:id', async (req, res) => {
 
 // Legacy move-to-step endpoint removed
 router.patch('/:id/move-to-step', (req, res) => res.status(410).json({ error: 'Workflow steps feature removed' }));
+
+// =============================================================================
+// TASK RESOURCES ENDPOINTS
+// =============================================================================
+
+// Validation middleware for resources
+const validateResource = [
+  body('type').isIn(['document', 'link', 'image', 'file']).withMessage('Invalid resource type'),
+  body('title').trim().notEmpty().withMessage('Title is required'),
+  body('content').optional().trim(),
+  body('url').optional().trim(),
+  body('fileName').optional().trim(),
+  body('fileSize').optional().isInt({ min: 0 }),
+  body('mimeType').optional().trim(),
+];
+
+// GET /api/tasks/:id/resources - Get all resources for a task
+router.get('/:id/resources', async (req, res) => {
+  try {
+    // Verify task exists
+    const task = await KanbanTask.findById(req.params.id);
+    if (!task) {
+      return res.status(404).json({ error: 'Task not found' });
+    }
+
+    const resources = await TaskResource.findByTaskId(req.params.id);
+    res.json(resources);
+  } catch (error) {
+    console.error('Error fetching task resources:', error);
+    res.status(500).json({ error: 'Failed to fetch task resources' });
+  }
+});
+
+// POST /api/tasks/:id/resources - Create a new resource for a task
+router.post('/:id/resources', validateResource, async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    // Verify task exists
+    const task = await KanbanTask.findById(req.params.id);
+    if (!task) {
+      return res.status(404).json({ error: 'Task not found' });
+    }
+
+    const resource = new TaskResource({
+      taskId: req.params.id,
+      type: req.body.type,
+      title: req.body.title,
+      content: req.body.content,
+      url: req.body.url,
+      fileName: req.body.fileName,
+      fileSize: req.body.fileSize,
+      mimeType: req.body.mimeType
+    });
+
+    await resource.save(req.body.performedBy);
+    res.status(201).json(resource.toJSON());
+  } catch (error) {
+    console.error('Error creating task resource:', error);
+    res.status(500).json({ error: 'Failed to create task resource' });
+  }
+});
+
+// GET /api/tasks/:taskId/resources/:resourceId - Get a specific resource
+router.get('/:taskId/resources/:resourceId', async (req, res) => {
+  try {
+    const resource = await TaskResource.findById(req.params.resourceId);
+    if (!resource) {
+      return res.status(404).json({ error: 'Resource not found' });
+    }
+
+    // Verify resource belongs to the task
+    if (resource.taskId !== req.params.taskId) {
+      return res.status(404).json({ error: 'Resource not found for this task' });
+    }
+
+    res.json(resource.toJSON());
+  } catch (error) {
+    console.error('Error fetching task resource:', error);
+    res.status(500).json({ error: 'Failed to fetch task resource' });
+  }
+});
+
+// PUT /api/tasks/:taskId/resources/:resourceId - Update a resource
+router.put('/:taskId/resources/:resourceId', validateResource, async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    const resource = await TaskResource.findById(req.params.resourceId);
+    if (!resource) {
+      return res.status(404).json({ error: 'Resource not found' });
+    }
+
+    // Verify resource belongs to the task
+    if (resource.taskId !== req.params.taskId) {
+      return res.status(404).json({ error: 'Resource not found for this task' });
+    }
+
+    // Update resource properties
+    resource.type = req.body.type;
+    resource.title = req.body.title;
+    resource.content = req.body.content;
+    resource.url = req.body.url;
+    resource.fileName = req.body.fileName;
+    resource.fileSize = req.body.fileSize;
+    resource.mimeType = req.body.mimeType;
+
+    await resource.save(req.body.performedBy);
+    res.json(resource.toJSON());
+  } catch (error) {
+    console.error('Error updating task resource:', error);
+    res.status(500).json({ error: 'Failed to update task resource' });
+  }
+});
+
+// DELETE /api/tasks/:taskId/resources/:resourceId - Delete a resource
+router.delete('/:taskId/resources/:resourceId', async (req, res) => {
+  try {
+    const resource = await TaskResource.findById(req.params.resourceId);
+    if (!resource) {
+      return res.status(404).json({ error: 'Resource not found' });
+    }
+
+    // Verify resource belongs to the task
+    if (resource.taskId !== req.params.taskId) {
+      return res.status(404).json({ error: 'Resource not found for this task' });
+    }
+
+    await resource.delete(req.body.performedBy);
+    res.status(204).send();
+  } catch (error) {
+    console.error('Error deleting task resource:', error);
+    res.status(500).json({ error: 'Failed to delete task resource' });
+  }
+});
 
 module.exports = router; 
