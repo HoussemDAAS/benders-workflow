@@ -7,14 +7,16 @@ import {
   taskService,
   dashboardService,
   meetingService,
+  teamService,
 } from '../services';
-import { Client, Workflow, KanbanTask, Meeting, DashboardStats, KanbanColumn } from '../types';
+import { Client, Workflow, KanbanTask, Meeting, DashboardStats, KanbanColumn, TeamMember } from '../types';
 
 interface AppContextType {
   // Data
   clients: Client[];
   workflows: Workflow[];
   meetings: Meeting[];
+  teamMembers: TeamMember[];
   kanbanColumns: KanbanColumn[];
   kanbanTasks: KanbanTask[];
   dashboardStats: DashboardStats;
@@ -40,6 +42,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   const apiCallFunctions = useMemo(() => ({
     clients: () => clientService.getAll(),
     workflows: () => workflowService.getAll(),
+    teamMembers: () => teamService.getAll(),
     kanbanColumns: () => taskService.getColumns(),
     kanbanTasks: () => taskService.getAll(),
     meetings: () => meetingService.getAll(),
@@ -62,6 +65,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     const clients = data?.clients || [];
     const workflows = data?.workflows || [];
     const meetings = data?.meetings || [];
+    const teamMembers = data?.teamMembers || [];
     const kanbanColumns = data?.kanbanColumns || [
       { id: 'todo', title: 'To Do', color: '#64748b', order: 1 },
       { id: 'in-progress', title: 'In Progress', color: '#3b82f6', order: 2 },
@@ -81,6 +85,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
       clients,
       workflows,
       meetings,
+      teamMembers,
       kanbanColumns,
       kanbanTasks,
       dashboardStats,

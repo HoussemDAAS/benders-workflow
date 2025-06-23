@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 
 // Context
@@ -13,6 +13,7 @@ import { Sidebar } from './components/Sidebar';
 import { LoadingCard } from './components/LoadingSpinner';
 import { ErrorCard } from './components/ErrorMessage';
 import { WorkspaceSelector } from './components/WorkspaceSelector';
+import { EnhancedToolbar } from './components/EnhancedToolbar';
 
 // Pages
 import { AuthPage } from './components/AuthPage';
@@ -48,11 +49,12 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
 
 // Layout component that handles loading and error states
 const AppLayout: React.FC = () => {
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { loading, error, refresh } = useAppContext();
 
   if (loading) {
     return (
-      <div className="flex h-screen bg-gray-50">
+      <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
         <Sidebar />
         <main className="flex-1 overflow-auto">
           <LoadingCard message="Loading application data..." />
@@ -63,7 +65,7 @@ const AppLayout: React.FC = () => {
 
   if (error) {
     return (
-      <div className="flex h-screen bg-gray-50">
+      <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
         <Sidebar />
         <main className="flex-1 overflow-auto">
           <ErrorCard error={error} onRetry={refresh} />
@@ -73,10 +75,14 @@ const AppLayout: React.FC = () => {
   }
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
       <Sidebar />
-      <main className="flex-1 overflow-auto">
-        <div className="h-full">
+      <main className="flex-1 overflow-auto flex flex-col">
+        <EnhancedToolbar 
+          onMobileMenuToggle={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+          isMobileMenuOpen={isMobileMenuOpen}
+        />
+        <div className="flex-1 overflow-auto">
           <Routes>
             <Route path="dashboard" element={
               <ProtectedRoute>
