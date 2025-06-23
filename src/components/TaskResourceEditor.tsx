@@ -167,7 +167,16 @@ export function TaskResourceEditor({ task, isOpen, onClose, onSave }: TaskResour
       onSave?.(task.id, updatedResources);
     } catch (error) {
       console.error('Failed to save resource:', error);
-      // You might want to show a toast notification here
+      
+      // Show user-friendly error message
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      if (errorMessage.includes('Task not found') || errorMessage.includes('Resource not found')) {
+        alert('Error: This task or resource no longer exists. Please refresh the page and try again.');
+      } else if (errorMessage.includes('request entity too large')) {
+        alert('Error: The document is too large to save. Please reduce the content size.');
+      } else {
+        alert('Error: Failed to save the document. Please try again.');
+      }
     }
   };
 
