@@ -3,6 +3,7 @@ const { body, validationResult } = require('express-validator');
 const { google } = require('googleapis');
 const User = require('../models/User');
 const { createAuthRateLimit } = require('../middleware/auth');
+const emailService = require('../services/emailService');
 const router = express.Router();
 
 // Rate limiting for auth endpoints
@@ -107,24 +108,49 @@ router.post('/magic-link', magicLinkRateLimit, validateMagicLink, async (req, re
     const user = await User.findByEmail(email);
     if (!user) {
       // Don't reveal that user doesn't exist for security
-      return res.json({ message: 'If an account exists with this email, a magic link has been sent.' });
+      return res.json({ 
+        message: 'If an account exists with this email, a magic link has been sent.',
+        success: true 
+      });
     }
 
-    // Generate magic link token
+    // Check if user is active
+    if (!user.isActive) {
+      return res.json({ 
+        message: 'If an account exists with this email, a magic link has been sent.',
+        success: true 
+      });
+    }
+
+    // Generate magic link token (expires in 15 minutes)
     const magicToken = user.generateMagicLinkToken();
     const magicLink = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/auth/verify?token=${magicToken}`;
 
-    // In a real app, you would send this via email
-    // For now, we'll log it to console for testing
-    console.log('🔗 Magic Link for', email, ':', magicLink);
+    try {
+      // Send professional magic link email
+      await emailService.sendMagicLinkEmail(user.email, magicLink, user.name);
+    } catch (emailError) {
+      console.error('Failed to send magic link email:', emailError.message);
+      
+      // In development, show the link in console as fallback
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`\nDevelopment Magic Link for ${email}: ${magicLink}\n`);
+      }
+    }
 
-    // TODO: Implement actual email sending
-    // await sendMagicLinkEmail(user.email, magicLink);
+    res.json({ 
+      message: 'If an account exists with this email, a magic link has been sent.',
+      success: true,
+      // In development, include the link for easy testing
+      ...(process.env.NODE_ENV === 'development' && { 
+        developmentLink: magicLink,
+        expiresIn: '15 minutes'
+      })
+    });
 
-    res.json({ message: 'If an account exists with this email, a magic link has been sent.' });
   } catch (error) {
     console.error('Magic link error:', error);
-    res.status(500).json({ error: 'Failed to send magic link' });
+    res.status(500).json({ error: 'Failed to process magic link request' });
   }
 });
 
@@ -324,8 +350,10 @@ router.post('/callback/google', async (req, res) => {
 
     // Check if user already exists
     let user = await User.findByEmail(profile.email);
+    let isNewUser = false;
     
     if (!user) {
+      isNewUser = true;
       // Create new user from Google profile
       user = new User({
         email: profile.email.toLowerCase(),
@@ -339,6 +367,14 @@ router.post('/callback/google', async (req, res) => {
       await user.save();
       
       console.log(`✓ Created new user from Google OAuth: ${profile.email}`);
+      
+      // Send welcome email for new users
+      try {
+        await emailService.sendWelcomeEmail(user.email, user.name, true);
+        console.log(`✅ Welcome email sent to new Google user: ${user.email}`);
+      } catch (emailError) {
+        console.error('❌ Failed to send welcome email:', emailError.message);
+      }
     } else {
       // Update last login for existing user
       await user.updateLastLogin();
@@ -358,6 +394,7 @@ router.post('/callback/google', async (req, res) => {
     console.log('🎉 Google OAuth Success:', {
       userId: user.id,
       email: user.email,
+      isNewUser,
       tokenGenerated: !!token
     });
 
@@ -498,8 +535,10 @@ router.post('/callback/github', async (req, res) => {
 
     // Check if user already exists
     let user = await User.findByEmail(email);
+    let isNewUser = false;
     
     if (!user) {
+      isNewUser = true;
       // Create new user from GitHub profile
       user = new User({
         email: email.toLowerCase(),
@@ -513,6 +552,14 @@ router.post('/callback/github', async (req, res) => {
       await user.save();
       
       console.log(`✓ Created new user from GitHub OAuth: ${email}`);
+      
+      // Send welcome email for new users
+      try {
+        await emailService.sendWelcomeEmail(user.email, user.name, true);
+        console.log(`✅ Welcome email sent to new GitHub user: ${user.email}`);
+      } catch (emailError) {
+        console.error('❌ Failed to send welcome email:', emailError.message);
+      }
     } else {
       // Update last login for existing user
       await user.updateLastLogin();
@@ -532,6 +579,7 @@ router.post('/callback/github', async (req, res) => {
     console.log('🎉 GitHub OAuth Success:', {
       userId: user.id,
       email: user.email,
+      isNewUser,
       tokenGenerated: !!token
     });
 

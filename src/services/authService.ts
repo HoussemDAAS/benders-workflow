@@ -27,7 +27,7 @@ interface AuthResponse {
 }
 
 class AuthService {
-  private baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001'
+  private baseUrl = 'http://localhost:3001'
   private tokenKey = 'auth-token'
   private userKey = 'auth-user'
 
@@ -64,7 +64,7 @@ class AuthService {
   // Email/Password login
   async loginWithEmail(credentials: LoginCredentials): Promise<AuthUser> {
     try {
-      const response = await fetch(`${this.baseUrl}/auth/login`, {
+      const response = await fetch(`${this.baseUrl}/api/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -114,20 +114,26 @@ class AuthService {
   // Magic link login
   async sendMagicLink(email: string): Promise<void> {
     try {
-      const response = await fetch(`${this.baseUrl}/auth/magic-link`, {
+      const response = await fetch(`${this.baseUrl}/api/auth/magic-link`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ email }),
       })
-
+      
       if (!response.ok) {
-        const error = await response.json()
+        const errorText = await response.text()
+        let error
+        try {
+          error = JSON.parse(errorText)
+        } catch {
+          error = { message: errorText }
+        }
         throw new Error(error.message || 'Failed to send magic link')
       }
     } catch (error) {
-      console.error('Magic link error:', error)
+      console.error('Magic link request failed:', error)
       throw error
     }
   }
@@ -135,7 +141,7 @@ class AuthService {
   // Verify magic link
   async verifyMagicLink(token: string): Promise<AuthUser> {
     try {
-      const response = await fetch(`${this.baseUrl}/auth/verify-magic-link`, {
+      const response = await fetch(`${this.baseUrl}/api/auth/verify-magic-link`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -161,7 +167,7 @@ class AuthService {
   async loginWithGoogle(): Promise<void> {
     try {
       // Get Google OAuth URL from our backend
-      const response = await fetch(`${this.baseUrl}/auth/google/url`)
+      const response = await fetch(`${this.baseUrl}/api/auth/google/url`)
       
       if (!response.ok) {
         const error = await response.json()
@@ -182,7 +188,7 @@ class AuthService {
   async loginWithGitHub(): Promise<void> {
     try {
       // Get GitHub OAuth URL from our backend
-      const response = await fetch(`${this.baseUrl}/auth/github/url`)
+      const response = await fetch(`${this.baseUrl}/api/auth/github/url`)
       
       if (!response.ok) {
         const error = await response.json()
@@ -202,7 +208,7 @@ class AuthService {
   // Handle OAuth callback
   async handleOAuthCallback(provider: string, code: string): Promise<AuthUser> {
     try {
-      const response = await fetch(`${this.baseUrl}/auth/callback/${provider}`, {
+      const response = await fetch(`${this.baseUrl}/api/auth/callback/${provider}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -229,7 +235,7 @@ class AuthService {
     try {
       const token = this.getToken()
       if (token) {
-        await fetch(`${this.baseUrl}/auth/logout`, {
+        await fetch(`${this.baseUrl}/api/auth/logout`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -249,7 +255,7 @@ class AuthService {
       const token = this.getToken()
       if (!token) return null
 
-      const response = await fetch(`${this.baseUrl}/auth/me`, {
+      const response = await fetch(`${this.baseUrl}/api/auth/me`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
