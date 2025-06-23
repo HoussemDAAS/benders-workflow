@@ -1,6 +1,7 @@
 export { apiService, ApiError } from './api';
 export { clientService } from './clientService';
 export { taskService } from './taskService';
+export { taskResourceService } from './taskResourceService';
 export { workflowService } from './workflowService';
 export { teamService } from './teamService'; // Re-export the mock teamService
 export { dashboardService } from './dashboardService';
@@ -15,6 +16,12 @@ export type {
   CreateTaskRequest,
   UpdateTaskRequest
 } from './taskService';
+
+export type {
+  TaskResource,
+  CreateTaskResourceRequest,
+  UpdateTaskResourceRequest
+} from './taskResourceService';
 
 export type {
   CreateWorkflowRequest,
