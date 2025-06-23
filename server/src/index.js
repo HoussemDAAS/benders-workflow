@@ -12,6 +12,7 @@ const { createTables } = require('./scripts/initDatabase');
 
 // Import route handlers
 const authRoutes = require('./routes/auth');
+const workspacesRoutes = require('./routes/workspaces');
 const clientsRoutes = require('./routes/clients');
 const workflowsRoutes = require('./routes/workflows');
 const tasksRoutes = require('./routes/tasks');
@@ -61,6 +62,7 @@ app.get('/health', (req, res) => {
 
 // API routes
 app.use('/api/auth', authRoutes);
+app.use('/api/workspaces', workspacesRoutes);
 app.use('/api/clients', clientsRoutes);
 app.use('/api/workflows', workflowsRoutes);
 app.use('/api/tasks', tasksRoutes);
@@ -76,6 +78,7 @@ app.get('/api', (req, res) => {
     description: 'Backend API for the Benders Workflow Management System',
     endpoints: {
       auth: '/api/auth',
+      workspaces: '/api/workspaces',
       clients: '/api/clients',
       workflows: '/api/workflows',
       tasks: '/api/tasks',

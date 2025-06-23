@@ -1,4 +1,5 @@
 export { apiService, ApiError } from './api';
+export { workspaceService } from './workspaceService';
 export { clientService } from './clientService';
 export { taskService } from './taskService';
 export { taskResourceService } from './taskResourceService';
@@ -6,6 +7,13 @@ export { workflowService } from './workflowService';
 export { teamService } from './teamService'; // Re-export the mock teamService
 export { dashboardService } from './dashboardService';
 export { meetingService } from './meetingService';
+
+export type {
+  CreateWorkspaceData,
+  JoinWorkspaceData,
+  UpdateWorkspaceData,
+  AddMemberData
+} from './workspaceService';
 
 export type {
   CreateClientRequest,

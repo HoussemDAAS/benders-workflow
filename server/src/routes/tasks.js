@@ -4,6 +4,8 @@ const KanbanTask = require('../models/KanbanTask');
 const TaskResource = require('../models/TaskResource');
 const Workflow = require('../models/Workflow');
 const Client = require('../models/Client');
+const { authenticate } = require('../middleware/auth');
+const { requireWorkspace } = require('../middleware/workspace');
 const { getDatabase } = require('../config/database');
 const router = express.Router();
 const ActivityLogger = require('../models/ActivityLogger');
@@ -161,11 +163,11 @@ router.get('/by-client/:clientId', async (req, res) => {
   }
 });
 
-// GET /api/tasks/columns - Get kanban columns
-router.get('/columns', async (req, res) => {
+// GET /api/tasks/columns - Get kanban columns for workspace
+router.get('/columns', authenticate, requireWorkspace, async (req, res) => {
   try {
     const db = getDatabase();
-    const columns = await db.all('SELECT * FROM kanban_columns ORDER BY order_index');
+    const columns = await db.all('SELECT * FROM kanban_columns WHERE workspace_id = ? ORDER BY order_index', [req.workspaceId]);
     res.json(columns);
   } catch (error) {
     console.error('Error fetching kanban columns:', error);
