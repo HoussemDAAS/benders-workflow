@@ -11,6 +11,7 @@ import { LoadingCard } from './components/LoadingSpinner';
 import { ErrorCard } from './components/ErrorMessage';
 
 // Pages
+import { LoginPage } from './components/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import WorkflowsPage from './pages/WorkflowsPage';
 import KanbanPage from './pages/KanbanPage';
@@ -50,7 +51,6 @@ const AppLayout: React.FC = () => {
       <main className="flex-1 overflow-auto">
         <div className="h-full">
           <Routes>
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/workflows" element={<WorkflowsPage />} />
             <Route path="/kanban" element={<KanbanPage />} />
@@ -69,9 +69,20 @@ const AppLayout: React.FC = () => {
 export default function App() {
   return (
     <Router>
-      <AppProvider>
-        <AppLayout />
-      </AppProvider>
+      <Routes>
+        {/* Public Routes (No Sidebar) */}
+        <Route path="/login" element={<LoginPage />} />
+        
+        {/* Protected Routes (With Sidebar and App Context) */}
+        <Route path="/*" element={
+          <AppProvider>
+            <Routes>
+              <Route path="/" element={<Navigate to="/dashboard" replace />} />
+              <Route path="/*" element={<AppLayout />} />
+            </Routes>
+          </AppProvider>
+        } />
+      </Routes>
     </Router>
   );
 }
