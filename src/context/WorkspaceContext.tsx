@@ -8,6 +8,7 @@ interface WorkspaceContextType {
   workspaces: Workspace[]
   isLoading: boolean
   error: string | null
+  workspaceChanged: number // Increment when workspace changes to trigger re-renders
   
   // Actions
   createWorkspace: (data: CreateWorkspaceData) => Promise<Workspace>
@@ -24,6 +25,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   const [workspaces, setWorkspaces] = useState<Workspace[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [workspaceChanged, setWorkspaceChanged] = useState(0)
   const { isAuthenticated } = useAuth()
 
   // Load workspaces on auth change
@@ -114,8 +116,15 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   }
 
   const selectWorkspace = (workspace: Workspace) => {
+    const previousWorkspaceId = currentWorkspace?.id
     setCurrentWorkspace(workspace)
     localStorage.setItem('current-workspace-id', workspace.id)
+    
+    // Trigger workspace change event if workspace actually changed
+    if (previousWorkspaceId !== workspace.id) {
+      setWorkspaceChanged(prev => prev + 1)
+      console.log('🔄 Workspace changed to:', workspace.name)
+    }
   }
 
   const refreshWorkspaces = async () => {
@@ -131,6 +140,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     workspaces,
     isLoading,
     error,
+    workspaceChanged,
     createWorkspace,
     joinWorkspace,
     selectWorkspace,

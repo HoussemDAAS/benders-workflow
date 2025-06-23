@@ -33,6 +33,7 @@ export function Sidebar({ onNewTask }: SidebarProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isWorkspaceDropdownOpen, setIsWorkspaceDropdownOpen] = useState(false);
+  const [isWorkspaceSwitching, setIsWorkspaceSwitching] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Get current view from URL path
@@ -69,9 +70,21 @@ export function Sidebar({ onNewTask }: SidebarProps) {
     }
   };
 
-  const handleWorkspaceSelect = (workspace: typeof currentWorkspace) => {
-    if (workspace) {
-      selectWorkspace(workspace);
+  const handleWorkspaceSelect = async (workspace: typeof currentWorkspace) => {
+    if (workspace && workspace.id !== currentWorkspace?.id) {
+      setIsWorkspaceSwitching(true);
+      try {
+        selectWorkspace(workspace);
+        setIsWorkspaceDropdownOpen(false);
+        setIsMobileMenuOpen(false); // Also close mobile menu if open
+        
+        // Add a small delay to show loading state
+        setTimeout(() => setIsWorkspaceSwitching(false), 1000);
+      } catch (error) {
+        console.error('Error switching workspace:', error);
+        setIsWorkspaceSwitching(false);
+      }
+    } else {
       setIsWorkspaceDropdownOpen(false);
     }
   };
@@ -161,11 +174,18 @@ export function Sidebar({ onNewTask }: SidebarProps) {
             onClick={() => setIsWorkspaceDropdownOpen(!isWorkspaceDropdownOpen)}
           >
             <div className="w-6 h-6 bg-white/20 rounded-lg flex items-center justify-center group-hover:bg-white/30 transition-colors">
-              <Building2 size={14} />
+              {isWorkspaceSwitching ? (
+                <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+              ) : (
+                <Building2 size={14} />
+              )}
             </div>
             <div className="flex-1 text-left">
               <span className="text-sm block truncate">
-                {currentWorkspace?.name || 'Select Workspace'}
+                {isWorkspaceSwitching 
+                  ? 'Switching...' 
+                  : currentWorkspace?.name || 'Select Workspace'
+                }
               </span>
             </div>
             <ChevronDown 
