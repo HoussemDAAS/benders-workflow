@@ -13,8 +13,9 @@ import { LoadingCard } from './components/LoadingSpinner';
 import { ErrorCard } from './components/ErrorMessage';
 
 // Pages
-import { LoginPage } from './components/LoginPage';
+import { LoginPage } from './pages/LoginPage';
 import { OAuthCallbackPage } from './pages/OAuthCallbackPage';
+import { MagicLinkVerificationPage } from './pages/MagicLinkVerificationPage';
 import DashboardPage from './pages/DashboardPage';
 import WorkflowsPage from './pages/WorkflowsPage';
 import KanbanPage from './pages/KanbanPage';
@@ -115,6 +116,7 @@ export default function App() {
         <Routes>
           {/* Public Routes (No Sidebar) */}
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/auth/verify" element={<MagicLinkVerificationPage />} />
           <Route path="/oauth/callback" element={<OAuthCallbackPage />} />
           <Route path="/oauth/callback/google" element={<OAuthCallbackPage />} />
           <Route path="/oauth/callback/github" element={<OAuthCallbackPage />} />
