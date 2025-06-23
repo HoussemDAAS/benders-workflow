@@ -5,6 +5,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { AppProvider } from './context/AppContext';
 import { AuthProvider } from './context/AuthContext';
 import { useAppContext } from './hooks/useAppContext';
+import { useAuth } from './hooks/useAuth';
 
 // Components
 import { Sidebar } from './components/Sidebar';
@@ -13,6 +14,7 @@ import { ErrorCard } from './components/ErrorMessage';
 
 // Pages
 import { LoginPage } from './components/LoginPage';
+import { OAuthCallbackPage } from './pages/OAuthCallbackPage';
 import DashboardPage from './pages/DashboardPage';
 import WorkflowsPage from './pages/WorkflowsPage';
 import KanbanPage from './pages/KanbanPage';
@@ -22,9 +24,16 @@ import MeetingsPage from './pages/MeetingsPage';
 
 // Protected Route Component
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // For now, we'll allow access (until backend is ready)
-  // Later this will check authentication properly
-  
+  const { isAuthenticated, isLoading } = useAuth();
+
+  if (isLoading) {
+    return <LoadingCard message="Checking authentication..." />;
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
   return <>{children}</>;
 };
 
@@ -106,6 +115,9 @@ export default function App() {
         <Routes>
           {/* Public Routes (No Sidebar) */}
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/oauth/callback" element={<OAuthCallbackPage />} />
+          <Route path="/oauth/callback/google" element={<OAuthCallbackPage />} />
+          <Route path="/oauth/callback/github" element={<OAuthCallbackPage />} />
           
           {/* Protected Routes (With Sidebar and App Context) */}
           <Route path="/*" element={

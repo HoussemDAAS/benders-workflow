@@ -1,4 +1,4 @@
-require('dotenv').config();
+require('dotenv').config({ path: '../.env' });
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -11,6 +11,7 @@ const { getDatabase } = require('./config/database');
 const { createTables } = require('./scripts/initDatabase');
 
 // Import route handlers
+const authRoutes = require('./routes/auth');
 const clientsRoutes = require('./routes/clients');
 const workflowsRoutes = require('./routes/workflows');
 const tasksRoutes = require('./routes/tasks');
@@ -59,6 +60,7 @@ app.get('/health', (req, res) => {
 });
 
 // API routes
+app.use('/api/auth', authRoutes);
 app.use('/api/clients', clientsRoutes);
 app.use('/api/workflows', workflowsRoutes);
 app.use('/api/tasks', tasksRoutes);
@@ -73,6 +75,7 @@ app.get('/api', (req, res) => {
     version: '1.0.0',
     description: 'Backend API for the Benders Workflow Management System',
     endpoints: {
+      auth: '/api/auth',
       clients: '/api/clients',
       workflows: '/api/workflows',
       tasks: '/api/tasks',
@@ -82,6 +85,14 @@ app.get('/api', (req, res) => {
     },
     documentation: {
       health: 'GET /health',
+      auth: {
+        'Login': 'POST /api/auth/login',
+        'Magic Link': 'POST /api/auth/magic-link',
+        'Verify Magic Link': 'POST /api/auth/verify-magic-link',
+        'Register': 'POST /api/auth/register',
+        'Get Current User': 'GET /api/auth/me',
+        'Logout': 'POST /api/auth/logout'
+      },
       clients: {
         'Get all clients': 'GET /api/clients',
         'Get client by ID': 'GET /api/clients/:id',
