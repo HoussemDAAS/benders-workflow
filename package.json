@@ -12,15 +12,20 @@
     "@auth/prisma-adapter": "^2.10.0",
     "@types/nodemailer": "^6.4.17",
     "@types/react-router-dom": "^5.3.3",
-    "@xyflow/react": "^12.5.1",
+    "@xyflow/react": "^12.7.0",
     "date-fns": "^2.30.0",
     "lucide-react": "^0.294.0",
+
     "next-auth": "^4.24.11",
     "nodemailer": "^6.10.1",
+
+    "quill": "^2.0.3",
+
     "react": "^18.2.0",
     "react-dnd": "^16.0.1",
     "react-dnd-html5-backend": "^16.0.1",
     "react-dom": "^18.2.0",
+    "react-quill": "^2.0.0",
     "react-router-dom": "^7.6.2",
     "uuid": "^9.0.1"
   },
