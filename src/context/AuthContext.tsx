@@ -1,11 +1,12 @@
 import React, { createContext, useEffect, useState } from 'react'
-import { authService, type AuthUser, type LoginCredentials } from '../services/authService'
+import { authService, type AuthUser, type LoginCredentials, type RegisterCredentials } from '../services/authService'
 
 interface AuthContextType {
   user: AuthUser | null
   isLoading: boolean
   isAuthenticated: boolean
   loginWithEmail: (credentials: LoginCredentials) => Promise<AuthUser>
+  register: (credentials: RegisterCredentials) => Promise<AuthUser>
   loginWithGoogle: () => Promise<void>
   loginWithGitHub: () => Promise<void>
   sendMagicLink: (email: string) => Promise<void>
@@ -48,6 +49,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return user
     } catch (error) {
       console.error('Email login error:', error)
+      throw error
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const register = async (credentials: RegisterCredentials): Promise<AuthUser> => {
+    setIsLoading(true)
+    try {
+      const user = await authService.register(credentials)
+      setUser(user)
+      return user
+    } catch (error) {
+      console.error('Registration error:', error)
       throw error
     } finally {
       setIsLoading(false)
@@ -118,6 +133,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     isLoading,
     isAuthenticated: !!user,
     loginWithEmail,
+    register,
     loginWithGoogle,
     loginWithGitHub,
     sendMagicLink,

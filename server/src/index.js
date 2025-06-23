@@ -171,13 +171,6 @@ async function startServer() {
     console.log('Initializing database...');
     await createTables();
     
-    // Seed test data in development
-    if (process.env.NODE_ENV !== 'production') {
-      console.log('Seeding test data for development...');
-      const { seedTestData } = require('./scripts/seedTestData');
-      await seedTestData();
-    }
-    
     console.log('Database initialized successfully!');
     
     // Start the server

@@ -15,7 +15,8 @@ import { ErrorCard } from './components/ErrorMessage';
 import { WorkspaceSelector } from './components/WorkspaceSelector';
 
 // Pages
-import { LoginPage } from './components/LoginPage';
+import { AuthPage } from './components/AuthPage';
+import { LandingPage } from './components/LandingPage';
 import { OAuthCallbackPage } from './pages/OAuthCallbackPage';
 import DashboardPage from './pages/DashboardPage';
 import WorkflowsPage from './pages/WorkflowsPage';
@@ -77,38 +78,39 @@ const AppLayout: React.FC = () => {
       <main className="flex-1 overflow-auto">
         <div className="h-full">
           <Routes>
-            <Route path="/dashboard" element={
+            <Route path="dashboard" element={
               <ProtectedRoute>
                 <DashboardPage />
               </ProtectedRoute>
             } />
-            <Route path="/workflows" element={
+            <Route path="workflows" element={
               <ProtectedRoute>
                 <WorkflowsPage />
               </ProtectedRoute>
             } />
-            <Route path="/kanban" element={
+            <Route path="kanban" element={
               <ProtectedRoute>
                 <KanbanPage />
               </ProtectedRoute>
             } />
-            <Route path="/team" element={
+            <Route path="team" element={
               <ProtectedRoute>
                 <TeamPage />
               </ProtectedRoute>
             } />
-            <Route path="/clients" element={
+            <Route path="clients" element={
               <ProtectedRoute>
                 <ClientsPage />
               </ProtectedRoute>
             } />
-            <Route path="/meetings" element={
+            <Route path="meetings" element={
               <ProtectedRoute>
                 <MeetingsPage />
               </ProtectedRoute>
             } />
-            {/* Catch all route - redirect to dashboard */}
-            <Route path="*" element={<Navigate to="/dashboard" replace />} />
+            {/* Default route - redirect to dashboard */}
+            <Route path="" element={<Navigate to="dashboard" replace />} />
+            <Route path="*" element={<Navigate to="dashboard" replace />} />
           </Routes>
         </div>
       </main>
@@ -123,18 +125,18 @@ export default function App() {
         <Router>
           <Routes>
             {/* Public Routes (No Sidebar) */}
-            <Route path="/login" element={<LoginPage />} />
+            <Route path="/" element={<LandingPage />} />
+            <Route path="/login" element={<AuthPage />} />
+            <Route path="/signup" element={<AuthPage />} />
+            <Route path="/auth" element={<AuthPage />} />
             <Route path="/oauth/callback" element={<OAuthCallbackPage />} />
             <Route path="/oauth/callback/google" element={<OAuthCallbackPage />} />
             <Route path="/oauth/callback/github" element={<OAuthCallbackPage />} />
             
             {/* Protected Routes (With Sidebar and App Context) */}
-            <Route path="/*" element={
+            <Route path="/app/*" element={
               <AppProvider>
-                <Routes>
-                  <Route path="/" element={<Navigate to="/dashboard" replace />} />
-                  <Route path="/*" element={<AppLayout />} />
-                </Routes>
+                <AppLayout />
               </AppProvider>
             } />
           </Routes>

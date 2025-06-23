@@ -37,7 +37,7 @@ export function Sidebar({ onNewTask }: SidebarProps) {
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Get current view from URL path
-  const currentView = location.pathname.slice(1) || 'dashboard';
+  const currentView = location.pathname.replace('/app/', '') || 'dashboard';
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -54,12 +54,12 @@ export function Sidebar({ onNewTask }: SidebarProps) {
   }, []);
 
   const handleViewChange = (view: string) => {
-    navigate(`/${view}`);
+    navigate(`/app/${view}`);
     setIsMobileMenuOpen(false);
   };
 
   const handleNewWorkflow = () => {
-    navigate('/workflows');
+    navigate('/app/workflows');
     setIsMobileMenuOpen(false);
   };
 
@@ -93,7 +93,7 @@ export function Sidebar({ onNewTask }: SidebarProps) {
     setIsLoggingOut(true);
     try {
       await logout();
-      navigate('/login');
+      navigate('/');
     } catch (error) {
       console.error('Logout error:', error);
     } finally {
@@ -152,7 +152,7 @@ export function Sidebar({ onNewTask }: SidebarProps) {
             </div>
             <div>
               <h1 className="text-lg font-bold text-white">
-                WorkflowPro
+                Benders
               </h1>
             </div>
           </div>

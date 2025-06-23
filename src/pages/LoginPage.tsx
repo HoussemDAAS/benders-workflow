@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { 
   Mail, 
   Lock, 
@@ -79,7 +79,7 @@ const LoginPage: React.FC = () => {
       console.log('Login attempt:', formData);
       
       // Navigate to dashboard on successful login
-      navigate('/dashboard');
+              navigate('/app/dashboard');
       
     } catch (error) {
       console.error('Login failed:', error);
@@ -305,9 +305,9 @@ const LoginPage: React.FC = () => {
             <div className="mt-5 lg:mt-6 text-center">
               <p className="text-gray-600 text-sm lg:text-base">
                 Don't have an account?{' '}
-                <button className="text-primary hover:text-primary/80 font-semibold transition-colors">
-                  Contact Admin
-                </button>
+                <Link to="/signup" className="text-primary hover:text-primary/80 font-semibold transition-colors">
+                  Sign Up
+                </Link>
               </p>
             </div>
           </div>
