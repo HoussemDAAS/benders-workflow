@@ -148,12 +148,23 @@ class AuthService {
 
   // GitHub OAuth login
   async loginWithGitHub(): Promise<void> {
-    const githubAuthUrl = `https://github.com/login/oauth/authorize?` +
-      `client_id=${import.meta.env.VITE_GITHUB_CLIENT_ID}&` +
-      `redirect_uri=${encodeURIComponent(window.location.origin + '/auth/callback/github')}&` +
-      `scope=user:email`
-
-    window.location.href = githubAuthUrl
+    try {
+      // Get GitHub OAuth URL from our backend
+      const response = await fetch(`${this.baseUrl}/auth/github/url`)
+      
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to get GitHub OAuth URL')
+      }
+      
+      const { authUrl } = await response.json()
+      
+      // Redirect to GitHub OAuth
+      window.location.href = authUrl
+    } catch (error) {
+      console.error('GitHub OAuth URL error:', error)
+      throw error
+    }
   }
 
   // Handle OAuth callback
