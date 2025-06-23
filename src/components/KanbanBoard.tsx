@@ -54,7 +54,8 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, teamMembers, onEdit }) => {
     }),
   }));
 
-  const assignedMemberNames = task.assignedMembers
+  // TODO: Add null checks for teamMembers during user auth implementation
+  const assignedMemberNames = task.assignedMembers && teamMembers && Array.isArray(teamMembers)
     ? task.assignedMembers
         .map(memberId => teamMembers.find(m => m.id === memberId)?.name)
         .filter(Boolean)

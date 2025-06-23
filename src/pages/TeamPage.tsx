@@ -7,7 +7,8 @@ import { useTeamActions } from '../hooks/useTeamActions';
 import { TeamMember } from '../types';
 
 const TeamPage: React.FC = () => {
-  const { teamMembers, workflows, kanbanTasks } = useAppContext();
+  // const { teamMembers, workflows, kanbanTasks } = useAppContext(); // TODO: Removed teamMembers for user auth implementation
+  const { workflows, kanbanTasks } = useAppContext();
   const { createTeamMember, updateTeamMember, deleteTeamMember, updateTeamMemberStatus } = useTeamActions();
   
   // Team member modal state
@@ -54,9 +55,7 @@ const TeamPage: React.FC = () => {
   return (
     <>
       <TeamView
-        teamMembers={teamMembers}
-        workflows={workflows}
-        tasks={kanbanTasks}
+        teamMembers={[]} // TODO: Pass empty array during user auth implementation
         onMemberCreate={handleMemberCreate}
         onMemberEdit={handleMemberEdit}
         onMemberDelete={deleteTeamMember}

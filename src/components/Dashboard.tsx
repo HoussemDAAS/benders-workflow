@@ -34,16 +34,17 @@ export function Dashboard({
 }: DashboardProps) {
   // Calculate trends based on actual data relationships
   const calculateTrends = () => {
-    const activeClients = recentClients.filter(client => client.isActive).length;
+    const activeClients = recentClients?.filter(client => client.isActive).length || 0;
     const clientUtilization = stats.totalClients > 0 ? (activeClients / stats.totalClients) * 100 : 0;
     
-    const workflowsWithProgress = activeWorkflows.filter(workflow => {
+    const workflowsWithProgress = activeWorkflows?.filter(workflow => {
       const steps = workflow.steps || [];
       return steps.some(step => step.status === 'completed');
-    }).length;
+    }).length || 0;
     const workflowProgress = stats.activeWorkflows > 0 ? (workflowsWithProgress / stats.activeWorkflows) * 100 : 0;
     
-    const activeTeamMembers = teamMembers.filter(member => member.isActive).length;
+    // TODO: Temporarily handle teamMembers as empty array for user auth implementation
+    const activeTeamMembers = (teamMembers || []).filter(member => member.isActive).length;
     const teamUtilization = stats.teamMembers > 0 ? (activeTeamMembers / stats.teamMembers) * 100 : 0;
     
     const tasksPerWorkflow = stats.activeWorkflows > 0 ? stats.completedTasks / stats.activeWorkflows : 0;
