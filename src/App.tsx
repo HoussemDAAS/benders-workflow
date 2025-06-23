@@ -18,7 +18,9 @@ import { EnhancedToolbar } from './components/EnhancedToolbar';
 // Pages
 import { AuthPage } from './components/AuthPage';
 import { LandingPage } from './components/LandingPage';
+import { LoginPage } from './pages/LoginPage';
 import { OAuthCallbackPage } from './pages/OAuthCallbackPage';
+import { MagicLinkVerificationPage } from './pages/MagicLinkVerificationPage';
 import DashboardPage from './pages/DashboardPage';
 import WorkflowsPage from './pages/WorkflowsPage';
 import KanbanPage from './pages/KanbanPage';

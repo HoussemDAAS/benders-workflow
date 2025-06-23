@@ -60,6 +60,26 @@ app.get('/health', (req, res) => {
   });
 });
 
+// Email service health check endpoint
+app.get('/health/email', async (req, res) => {
+  try {
+    const emailService = require('./services/emailService');
+    const emailHealth = await emailService.healthCheck();
+    
+    res.json({
+      status: emailHealth.totalProviders > 0 ? 'OK' : 'WARNING',
+      timestamp: new Date().toISOString(),
+      emailService: emailHealth
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: 'ERROR',
+      timestamp: new Date().toISOString(),
+      error: error.message
+    });
+  }
+});
+
 // API routes
 app.use('/api/auth', authRoutes);
 app.use('/api/workspaces', workspacesRoutes);
