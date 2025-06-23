@@ -1,5 +1,6 @@
-import React, { createContext, useMemo } from 'react';
+import React, { createContext, useMemo, useEffect } from 'react';
 import { useMultipleApi } from '../hooks/useApi';
+import { useWorkspace } from './WorkspaceContext';
 import {
   clientService,
   workflowService,
@@ -33,6 +34,8 @@ interface AppProviderProps {
 }
 
 export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
+  const { currentWorkspace, workspaceChanged } = useWorkspace();
+
   // Memoize API call functions to prevent infinite re-renders
   const apiCallFunctions = useMemo(() => ({
     clients: () => clientService.getAll(),
@@ -45,6 +48,14 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
 
   // Load all data using our API hook
   const { data, loading, error, refresh } = useMultipleApi(apiCallFunctions);
+
+  // Refresh data when workspace changes
+  useEffect(() => {
+    if (currentWorkspace && workspaceChanged > 0) {
+      console.log('🔄 Refreshing app data for workspace:', currentWorkspace.name);
+      refresh();
+    }
+  }, [workspaceChanged, currentWorkspace, refresh]);
 
   // Memoize the context value with proper data extraction
   const contextValue: AppContextType = useMemo(() => {

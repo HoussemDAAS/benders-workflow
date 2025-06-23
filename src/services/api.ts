@@ -1,5 +1,7 @@
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
+console.log('🔧 API_BASE_URL:', API_BASE_URL);
+
 export class ApiError extends Error {
   constructor(public status: number, message: string) {
     super(message);
@@ -10,10 +12,23 @@ export class ApiError extends Error {
 async function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const url = `${API_BASE_URL}${endpoint}`;
   
+  console.log('🌐 Making API request:', { 
+    endpoint, 
+    API_BASE_URL, 
+    fullUrl: url,
+    method: options.method || 'GET'
+  });
+  
+  // Get auth token and workspace ID from localStorage
+  const token = localStorage.getItem('auth-token');
+  const workspaceId = localStorage.getItem('current-workspace-id');
+  
   try {
     const response = await fetch(url, {
       headers: {
         'Content-Type': 'application/json',
+        ...(token && { 'Authorization': `Bearer ${token}` }),
+        ...(workspaceId && { 'X-Workspace-Id': workspaceId }),
         ...options.headers,
       },
       ...options,
@@ -38,15 +53,15 @@ async function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promi
 
 export const api = {
   get: <T>(endpoint: string) => apiRequest<T>(endpoint),
-  post: <T>(endpoint: string, data: any) => apiRequest<T>(endpoint, {
+  post: <T>(endpoint: string, data: unknown) => apiRequest<T>(endpoint, {
     method: 'POST',
     body: JSON.stringify(data),
   }),
-  put: <T>(endpoint: string, data: any) => apiRequest<T>(endpoint, {
+  put: <T>(endpoint: string, data: unknown) => apiRequest<T>(endpoint, {
     method: 'PUT',
     body: JSON.stringify(data),
   }),
-  patch: <T>(endpoint: string, data: any) => apiRequest<T>(endpoint, {
+  patch: <T>(endpoint: string, data: unknown) => apiRequest<T>(endpoint, {
     method: 'PATCH',
     body: JSON.stringify(data),
   }),
@@ -57,8 +72,8 @@ export const api = {
 
 export const apiService = {
   get: <T>(endpoint: string): Promise<T> => api.get<T>(endpoint),
-  post: <T>(endpoint: string, data?: any): Promise<T> => api.post<T>(endpoint, data),
-  put: <T>(endpoint: string, data?: any): Promise<T> => api.put<T>(endpoint, data),
-  patch: <T>(endpoint: string, data?: any): Promise<T> => api.patch<T>(endpoint, data),
-  delete: (endpoint: string): Promise<any> => api.delete(endpoint),
+  post: <T>(endpoint: string, data?: unknown): Promise<T> => api.post<T>(endpoint, data),
+  put: <T>(endpoint: string, data?: unknown): Promise<T> => api.put<T>(endpoint, data),
+  patch: <T>(endpoint: string, data?: unknown): Promise<T> => api.patch<T>(endpoint, data),
+  delete: (endpoint: string): Promise<unknown> => api.delete(endpoint),
 }; 

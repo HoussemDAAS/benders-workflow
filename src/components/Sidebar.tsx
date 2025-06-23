@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { useWorkspace } from '../context/WorkspaceContext';
 import { 
   LayoutDashboard, 
   Workflow, 
@@ -14,6 +15,7 @@ import {
   Menu,
   X,
   ChevronRight,
+  ChevronDown,
   Sparkles,
   User,
   LogOut
@@ -27,11 +29,29 @@ export function Sidebar({ onNewTask }: SidebarProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuth();
+  const { currentWorkspace, workspaces, selectWorkspace } = useWorkspace();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [isWorkspaceDropdownOpen, setIsWorkspaceDropdownOpen] = useState(false);
+  const [isWorkspaceSwitching, setIsWorkspaceSwitching] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Get current view from URL path
   const currentView = location.pathname.slice(1) || 'dashboard';
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsWorkspaceDropdownOpen(false);
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   const handleViewChange = (view: string) => {
     navigate(`/${view}`);
@@ -47,6 +67,25 @@ export function Sidebar({ onNewTask }: SidebarProps) {
     if (onNewTask) {
       onNewTask();
       setIsMobileMenuOpen(false);
+    }
+  };
+
+  const handleWorkspaceSelect = async (workspace: typeof currentWorkspace) => {
+    if (workspace && workspace.id !== currentWorkspace?.id) {
+      setIsWorkspaceSwitching(true);
+      try {
+        selectWorkspace(workspace);
+        setIsWorkspaceDropdownOpen(false);
+        setIsMobileMenuOpen(false); // Also close mobile menu if open
+        
+        // Add a small delay to show loading state
+        setTimeout(() => setIsWorkspaceSwitching(false), 1000);
+      } catch (error) {
+        console.error('Error switching workspace:', error);
+        setIsWorkspaceSwitching(false);
+      }
+    } else {
+      setIsWorkspaceDropdownOpen(false);
     }
   };
 
@@ -127,22 +166,68 @@ export function Sidebar({ onNewTask }: SidebarProps) {
         </div>
       </div>
 
-      {/* Quick Actions */}
-      <div className="p-4 space-y-2 border-b border-white/10">
-        <button 
-          className="w-full group flex items-center gap-3 px-4 py-3 bg-secondary hover:bg-secondary/90 text-white rounded-xl font-medium transition-all duration-200 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-white/20"
-          onClick={handleNewWorkflow}
-        >
-          <div className="w-6 h-6 bg-white/20 rounded-lg flex items-center justify-center group-hover:bg-white/30 transition-colors">
-            <Plus size={14} />
-          </div>
-          <span className="text-sm">New Workflow</span>
-          <ChevronRight size={14} className="ml-auto opacity-60 group-hover:opacity-100 transition-opacity" />
-        </button>
+      {/* Workspace Selector */}
+      <div className="p-4 border-b border-white/10">
+        <div className="relative" ref={dropdownRef}>
+          <button 
+            className="w-full group flex items-center gap-3 px-4 py-3 bg-secondary hover:bg-secondary/90 text-white rounded-xl font-medium transition-all duration-200 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-white/20"
+            onClick={() => setIsWorkspaceDropdownOpen(!isWorkspaceDropdownOpen)}
+          >
+            <div className="w-6 h-6 bg-white/20 rounded-lg flex items-center justify-center group-hover:bg-white/30 transition-colors">
+              {isWorkspaceSwitching ? (
+                <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+              ) : (
+                <Building2 size={14} />
+              )}
+            </div>
+            <div className="flex-1 text-left">
+              <span className="text-sm block truncate">
+                {isWorkspaceSwitching 
+                  ? 'Switching...' 
+                  : currentWorkspace?.name || 'Select Workspace'
+                }
+              </span>
+            </div>
+            <ChevronDown 
+              size={14} 
+              className={`opacity-60 group-hover:opacity-100 transition-all duration-200 ${isWorkspaceDropdownOpen ? 'rotate-180' : ''}`} 
+            />
+          </button>
+          
+          {/* Workspace Dropdown */}
+          {isWorkspaceDropdownOpen && (
+            <div className="absolute top-full left-0 right-0 mt-2 bg-white/95 backdrop-blur-sm rounded-xl shadow-xl border border-white/20 overflow-hidden z-50">
+              <div className="py-2">
+                {workspaces.map((workspace) => (
+                  <button
+                    key={workspace.id}
+                    className={`w-full px-4 py-3 text-left text-sm transition-colors hover:bg-primary/10 ${
+                      currentWorkspace?.id === workspace.id 
+                        ? 'bg-primary/20 text-primary font-medium' 
+                        : 'text-gray-700 hover:text-primary'
+                    }`}
+                    onClick={() => handleWorkspaceSelect(workspace)}
+                  >
+                    <div className="font-medium truncate">{workspace.name}</div>
+                    {workspace.description && (
+                      <div className="text-xs opacity-70 truncate mt-0.5">{workspace.description}</div>
+                    )}
+                  </button>
+                ))}
+                {workspaces.length === 0 && (
+                  <div className="px-4 py-3 text-sm text-gray-500 text-center">
+                    No workspaces available
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
         
+        {/* Quick Task Button */}
         {onNewTask && (
           <button 
-            className="w-full group flex items-center gap-3 px-4 py-3 bg-tertiary hover:bg-tertiary/90 text-primary rounded-xl font-medium transition-all duration-200 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-tertiary/30"
+            className="w-full group flex items-center gap-3 px-4 py-3 mt-2 bg-tertiary hover:bg-tertiary/90 text-primary rounded-xl font-medium transition-all duration-200 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-tertiary/30"
             onClick={handleNewTask}
           >
             <div className="w-6 h-6 bg-primary/20 rounded-lg flex items-center justify-center group-hover:bg-primary/30 transition-colors">

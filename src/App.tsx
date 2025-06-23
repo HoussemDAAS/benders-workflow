@@ -4,6 +4,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 // Context
 import { AppProvider } from './context/AppContext';
 import { AuthProvider } from './context/AuthContext';
+import { WorkspaceProvider, useWorkspace } from './context/WorkspaceContext';
 import { useAppContext } from './hooks/useAppContext';
 import { useAuth } from './hooks/useAuth';
 
@@ -11,6 +12,7 @@ import { useAuth } from './hooks/useAuth';
 import { Sidebar } from './components/Sidebar';
 import { LoadingCard } from './components/LoadingSpinner';
 import { ErrorCard } from './components/ErrorMessage';
+import { WorkspaceSelector } from './components/WorkspaceSelector';
 
 // Pages
 import { LoginPage } from './components/LoginPage';
@@ -22,16 +24,22 @@ import TeamPage from './pages/TeamPage';
 import ClientsPage from './pages/ClientsPage';
 import MeetingsPage from './pages/MeetingsPage';
 
-// Protected Route Component
+// Protected Route Component with Workspace Check
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const { currentWorkspace, isLoading: workspaceLoading } = useWorkspace();
 
-  if (isLoading) {
+  if (authLoading || workspaceLoading) {
     return <LoadingCard message="Checking authentication..." />;
   }
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
+  }
+
+  // If authenticated but no workspace selected, show workspace selector
+  if (!currentWorkspace) {
+    return <WorkspaceSelector />;
   }
 
   return <>{children}</>;
@@ -111,25 +119,27 @@ const AppLayout: React.FC = () => {
 export default function App() {
   return (
     <AuthProvider>
-      <Router>
-        <Routes>
-          {/* Public Routes (No Sidebar) */}
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/oauth/callback" element={<OAuthCallbackPage />} />
-          <Route path="/oauth/callback/google" element={<OAuthCallbackPage />} />
-          <Route path="/oauth/callback/github" element={<OAuthCallbackPage />} />
-          
-          {/* Protected Routes (With Sidebar and App Context) */}
-          <Route path="/*" element={
-            <AppProvider>
-              <Routes>
-                <Route path="/" element={<Navigate to="/dashboard" replace />} />
-                <Route path="/*" element={<AppLayout />} />
-              </Routes>
-            </AppProvider>
-          } />
-        </Routes>
-      </Router>
+      <WorkspaceProvider>
+        <Router>
+          <Routes>
+            {/* Public Routes (No Sidebar) */}
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/oauth/callback" element={<OAuthCallbackPage />} />
+            <Route path="/oauth/callback/google" element={<OAuthCallbackPage />} />
+            <Route path="/oauth/callback/github" element={<OAuthCallbackPage />} />
+            
+            {/* Protected Routes (With Sidebar and App Context) */}
+            <Route path="/*" element={
+              <AppProvider>
+                <Routes>
+                  <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                  <Route path="/*" element={<AppLayout />} />
+                </Routes>
+              </AppProvider>
+            } />
+          </Routes>
+        </Router>
+      </WorkspaceProvider>
     </AuthProvider>
   );
 }

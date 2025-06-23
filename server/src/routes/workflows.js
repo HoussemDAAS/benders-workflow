@@ -1,6 +1,8 @@
 const express = require('express');
 const { body, validationResult } = require('express-validator');
 const Workflow = require('../models/Workflow');
+const { authenticate } = require('../middleware/auth');
+const { requireWorkspace } = require('../middleware/workspace');
 const router = express.Router();
 
 // Validation middleware
@@ -17,18 +19,20 @@ const validateStep = [
   body('description').optional().trim(),
 ];
 
-// GET /api/workflows - Get all workflows
-router.get('/', async (req, res) => {
+// GET /api/workflows - Get all workflows for workspace
+router.get('/', authenticate, requireWorkspace, async (req, res) => {
   try {
     const { status, clientId } = req.query;
     
     let workflows;
     if (status) {
       workflows = await Workflow.findByStatus(status);
+      workflows = workflows.filter(w => w.workspaceId === req.workspaceId);
     } else if (clientId) {
       workflows = await Workflow.findByClientId(clientId);
+      workflows = workflows.filter(w => w.workspaceId === req.workspaceId);
     } else {
-      workflows = await Workflow.findAll();
+      workflows = await Workflow.findAll(req.workspaceId);
     }
     
     // Attach progress details (based on completed tasks) to each workflow
@@ -50,9 +54,9 @@ router.get('/', async (req, res) => {
 });
 
 // GET /api/workflows/:id - Get workflow by ID
-router.get('/:id', async (req, res) => {
+router.get('/:id', authenticate, requireWorkspace, async (req, res) => {
   try {
-    const workflow = await Workflow.findById(req.params.id);
+    const workflow = await Workflow.findById(req.params.id, req.workspaceId);
     if (!workflow) {
       return res.status(404).json({ error: 'Workflow not found' });
     }
@@ -60,7 +64,7 @@ router.get('/:id', async (req, res) => {
     // Attach progress computed from tasks
     const progress = await workflow.getProgress();
     res.json({
-      ...workflow,
+      ...workflow.toJSON(),
       progress
     });
   } catch (error) {
@@ -98,7 +102,7 @@ router.get('/:id/progress', async (req, res) => {
 // Workflow steps removed – related endpoints return 410
 
 // POST /api/workflows - Create new workflow
-router.post('/', validateWorkflow, async (req, res) => {
+router.post('/', authenticate, requireWorkspace, validateWorkflow, async (req, res) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -109,6 +113,7 @@ router.post('/', validateWorkflow, async (req, res) => {
       name: req.body.name,
       description: req.body.description,
       clientId: req.body.clientId,
+      workspaceId: req.workspaceId,
       status: req.body.status || 'active',
       startDate: req.body.startDate ? new Date(req.body.startDate) : new Date(),
       expectedEndDate: req.body.expectedEndDate ? new Date(req.body.expectedEndDate) : null

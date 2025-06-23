@@ -187,6 +187,80 @@ const createTables = async () => {
       )
     `);
 
+    // Workspaces table
+    await db.run(`
+      CREATE TABLE IF NOT EXISTS workspaces (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        description TEXT,
+        owner_id TEXT NOT NULL,
+        invite_code TEXT UNIQUE NOT NULL,
+        is_active BOOLEAN DEFAULT 1,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (owner_id) REFERENCES users (id) ON DELETE CASCADE
+      )
+    `);
+
+    // User-Workspace relationship table (many-to-many)
+    await db.run(`
+      CREATE TABLE IF NOT EXISTS user_workspaces (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        workspace_id TEXT NOT NULL,
+        role TEXT DEFAULT 'member' CHECK (role IN ('admin', 'member')),
+        is_active BOOLEAN DEFAULT 1,
+        joined_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
+        FOREIGN KEY (workspace_id) REFERENCES workspaces (id) ON DELETE CASCADE,
+        UNIQUE(user_id, workspace_id)
+      )
+    `);
+
+    // Update existing tables to include workspace_id
+    
+    // Add workspace_id to clients table
+    const clientsTableInfo = await db.all("PRAGMA table_info(clients)");
+    const hasWorkspaceIdInClients = clientsTableInfo.some(col => col.name === 'workspace_id');
+    if (!hasWorkspaceIdInClients) {
+      await db.run('ALTER TABLE clients ADD COLUMN workspace_id TEXT REFERENCES workspaces(id)');
+    }
+
+    // Add workspace_id to team_members table
+    const teamMembersTableInfo = await db.all("PRAGMA table_info(team_members)");
+    const hasWorkspaceIdInTeamMembers = teamMembersTableInfo.some(col => col.name === 'workspace_id');
+    if (!hasWorkspaceIdInTeamMembers) {
+      await db.run('ALTER TABLE team_members ADD COLUMN workspace_id TEXT REFERENCES workspaces(id)');
+    }
+
+    // Add workspace_id to workflows table
+    const workflowsTableInfo = await db.all("PRAGMA table_info(workflows)");
+    const hasWorkspaceIdInWorkflows = workflowsTableInfo.some(col => col.name === 'workspace_id');
+    if (!hasWorkspaceIdInWorkflows) {
+      await db.run('ALTER TABLE workflows ADD COLUMN workspace_id TEXT REFERENCES workspaces(id)');
+    }
+
+    // Add workspace_id to kanban_tasks table
+    const kanbanTasksTableInfo = await db.all("PRAGMA table_info(kanban_tasks)");
+    const hasWorkspaceIdInKanbanTasks = kanbanTasksTableInfo.some(col => col.name === 'workspace_id');
+    if (!hasWorkspaceIdInKanbanTasks) {
+      await db.run('ALTER TABLE kanban_tasks ADD COLUMN workspace_id TEXT REFERENCES workspaces(id)');
+    }
+
+    // Add workspace_id to kanban_columns table
+    const kanbanColumnsTableInfo = await db.all("PRAGMA table_info(kanban_columns)");
+    const hasWorkspaceIdInKanbanColumns = kanbanColumnsTableInfo.some(col => col.name === 'workspace_id');
+    if (!hasWorkspaceIdInKanbanColumns) {
+      await db.run('ALTER TABLE kanban_columns ADD COLUMN workspace_id TEXT REFERENCES workspaces(id)');
+    }
+
+    // Add workspace_id to client_meetings table
+    const clientMeetingsTableInfo = await db.all("PRAGMA table_info(client_meetings)");
+    const hasWorkspaceIdInClientMeetings = clientMeetingsTableInfo.some(col => col.name === 'workspace_id');
+    if (!hasWorkspaceIdInClientMeetings) {
+      await db.run('ALTER TABLE client_meetings ADD COLUMN workspace_id TEXT REFERENCES workspaces(id)');
+    }
+
     // Activity log table for audit trail
     await db.run(`
       CREATE TABLE IF NOT EXISTS activity_log (

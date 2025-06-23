@@ -1,41 +1,54 @@
 const { getDatabase } = require('../config/database');
 const { v4: uuidv4 } = require('uuid');
+const User = require('../models/User');
+const Workspace = require('../models/Workspace');
 
 async function seedTestData() {
   const db = getDatabase();
   
   try {
-    console.log('🌱 Starting database seeding...');
+    console.log('🌱 Starting workspace-aware database seeding...');
     
-    // Clear existing data
-    console.log('🧹 Clearing existing data...');
-    const clearQueries = [
-      'DELETE FROM step_assignments',
-      'DELETE FROM task_assignments',
-      'DELETE FROM kanban_tasks',
-      'DELETE FROM kanban_columns',
-      'DELETE FROM workflow_steps',
-      'DELETE FROM client_meetings',
-      'DELETE FROM workflows',
-      'DELETE FROM team_members',
-      'DELETE FROM clients',
-      'DELETE FROM activity_log'
-      // Note: Not clearing users table - users will be created through OAuth
-    ];
+    // Check if we have any users to work with
+    const users = await User.findAll(true); // include inactive
+    let testUser;
     
-    for (const query of clearQueries) {
-      try {
-        await db.run(query);
-      } catch (error) {
-        // Ignore errors for tables that might not exist yet
-        console.log(`Note: ${query} - ${error.message}`);
-      }
+    if (users.length === 0) {
+      // Create a test user if none exist
+      console.log('👤 Creating test user...');
+      testUser = new User({
+        email: 'test@example.com',
+        name: 'Test User',
+        role: 'admin',
+        emailVerified: true
+      });
+      await testUser.save();
+      console.log('✅ Test user created');
+    } else {
+      testUser = users[0]; // Use the first user
+      console.log(`👤 Using existing user: ${testUser.email}`);
     }
+
+    // Create test workspaces
+    console.log('🏢 Creating test workspaces...');
     
-    // Note: No longer seeding test users - users will be created through Google OAuth
-    console.log('👤 Users will be created through Google OAuth authentication');
+    const workspace1 = new Workspace({
+      name: 'Acme Corporation',
+      description: 'Main workspace for Acme Corporation projects',
+      ownerId: testUser.id
+    });
+    await workspace1.save();
     
-    // Seed Clients
+    const workspace2 = new Workspace({
+      name: 'Digital Agency',
+      description: 'Creative projects and client work',
+      ownerId: testUser.id
+    });
+    await workspace2.save();
+
+    console.log(`✅ Created workspaces: ${workspace1.name}, ${workspace2.name}`);
+    
+    // Seed Clients for workspace1
     console.log('👥 Seeding clients...');
     const clientsData = [
       {
@@ -44,7 +57,8 @@ async function seedTestData() {
         company: 'TechCorp Solutions',
         email: 'john.smith@techcorp.com',
         phone: '+1-555-0123',
-        isActive: true
+        isActive: true,
+        workspaceId: workspace1.id
       },
       {
         id: uuidv4(),
@@ -52,7 +66,8 @@ async function seedTestData() {
         company: 'Digital Innovations Ltd',
         email: 'sarah.j@digitalinnovations.com',
         phone: '+1-555-0456',
-        isActive: true
+        isActive: true,
+        workspaceId: workspace1.id
       },
       {
         id: uuidv4(),
@@ -60,7 +75,8 @@ async function seedTestData() {
         company: 'StartupHub Inc',
         email: 'm.chen@startuphub.io',
         phone: '+1-555-0789',
-        isActive: true
+        isActive: true,
+        workspaceId: workspace2.id
       },
       {
         id: uuidv4(),
@@ -68,15 +84,16 @@ async function seedTestData() {
         company: 'Global Enterprises',
         email: 'e.rodriguez@globalent.com',
         phone: '+1-555-0321',
-        isActive: false
+        isActive: false,
+        workspaceId: workspace2.id
       }
     ];
     
     for (const client of clientsData) {
       await db.run(`
-        INSERT INTO clients (id, name, company, email, phone, is_active, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
-      `, [client.id, client.name, client.company, client.email, client.phone, client.isActive ? 1 : 0]);
+        INSERT INTO clients (id, name, company, email, phone, is_active, workspace_id, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+      `, [client.id, client.name, client.company, client.email, client.phone, client.isActive ? 1 : 0, client.workspaceId]);
     }
     
     // Seed Team Members
@@ -88,7 +105,8 @@ async function seedTestData() {
         email: 'alex.thompson@company.com',
         role: 'Project Manager',
         skills: ['Project Management', 'Agile', 'Leadership'],
-        isActive: true
+        isActive: true,
+        workspaceId: workspace1.id
       },
       {
         id: uuidv4(),
@@ -96,7 +114,8 @@ async function seedTestData() {
         email: 'jessica.lee@company.com',
         role: 'Senior Developer',
         skills: ['React', 'Node.js', 'TypeScript', 'Database Design'],
-        isActive: true
+        isActive: true,
+        workspaceId: workspace1.id
       },
       {
         id: uuidv4(),
@@ -104,7 +123,8 @@ async function seedTestData() {
         email: 'david.wilson@company.com',
         role: 'UI/UX Designer',
         skills: ['Figma', 'UI Design', 'User Research', 'Prototyping'],
-        isActive: true
+        isActive: true,
+        workspaceId: workspace2.id
       },
       {
         id: uuidv4(),
@@ -112,23 +132,16 @@ async function seedTestData() {
         email: 'maria.garcia@company.com',
         role: 'Quality Assurance',
         skills: ['Testing', 'Automation', 'Bug Tracking'],
-        isActive: true
-      },
-      {
-        id: uuidv4(),
-        name: 'Tom Brown',
-        email: 'tom.brown@company.com',
-        role: 'DevOps Engineer',
-        skills: ['Docker', 'AWS', 'CI/CD', 'Monitoring'],
-        isActive: false
+        isActive: true,
+        workspaceId: workspace2.id
       }
     ];
     
     for (const member of teamMembersData) {
       await db.run(`
-        INSERT INTO team_members (id, name, email, role, skills, is_active, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
-      `, [member.id, member.name, member.email, member.role, JSON.stringify(member.skills), member.isActive ? 1 : 0]);
+        INSERT INTO team_members (id, name, email, role, skills, is_active, workspace_id, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+      `, [member.id, member.name, member.email, member.role, JSON.stringify(member.skills), member.isActive ? 1 : 0, member.workspaceId]);
     }
     
     // Seed Workflows
@@ -140,10 +153,10 @@ async function seedTestData() {
         description: 'Complete e-commerce platform with payment integration and admin dashboard',
         clientId: clientsData[0].id,
         status: 'active',
+        workspaceId: workspace1.id,
         startDate: new Date('2024-01-15').toISOString(),
         expectedEndDate: new Date('2024-06-15').toISOString(),
-        actualEndDate: null,
-        isAutoGenerated: true
+        actualEndDate: null
       },
       {
         id: uuidv4(),
@@ -151,10 +164,10 @@ async function seedTestData() {
         description: 'Complete UI/UX redesign of the mobile application with new features',
         clientId: clientsData[1].id,
         status: 'active',
+        workspaceId: workspace1.id,
         startDate: new Date('2024-02-01').toISOString(),
         expectedEndDate: new Date('2024-05-01').toISOString(),
-        actualEndDate: null,
-        isAutoGenerated: true
+        actualEndDate: null
       },
       {
         id: uuidv4(),
@@ -162,10 +175,10 @@ async function seedTestData() {
         description: 'Migration from legacy system to modern tech stack',
         clientId: clientsData[2].id,
         status: 'completed',
+        workspaceId: workspace2.id,
         startDate: new Date('2023-11-01').toISOString(),
         expectedEndDate: new Date('2024-02-01').toISOString(),
-        actualEndDate: new Date('2024-01-28').toISOString(),
-        isAutoGenerated: false
+        actualEndDate: new Date('2024-01-28').toISOString()
       },
       {
         id: uuidv4(),
@@ -173,300 +186,212 @@ async function seedTestData() {
         description: 'Business intelligence dashboard with real-time data visualization',
         clientId: clientsData[0].id,
         status: 'paused',
+        workspaceId: workspace1.id,
         startDate: new Date('2024-03-01').toISOString(),
         expectedEndDate: new Date('2024-07-01').toISOString(),
-        actualEndDate: null,
-        isAutoGenerated: false
+        actualEndDate: null
       }
     ];
     
     for (const workflow of workflowsData) {
       await db.run(`
-        INSERT INTO workflows (id, name, description, client_id, status, start_date, expected_end_date, actual_end_date, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
-      `, [workflow.id, workflow.name, workflow.description, workflow.clientId, workflow.status, workflow.startDate, workflow.expectedEndDate, workflow.actualEndDate]);
+        INSERT INTO workflows (id, name, description, client_id, status, workspace_id, start_date, expected_end_date, actual_end_date, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+      `, [workflow.id, workflow.name, workflow.description, workflow.clientId, workflow.status, workflow.workspaceId, workflow.startDate, workflow.expectedEndDate, workflow.actualEndDate]);
     }
     
-    // Seed Kanban Columns
+    // Seed Kanban Columns for each workspace
     console.log('📋 Seeding kanban columns...');
     const columnsData = [
-      { id: 'todo', title: 'To Do', color: '#64748b', order_index: 1 },
-      { id: 'in-progress', title: 'In Progress', color: '#3b82f6', order_index: 2 },
-      { id: 'review', title: 'Review', color: '#f59e0b', order_index: 3 },
-      { id: 'done', title: 'Done', color: '#10b981', order_index: 4 }
+      { id: 'todo-w1', title: 'To Do', color: '#64748b', order_index: 1, workspaceId: workspace1.id },
+      { id: 'in-progress-w1', title: 'In Progress', color: '#3b82f6', order_index: 2, workspaceId: workspace1.id },
+      { id: 'review-w1', title: 'Review', color: '#f59e0b', order_index: 3, workspaceId: workspace1.id },
+      { id: 'done-w1', title: 'Done', color: '#10b981', order_index: 4, workspaceId: workspace1.id },
+      
+      { id: 'todo-w2', title: 'To Do', color: '#64748b', order_index: 1, workspaceId: workspace2.id },
+      { id: 'in-progress-w2', title: 'In Progress', color: '#3b82f6', order_index: 2, workspaceId: workspace2.id },
+      { id: 'review-w2', title: 'Review', color: '#f59e0b', order_index: 3, workspaceId: workspace2.id },
+      { id: 'done-w2', title: 'Done', color: '#10b981', order_index: 4, workspaceId: workspace2.id }
     ];
     
     for (const column of columnsData) {
       await db.run(`
-        INSERT OR REPLACE INTO kanban_columns (id, title, color, order_index, created_at, updated_at)
-        VALUES (?, ?, ?, ?, datetime('now'), datetime('now'))
-      `, [column.id, column.title, column.color, column.order_index]);
+        INSERT OR REPLACE INTO kanban_columns (id, title, color, order_index, workspace_id, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+      `, [column.id, column.title, column.color, column.order_index, column.workspaceId]);
     }
-
+    
     // Seed Kanban Tasks
     console.log('📝 Seeding kanban tasks...');
-    const kanbanTasksData = [
+    const tasksData = [
       {
         id: uuidv4(),
-        title: 'Setup user authentication system',
-        description: 'Implement JWT-based authentication with login/logout functionality',
+        title: 'Setup Development Environment',
+        description: 'Configure local development environment with Docker and database',
         workflowId: workflowsData[0].id,
-        stepId: null,
-        status: 'in-progress',
         priority: 'high',
-        tags: ['authentication', 'security', 'backend'],
-        dueDate: new Date('2024-04-15').toISOString(),
-        assignedMembers: [teamMembersData[1].id]
+        status: 'done-w1',
+        workspaceId: workspace1.id,
+        tags: ['setup', 'development'],
+        dueDate: new Date('2024-01-20').toISOString()
       },
       {
         id: uuidv4(),
-        title: 'Design product catalog page',
-        description: 'Create responsive product catalog with filtering and search',
+        title: 'Design Database Schema',
+        description: 'Create ERD and implement database schema for e-commerce platform',
         workflowId: workflowsData[0].id,
-        stepId: null,
-        status: 'todo',
+        priority: 'high',
+        status: 'done-w1',
+        workspaceId: workspace1.id,
+        tags: ['database', 'design'],
+        dueDate: new Date('2024-01-25').toISOString()
+      },
+      {
+        id: uuidv4(),
+        title: 'Implement User Authentication',
+        description: 'Build user registration, login, and JWT token management',
+        workflowId: workflowsData[0].id,
+        priority: 'high',
+        status: 'in-progress-w1',
+        workspaceId: workspace1.id,
+        tags: ['auth', 'security'],
+        dueDate: new Date('2024-02-01').toISOString()
+      },
+      {
+        id: uuidv4(),
+        title: 'Create Product Catalog API',
+        description: 'RESTful API for product management with CRUD operations',
+        workflowId: workflowsData[0].id,
         priority: 'medium',
-        tags: ['frontend', 'ui', 'catalog'],
-        dueDate: new Date('2024-04-20').toISOString(),
-        assignedMembers: [teamMembersData[2].id]
+        status: 'todo-w1',
+        workspaceId: workspace1.id,
+        tags: ['api', 'products'],
+        dueDate: new Date('2024-02-10').toISOString()
       },
       {
         id: uuidv4(),
-        title: 'Implement shopping cart functionality',
-        description: 'Add/remove items, calculate totals, persist cart state',
-        workflowId: workflowsData[0].id,
-        stepId: null,
-        status: 'review',
-        priority: 'high',
-        tags: ['frontend', 'cart', 'state-management'],
-        dueDate: new Date('2024-04-10').toISOString(),
-        assignedMembers: [teamMembersData[1].id, teamMembersData[2].id]
-      },
-      {
-        id: uuidv4(),
-        title: 'Database schema optimization',
-        description: 'Optimize database queries and add proper indexing',
-        workflowId: workflowsData[0].id,
-        stepId: null,
-        status: 'done',
-        priority: 'medium',
-        tags: ['database', 'performance', 'optimization'],
-        dueDate: new Date('2024-03-30').toISOString(),
-        assignedMembers: [teamMembersData[1].id]
-      },
-      {
-        id: uuidv4(),
-        title: 'User persona development',
-        description: 'Create detailed user personas based on research findings',
+        title: 'Mobile App Wireframes',
+        description: 'Create low-fidelity wireframes for all mobile app screens',
         workflowId: workflowsData[1].id,
-        stepId: null,
-        status: 'done',
         priority: 'high',
-        tags: ['research', 'personas', 'ux'],
-        dueDate: new Date('2024-03-15').toISOString(),
-        assignedMembers: [teamMembersData[2].id]
+        status: 'review-w1',
+        workspaceId: workspace1.id,
+        tags: ['design', 'wireframes'],
+        dueDate: new Date('2024-02-05').toISOString()
       },
       {
         id: uuidv4(),
-        title: 'Navigation redesign',
-        description: 'Redesign app navigation based on user feedback',
-        workflowId: workflowsData[1].id,
-        stepId: null,
-        status: 'in-progress',
-        priority: 'high',
-        tags: ['navigation', 'ui', 'redesign'],
-        dueDate: new Date('2024-04-25').toISOString(),
-        assignedMembers: [teamMembersData[2].id]
-      },
-      {
-        id: uuidv4(),
-        title: 'Accessibility audit',
-        description: 'Conduct comprehensive accessibility audit and implement fixes',
-        workflowId: workflowsData[1].id,
-        stepId: null,
-        status: 'todo',
-        priority: 'medium',
-        tags: ['accessibility', 'audit', 'compliance'],
-        dueDate: new Date('2024-05-01').toISOString(),
-        assignedMembers: [teamMembersData[3].id]
-      },
-      {
-        id: uuidv4(),
-        title: 'Performance monitoring setup',
-        description: 'Setup monitoring and alerting for application performance',
+        title: 'Content Migration',
+        description: 'Migrate existing content from old CMS to new platform',
         workflowId: workflowsData[2].id,
-        stepId: null,
-        status: 'done',
-        priority: 'low',
-        tags: ['monitoring', 'performance', 'devops'],
-        dueDate: new Date('2024-01-20').toISOString(),
-        assignedMembers: [teamMembersData[4].id]
+        priority: 'medium',
+        status: 'done-w2',
+        workspaceId: workspace2.id,
+        tags: ['migration', 'content'],
+        dueDate: new Date('2024-01-15').toISOString()
+      },
+      {
+        id: uuidv4(),
+        title: 'Dashboard UI Components',
+        description: 'Design and implement reusable dashboard components',
+        workflowId: workflowsData[3].id,
+        priority: 'medium',
+        status: 'todo-w1',
+        workspaceId: workspace1.id,
+        tags: ['ui', 'components'],
+        dueDate: new Date('2024-03-15').toISOString()
       }
     ];
     
-    for (const task of kanbanTasksData) {
+    for (const task of tasksData) {
       await db.run(`
-        INSERT INTO kanban_tasks (id, title, description, workflow_id, step_id, status, priority, tags, due_date, created_at, updated_at)
+        INSERT INTO kanban_tasks (id, title, description, workflow_id, priority, status, workspace_id, tags, due_date, created_at, updated_at)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
-      `, [task.id, task.title, task.description, task.workflowId, task.stepId, task.status, task.priority, JSON.stringify(task.tags), task.dueDate]);
+      `, [task.id, task.title, task.description, task.workflowId, task.priority, task.status, task.workspaceId, JSON.stringify(task.tags), task.dueDate]);
     }
     
     // Seed Client Meetings
-    console.log('📅 Seeding client meetings...');
+    console.log('🤝 Seeding client meetings...');
     const meetingsData = [
       {
         id: uuidv4(),
         clientId: clientsData[0].id,
         title: 'Project Kickoff Meeting',
-        description: 'Initial project discussion and requirements gathering',
-        meeting_date: new Date('2024-01-20T10:00:00Z').toISOString(),
-        duration_minutes: 120,
+        description: 'Initial meeting to discuss project requirements and timeline',
+        meetingDate: new Date('2024-01-10').toISOString(),
+        duration: 120,
+        location: 'Conference Room A',
+        meetingType: 'in-person',
         status: 'completed',
-        meeting_type: 'in-person',
-        notes: 'Discussed project scope, timeline, and initial requirements. Client provided detailed business requirements document.'
-      },
-      {
-        id: uuidv4(),
-        clientId: clientsData[0].id,
-        title: 'Weekly Progress Review',
-        description: 'Weekly progress update and demo of completed features',
-        meeting_date: new Date('2024-04-12T14:00:00Z').toISOString(),
-        duration_minutes: 60,
-        status: 'scheduled',
-        meeting_type: 'video',
-        notes: null
+        workspaceId: workspace1.id,
+        notes: 'Great meeting! Client is excited about the project. Confirmed all requirements.'
       },
       {
         id: uuidv4(),
         clientId: clientsData[1].id,
         title: 'Design Review Session',
-        description: 'Review and feedback session for new mobile app designs',
-        meeting_date: new Date('2024-04-08T11:00:00Z').toISOString(),
-        duration_minutes: 90,
-        status: 'completed',
-        meeting_type: 'video',
-        notes: 'Client approved 90% of designs. Requested minor changes to color scheme and typography.'
+        description: 'Review mobile app wireframes and user flow',
+        meetingDate: new Date('2024-02-08').toISOString(),
+        duration: 90,
+        location: null,
+        meetingType: 'video',
+        status: 'scheduled',
+        workspaceId: workspace1.id,
+        notes: null
       },
       {
         id: uuidv4(),
         clientId: clientsData[2].id,
-        title: 'Project Completion Meeting',
-        description: 'Final project handover and documentation review',
-        meeting_date: new Date('2024-01-30T15:00:00Z').toISOString(),
-        duration_minutes: 60,
+        title: 'Migration Status Update',
+        description: 'Weekly check-in on website migration progress',
+        meetingDate: new Date('2024-01-20').toISOString(),
+        duration: 60,
+        location: null,
+        meetingType: 'phone',
         status: 'completed',
-        meeting_type: 'in-person',
-        notes: 'Successfully completed project handover. All deliverables approved by client.'
+        workspaceId: workspace2.id,
+        notes: 'Migration completed ahead of schedule. Client very satisfied.'
       }
     ];
     
     for (const meeting of meetingsData) {
       await db.run(`
-        INSERT INTO client_meetings (id, client_id, title, description, meeting_date, duration_minutes, status, meeting_type, notes, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
-      `, [meeting.id, meeting.clientId, meeting.title, meeting.description, meeting.meeting_date, meeting.duration_minutes, meeting.status, meeting.meeting_type, meeting.notes]);
-    }
-    
-    // Seed Task Assignments
-    console.log('🔗 Seeding task assignments...');
-    for (const task of kanbanTasksData) {
-      for (const memberId of task.assignedMembers) {
-        await db.run(`
-          INSERT INTO task_assignments (id, task_id, member_id, created_at)
-          VALUES (?, ?, ?, datetime('now'))
-        `, [uuidv4(), task.id, memberId]);
-      }
-    }
-    
-    // Seed Activity Logs
-    console.log('📊 Seeding activity logs...');
-    const activityLogsData = [
-      {
-        id: uuidv4(),
-        entityType: 'workflow',
-        entityId: workflowsData[0].id,
-        action: 'created',
-        description: 'Workflow "E-commerce Platform Development" was created',
-        performedBy: teamMembersData[0].id,
-        timestamp: new Date('2024-01-15T09:00:00Z').toISOString()
-      },
-      {
-        id: uuidv4(),
-        entityType: 'task',
-        entityId: kanbanTasksData[0].id,
-        action: 'created',
-        description: 'Task "Setup user authentication system" was created',
-        performedBy: teamMembersData[1].id,
-        timestamp: new Date('2024-02-01T10:30:00Z').toISOString()
-      },
-      {
-        id: uuidv4(),
-        entityType: 'task',
-        entityId: kanbanTasksData[2].id,
-        action: 'status_changed',
-        description: 'Task status changed from "in-progress" to "review"',
-        performedBy: teamMembersData[1].id,
-        timestamp: new Date('2024-04-05T16:45:00Z').toISOString()
-      },
-      {
-        id: uuidv4(),
-        entityType: 'task',
-        entityId: kanbanTasksData[3].id,
-        action: 'completed',
-        description: 'Task "Database schema optimization" was completed',
-        performedBy: teamMembersData[1].id,
-        timestamp: new Date('2024-03-30T14:20:00Z').toISOString()
-      },
-      {
-        id: uuidv4(),
-        entityType: 'meeting',
-        entityId: meetingsData[2].id,
-        action: 'completed',
-        description: 'Meeting "Design Review Session" was completed',
-        performedBy: teamMembersData[0].id,
-        timestamp: new Date('2024-04-08T12:30:00Z').toISOString()
-      }
-    ];
-    
-    for (const log of activityLogsData) {
-      await db.run(`
-        INSERT INTO activity_log (id, entity_type, entity_id, action, details, performed_by, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
-      `, [log.id, log.entityType, log.entityId, log.action, log.description, log.performedBy]);
+        INSERT INTO client_meetings (id, client_id, title, description, meeting_date, duration_minutes, location, meeting_type, status, workspace_id, notes, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+      `, [meeting.id, meeting.clientId, meeting.title, meeting.description, meeting.meetingDate, meeting.duration, meeting.location, meeting.meetingType, meeting.status, meeting.workspaceId, meeting.notes]);
     }
     
     console.log('✅ Database seeding completed successfully!');
-    console.log(`📊 Seeded data summary:`);
-    console.log(`   • ${clientsData.length} clients`);
-    console.log(`   • ${teamMembersData.length} team members`);
-    console.log(`   • ${workflowsData.length} workflows`);
-    console.log(`   • ${kanbanTasksData.length} kanban tasks`);
-    console.log(`   • ${meetingsData.length} client meetings`);
-    console.log(`   • ${activityLogsData.length} activity logs`);
+    console.log(`📊 Summary:`);
+    console.log(`   - 2 workspaces created`);
+    console.log(`   - ${clientsData.length} clients seeded`);
+    console.log(`   - ${teamMembersData.length} team members seeded`);
+    console.log(`   - ${workflowsData.length} workflows seeded`);
+    console.log(`   - ${columnsData.length} kanban columns seeded`);
+    console.log(`   - ${tasksData.length} kanban tasks seeded`);
+    console.log(`   - ${meetingsData.length} client meetings seeded`);
+    console.log(`🎉 All data is now workspace-scoped!`);
     
   } catch (error) {
-    console.error('❌ Error seeding database:', error);
+    console.error('❌ Error during seeding:', error);
     throw error;
   }
 }
 
-module.exports = { seedTestData };
-
-// Run seeding if this file is executed directly
+// Run seeding if this script is executed directly
 if (require.main === module) {
-  const { createTables } = require('./initDatabase');
-  
   async function runSeeding() {
     try {
-      console.log('🔧 Ensuring database tables exist...');
-      await createTables();
       await seedTestData();
+      console.log('🌟 Database seeding completed successfully!');
       process.exit(0);
     } catch (error) {
-      console.error('❌ Failed to seed database:', error);
+      console.error('💥 Database seeding failed:', error);
       process.exit(1);
     }
   }
   
   runSeeding();
 }
+
+module.exports = { seedTestData };
