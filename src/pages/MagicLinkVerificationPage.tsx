@@ -66,7 +66,7 @@ export function MagicLinkVerificationPage() {
         setTimeout(() => {
           if (isMounted) {
             setIsRedirecting(true);
-            navigate('/dashboard', { replace: true });
+            navigate('/app/dashboard', { replace: true });
           }
         }, 2000);
 
@@ -151,7 +151,7 @@ export function MagicLinkVerificationPage() {
               <button
                 onClick={() => {
                   setIsRedirecting(true);
-                  navigate('/dashboard', { replace: true });
+                  navigate('/app/dashboard', { replace: true });
                 }}
                 className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-primary to-accent text-white rounded-lg font-medium text-sm hover:from-primary/90 hover:to-accent/90 transition-all duration-200 shadow-lg hover:shadow-xl"
               >

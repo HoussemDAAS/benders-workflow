@@ -137,6 +137,7 @@ export default function App() {
             <Route path="/login" element={<AuthPage />} />
             <Route path="/signup" element={<AuthPage />} />
             <Route path="/auth" element={<AuthPage />} />
+            <Route path="/auth/verify" element={<MagicLinkVerificationPage />} />
             <Route path="/oauth/callback" element={<OAuthCallbackPage />} />
             <Route path="/oauth/callback/google" element={<OAuthCallbackPage />} />
             <Route path="/oauth/callback/github" element={<OAuthCallbackPage />} />
