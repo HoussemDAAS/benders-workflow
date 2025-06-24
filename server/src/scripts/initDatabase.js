@@ -7,7 +7,7 @@ const createTables = async () => {
   try {
     console.log('Creating database tables...');
 
-    // Users table for authentication
+    // Users table for authentication with 2FA support
     await db.run(`
       CREATE TABLE IF NOT EXISTS users (
         id TEXT PRIMARY KEY,
@@ -15,17 +15,58 @@ const createTables = async () => {
         password TEXT, -- Allow NULL for OAuth users
         name TEXT NOT NULL,
         role TEXT DEFAULT 'user' CHECK (role IN ('admin', 'manager', 'user')),
+        skills TEXT, -- JSON array as string (moved from team_members)
         is_active BOOLEAN DEFAULT 1,
         email_verified BOOLEAN DEFAULT 0,
         last_login_at DATETIME,
+        two_factor_enabled BOOLEAN DEFAULT 0,
+        two_factor_secret TEXT,
+        two_factor_backup_codes TEXT,
+        two_factor_last_used DATETIME,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )
     `);
 
+    // Check if we need to add skills column to existing users table
+    const userColumnInfo = await db.all("PRAGMA table_info(users)");
+    const userColumnNames = userColumnInfo.map(col => col.name);
+    
+    if (!userColumnNames.includes('skills')) {
+      console.log('🔧 Adding skills column to users table...');
+      await db.run('ALTER TABLE users ADD COLUMN skills TEXT');
+    }
+
+    // Check if we need to add 2FA columns to existing users table
+    const requiredColumns = [
+      'two_factor_enabled',
+      'two_factor_secret', 
+      'two_factor_backup_codes',
+      'two_factor_last_used'
+    ];
+    
+    const missingColumns = requiredColumns.filter(col => !userColumnNames.includes(col));
+    
+    if (missingColumns.length > 0) {
+      console.log(`🔐 Adding 2FA columns: ${missingColumns.join(', ')}`);
+      
+      for (const column of missingColumns) {
+        if (column === 'two_factor_enabled') {
+          await db.run('ALTER TABLE users ADD COLUMN two_factor_enabled BOOLEAN DEFAULT 0');
+        } else if (column === 'two_factor_secret') {
+          await db.run('ALTER TABLE users ADD COLUMN two_factor_secret TEXT');
+        } else if (column === 'two_factor_backup_codes') {
+          await db.run('ALTER TABLE users ADD COLUMN two_factor_backup_codes TEXT');
+        } else if (column === 'two_factor_last_used') {
+          await db.run('ALTER TABLE users ADD COLUMN two_factor_last_used DATETIME');
+        }
+      }
+      
+      console.log('✅ 2FA columns added successfully');
+    }
+
     // Check if password column needs to be updated to allow NULL
-    const columnInfo = await db.all("PRAGMA table_info(users)");
-    const passwordColumn = columnInfo.find(col => col.name === 'password');
+    const passwordColumn = userColumnInfo.find(col => col.name === 'password');
     
     if (passwordColumn && passwordColumn.notnull === 1) {
       console.log('🔧 Updating users table to allow NULL passwords for OAuth users...');
@@ -38,9 +79,14 @@ const createTables = async () => {
           password TEXT, -- Allow NULL for OAuth users
           name TEXT NOT NULL,
           role TEXT DEFAULT 'user' CHECK (role IN ('admin', 'manager', 'user')),
+          skills TEXT, -- JSON array as string (moved from team_members)
           is_active BOOLEAN DEFAULT 1,
           email_verified BOOLEAN DEFAULT 0,
           last_login_at DATETIME,
+          two_factor_enabled BOOLEAN DEFAULT 0,
+          two_factor_secret TEXT,
+          two_factor_backup_codes TEXT,
+          two_factor_last_used DATETIME,
           created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
           updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )
@@ -49,7 +95,10 @@ const createTables = async () => {
       // Copy existing data
       await db.run(`
         INSERT INTO users_new 
-        SELECT * FROM users
+        SELECT id, email, password, name, role, is_active, email_verified, last_login_at,
+               COALESCE(two_factor_enabled, 0), two_factor_secret, two_factor_backup_codes, two_factor_last_used,
+               created_at, updated_at
+        FROM users
       `);
       
       // Drop old table and rename new one
@@ -67,20 +116,6 @@ const createTables = async () => {
         company TEXT,
         email TEXT UNIQUE NOT NULL,
         phone TEXT,
-        is_active BOOLEAN DEFAULT 1,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
-
-    // Team members table
-    await db.run(`
-      CREATE TABLE IF NOT EXISTS team_members (
-        id TEXT PRIMARY KEY,
-        name TEXT NOT NULL,
-        email TEXT UNIQUE NOT NULL,
-        role TEXT NOT NULL,
-        skills TEXT, -- JSON array as string
         is_active BOOLEAN DEFAULT 1,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -149,7 +184,7 @@ const createTables = async () => {
         member_id TEXT NOT NULL,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (task_id) REFERENCES kanban_tasks (id) ON DELETE CASCADE,
-        FOREIGN KEY (member_id) REFERENCES team_members (id) ON DELETE CASCADE,
+        FOREIGN KEY (member_id) REFERENCES users (id) ON DELETE CASCADE,
         UNIQUE(task_id, member_id)
       )
     `);
@@ -182,96 +217,23 @@ const createTables = async () => {
         attendance_status TEXT DEFAULT 'invited' CHECK (attendance_status IN ('invited', 'accepted', 'declined', 'attended', 'no-show')),
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (meeting_id) REFERENCES client_meetings (id) ON DELETE CASCADE,
-        FOREIGN KEY (member_id) REFERENCES team_members (id) ON DELETE CASCADE,
+        FOREIGN KEY (member_id) REFERENCES users (id) ON DELETE CASCADE,
         UNIQUE(meeting_id, member_id)
       )
     `);
 
-    // Workspaces table
-    await db.run(`
-      CREATE TABLE IF NOT EXISTS workspaces (
-        id TEXT PRIMARY KEY,
-        name TEXT NOT NULL,
-        description TEXT,
-        owner_id TEXT NOT NULL,
-        invite_code TEXT UNIQUE NOT NULL,
-        is_active BOOLEAN DEFAULT 1,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (owner_id) REFERENCES users (id) ON DELETE CASCADE
-      )
-    `);
 
-    // User-Workspace relationship table (many-to-many)
-    await db.run(`
-      CREATE TABLE IF NOT EXISTS user_workspaces (
-        id TEXT PRIMARY KEY,
-        user_id TEXT NOT NULL,
-        workspace_id TEXT NOT NULL,
-        role TEXT DEFAULT 'member' CHECK (role IN ('admin', 'member')),
-        is_active BOOLEAN DEFAULT 1,
-        joined_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
-        FOREIGN KEY (workspace_id) REFERENCES workspaces (id) ON DELETE CASCADE,
-        UNIQUE(user_id, workspace_id)
-      )
-    `);
+    // Activity log table for audit trail - NO FOREIGN KEY CONSTRAINTS
 
-    // Update existing tables to include workspace_id
-    
-    // Add workspace_id to clients table
-    const clientsTableInfo = await db.all("PRAGMA table_info(clients)");
-    const hasWorkspaceIdInClients = clientsTableInfo.some(col => col.name === 'workspace_id');
-    if (!hasWorkspaceIdInClients) {
-      await db.run('ALTER TABLE clients ADD COLUMN workspace_id TEXT REFERENCES workspaces(id)');
-    }
-
-    // Add workspace_id to team_members table
-    const teamMembersTableInfo = await db.all("PRAGMA table_info(team_members)");
-    const hasWorkspaceIdInTeamMembers = teamMembersTableInfo.some(col => col.name === 'workspace_id');
-    if (!hasWorkspaceIdInTeamMembers) {
-      await db.run('ALTER TABLE team_members ADD COLUMN workspace_id TEXT REFERENCES workspaces(id)');
-    }
-
-    // Add workspace_id to workflows table
-    const workflowsTableInfo = await db.all("PRAGMA table_info(workflows)");
-    const hasWorkspaceIdInWorkflows = workflowsTableInfo.some(col => col.name === 'workspace_id');
-    if (!hasWorkspaceIdInWorkflows) {
-      await db.run('ALTER TABLE workflows ADD COLUMN workspace_id TEXT REFERENCES workspaces(id)');
-    }
-
-    // Add workspace_id to kanban_tasks table
-    const kanbanTasksTableInfo = await db.all("PRAGMA table_info(kanban_tasks)");
-    const hasWorkspaceIdInKanbanTasks = kanbanTasksTableInfo.some(col => col.name === 'workspace_id');
-    if (!hasWorkspaceIdInKanbanTasks) {
-      await db.run('ALTER TABLE kanban_tasks ADD COLUMN workspace_id TEXT REFERENCES workspaces(id)');
-    }
-
-    // Add workspace_id to kanban_columns table
-    const kanbanColumnsTableInfo = await db.all("PRAGMA table_info(kanban_columns)");
-    const hasWorkspaceIdInKanbanColumns = kanbanColumnsTableInfo.some(col => col.name === 'workspace_id');
-    if (!hasWorkspaceIdInKanbanColumns) {
-      await db.run('ALTER TABLE kanban_columns ADD COLUMN workspace_id TEXT REFERENCES workspaces(id)');
-    }
-
-    // Add workspace_id to client_meetings table
-    const clientMeetingsTableInfo = await db.all("PRAGMA table_info(client_meetings)");
-    const hasWorkspaceIdInClientMeetings = clientMeetingsTableInfo.some(col => col.name === 'workspace_id');
-    if (!hasWorkspaceIdInClientMeetings) {
-      await db.run('ALTER TABLE client_meetings ADD COLUMN workspace_id TEXT REFERENCES workspaces(id)');
-    }
-
-    // Activity log table for audit trail
     await db.run(`
       CREATE TABLE IF NOT EXISTS activity_log (
         id TEXT PRIMARY KEY,
         entity_type TEXT NOT NULL, -- 'client', 'workflow', 'task', etc.
         entity_id TEXT NOT NULL,
         action TEXT NOT NULL, -- 'created', 'updated', 'deleted', etc.
-        performed_by TEXT, -- team member id
+        performed_by TEXT, -- user id (no foreign key constraint)
         details TEXT, -- JSON object as string
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (performed_by) REFERENCES team_members (id) ON DELETE SET NULL
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )
     `);
 

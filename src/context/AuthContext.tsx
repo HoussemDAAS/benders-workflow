@@ -1,17 +1,30 @@
 import React, { createContext, useEffect, useState } from 'react'
-import { authService, type AuthUser, type LoginCredentials, type RegisterCredentials } from '../services/authService'
+
+import { authService, type AuthUser, type LoginCredentials, type TwoFactorRequiredResponse, type TwoFactorVerificationRequest } from '../services/authService'
+
 
 interface AuthContextType {
   user: AuthUser | null
   isLoading: boolean
   isAuthenticated: boolean
-  loginWithEmail: (credentials: LoginCredentials) => Promise<AuthUser>
-  register: (credentials: RegisterCredentials) => Promise<AuthUser>
+
+  loginWithEmail: (credentials: LoginCredentials) => Promise<AuthUser | TwoFactorRequiredResponse>
+        register: (credentials: RegisterCredentials) => Promise<AuthUser>
+
   loginWithGoogle: () => Promise<void>
   loginWithGitHub: () => Promise<void>
   sendMagicLink: (email: string) => Promise<void>
+  verifyMagicLink: (token: string) => Promise<AuthUser | TwoFactorRequiredResponse>
+  verify2FA: (request: TwoFactorVerificationRequest) => Promise<AuthUser>
   logout: () => Promise<void>
   refreshSession: () => Promise<void>
+  // 2FA management methods
+  setup2FA: () => Promise<{ secret: string; qrCodeDataURL: string; manualEntryKey: string }>
+  enable2FA: (token: string) => Promise<{ backupCodes: string[]; user: AuthUser }>
+  disable2FA: (token: string) => Promise<AuthUser>
+  get2FAStatus: () => Promise<{ twoFactorEnabled: boolean; hasBackupCodes: boolean }>
+  regenerateBackupCodes: (token: string) => Promise<string[]>
+  getAuthHeaders: () => Record<string, string>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -41,14 +54,58 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     initializeAuth()
   }, [])
 
-  const loginWithEmail = async (credentials: LoginCredentials): Promise<AuthUser> => {
+  const loginWithEmail = async (credentials: LoginCredentials): Promise<AuthUser | TwoFactorRequiredResponse> => {
     setIsLoading(true)
     try {
-      const user = await authService.loginWithEmail(credentials)
+      const result = await authService.loginWithEmail(credentials)
+      
+      // Only set user if it's a successful login (not 2FA required)
+      if ('requiresTwoFactor' in result) {
+        // 2FA required - don't set user yet
+        return result
+      } else {
+        // Regular login success
+        setUser(result)
+        return result
+      }
+    } catch (error) {
+      console.error('Email login error:', error)
+      throw error
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const verifyMagicLink = async (token: string): Promise<AuthUser | TwoFactorRequiredResponse> => {
+    setIsLoading(true)
+    try {
+      const result = await authService.verifyMagicLink(token)
+      
+      // Only set user if it's a successful login (not 2FA required)
+      if ('requiresTwoFactor' in result) {
+        // 2FA required - don't set user yet
+        return result
+      } else {
+        // Regular login success
+        setUser(result)
+        return result
+      }
+    } catch (error) {
+      console.error('Magic link verification error:', error)
+      throw error
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const verify2FA = async (request: TwoFactorVerificationRequest): Promise<AuthUser> => {
+    setIsLoading(true)
+    try {
+      const user = await authService.verify2FA(request)
       setUser(user)
       return user
     } catch (error) {
-      console.error('Email login error:', error)
+      console.error('2FA verification error:', error)
       throw error
     } finally {
       setIsLoading(false)
@@ -128,6 +185,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
+  // 2FA management methods
+  const setup2FA = async () => {
+    return await authService.setup2FA()
+  }
+
+  const enable2FA = async (token: string) => {
+    const result = await authService.enable2FA(token)
+    setUser(result.user) // Update user with new 2FA status
+    return result
+  }
+
+  const disable2FA = async (token: string) => {
+    const updatedUser = await authService.disable2FA(token)
+    setUser(updatedUser) // Update user with new 2FA status
+    return updatedUser
+  }
+
+  const get2FAStatus = async () => {
+    return await authService.get2FAStatus()
+  }
+
+  const regenerateBackupCodes = async (token: string) => {
+    return await authService.regenerateBackupCodes(token)
+  }
+
+  const getAuthHeaders = () => {
+    return authService.getAuthHeaders()
+  }
+
   const value: AuthContextType = {
     user,
     isLoading,
@@ -137,8 +223,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     loginWithGoogle,
     loginWithGitHub,
     sendMagicLink,
+    verifyMagicLink,
+    verify2FA,
     logout,
-    refreshSession
+    refreshSession,
+    setup2FA,
+    enable2FA,
+    disable2FA,
+    get2FAStatus,
+    regenerateBackupCodes,
+    getAuthHeaders
   }
 
   return (

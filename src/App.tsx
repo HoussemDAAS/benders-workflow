@@ -19,8 +19,11 @@ import { EnhancedToolbar } from './components/EnhancedToolbar';
 import { AuthPage } from './components/AuthPage';
 import { LandingPage } from './components/LandingPage';
 import { LoginPage } from './pages/LoginPage';
+import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
+import { ResetPasswordPage } from './pages/ResetPasswordPage';
 import { OAuthCallbackPage } from './pages/OAuthCallbackPage';
 import { MagicLinkVerificationPage } from './pages/MagicLinkVerificationPage';
+import { SecurityPage } from './pages/SecurityPage';
 import DashboardPage from './pages/DashboardPage';
 import WorkflowsPage from './pages/WorkflowsPage';
 import KanbanPage from './pages/KanbanPage';
@@ -116,9 +119,15 @@ const AppLayout: React.FC = () => {
                 <MeetingsPage />
               </ProtectedRoute>
             } />
-            {/* Default route - redirect to dashboard */}
-            <Route path="" element={<Navigate to="dashboard" replace />} />
-            <Route path="*" element={<Navigate to="dashboard" replace />} />
+
+            <Route path="/security" element={
+              <ProtectedRoute>
+                <SecurityPage />
+              </ProtectedRoute>
+            } />
+            {/* Catch all route - redirect to dashboard */}
+            <Route path="*" element={<Navigate to="/dashboard" replace />} />
+
           </Routes>
         </div>
       </main>
@@ -129,28 +138,31 @@ const AppLayout: React.FC = () => {
 export default function App() {
   return (
     <AuthProvider>
-      <WorkspaceProvider>
-        <Router>
-          <Routes>
-            {/* Public Routes (No Sidebar) */}
+
+      <Router>
+        <Routes>
+          {/* Public Routes (No Sidebar) */}
             <Route path="/" element={<LandingPage />} />
-            <Route path="/login" element={<AuthPage />} />
-            <Route path="/signup" element={<AuthPage />} />
-            <Route path="/auth" element={<AuthPage />} />
-            <Route path="/auth/verify" element={<MagicLinkVerificationPage />} />
-            <Route path="/oauth/callback" element={<OAuthCallbackPage />} />
-            <Route path="/oauth/callback/google" element={<OAuthCallbackPage />} />
-            <Route path="/oauth/callback/github" element={<OAuthCallbackPage />} />
-            
-            {/* Protected Routes (With Sidebar and App Context) */}
-            <Route path="/app/*" element={
+          <Route path="/login" element={<LoginPage />} />
+           <Route path="/signup" element={<AuthPage />} />
+           <Route path="/auth" element={<AuthPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
+          <Route path="/auth/verify" element={<MagicLinkVerificationPage />} />
+          <Route path="/oauth/callback" element={<OAuthCallbackPage />} />
+          <Route path="/oauth/callback/google" element={<OAuthCallbackPage />} />
+          <Route path="/oauth/callback/github" element={<OAuthCallbackPage />} />
+          
+          {/* Protected Routes (With Sidebar and App Context) */}
+          <Route path="/app/*" element={
               <AppProvider>
                 <AppLayout />
               </AppProvider>
             } />
           </Routes>
-        </Router>
-      </WorkspaceProvider>
+
+      </Router>
+
     </AuthProvider>
   );
 }

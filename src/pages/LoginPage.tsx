@@ -1,6 +1,9 @@
-import React, { useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+
 import { useAuth } from '../hooks/useAuth';
+import { TwoFactorVerification } from '../components/TwoFactorVerification';
 import { 
   Mail, 
   Lock, 
@@ -35,6 +38,12 @@ interface ValidationRule {
   type?: 'error' | 'warning' | 'info'
 }
 
+interface TwoFactorData {
+  email: string
+  loginType: 'password' | 'magic-link'
+  magicToken?: string
+}
+
 export function LoginPage() {
   const navigate = useNavigate()
   const { loginWithEmail, loginWithGoogle, loginWithGitHub, sendMagicLink, isLoading } = useAuth()
@@ -49,6 +58,19 @@ export function LoginPage() {
   const [magicLinkSent, setMagicLinkSent] = useState(false)
   const [touchedFields, setTouchedFields] = useState<Set<string>>(new Set())
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [rememberMe, setRememberMe] = useState(false) // Add remember me state
+  
+  // 2FA states
+  const [showTwoFactor, setShowTwoFactor] = useState(false)
+  const [twoFactorData, setTwoFactorData] = useState<TwoFactorData | null>(null)
+
+  // Load remember me preference from localStorage on component mount
+  useEffect(() => {
+    const savedRememberMe = localStorage.getItem('rememberMe')
+    if (savedRememberMe === 'true') {
+      setRememberMe(true)
+    }
+  }, [])
 
   // Enhanced validation rules
   const emailValidationRules: ValidationRule[] = [
@@ -141,7 +163,36 @@ export function LoginPage() {
     return Object.keys(newErrors).length === 0
   }
 
-  // Enhanced submit handler with better error handling
+  // Handle 2FA verification success
+  const handle2FASuccess = async (authData: any) => {
+    try {
+      // Store the authentication data (token, user info)
+      localStorage.setItem('authToken', authData.token)
+      localStorage.setItem('authUser', JSON.stringify(authData.user))
+      localStorage.setItem('authExpires', authData.expires)
+      
+      // Reset 2FA state
+      setShowTwoFactor(false)
+      setTwoFactorData(null)
+      
+      // Navigate to dashboard
+      navigate('/dashboard')
+    } catch (error) {
+      console.error('Failed to complete 2FA login:', error)
+      setErrors({ general: 'Login failed after 2FA verification. Please try again.' })
+      setShowTwoFactor(false)
+    }
+  }
+
+  // Handle going back from 2FA verification
+  const handle2FABack = () => {
+    setShowTwoFactor(false)
+    setTwoFactorData(null)
+    setFormData({ email: '', password: '' })
+    setErrors({})
+  }
+
+  // Enhanced submit handler with remember me support
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
@@ -156,12 +207,30 @@ export function LoginPage() {
     
     try {
       if (loginMode === 'password') {
-        // Email/Password login with enhanced error handling
-        await loginWithEmail({
+        // Save remember me preference
+        localStorage.setItem('rememberMe', rememberMe.toString())
+        
+        // Email/Password login with 2FA support and remember me
+        const result = await loginWithEmail({
           email: formData.email.trim().toLowerCase(),
-          password: formData.password
+          password: formData.password,
+          rememberMe // Pass remember me option to login function
         })
-        navigate('/app/dashboard')
+
+
+        // Check if 2FA is required
+        if ('requiresTwoFactor' in result) {
+          setTwoFactorData({
+            email: result.email,
+            loginType: 'password'
+          })
+          setShowTwoFactor(true)
+          return
+        }
+
+        // Regular login success (no 2FA) - user is already set by auth context
+          navigate('/app/dashboard')
+
       } else {
         // Magic link login
         await sendMagicLink(formData.email.trim().toLowerCase())
@@ -176,7 +245,7 @@ export function LoginPage() {
       if (error instanceof Error) {
         const message = error.message.toLowerCase()
         
-        if (message.includes('invalid credentials') || message.includes('unauthorized')) {
+        if (message.includes('invalid credentials') || message.includes('invalid email or password')) {
           errorMessage = 'Invalid email or password. Please check your credentials and try again.'
         } else if (message.includes('user not found')) {
           errorMessage = 'No account found with this email address. Please check your email or contact admin.'
@@ -313,6 +382,19 @@ export function LoginPage() {
           </div>
         </div>
       </div>
+    )
+  }
+
+  // Show 2FA verification screen
+  if (showTwoFactor && twoFactorData) {
+    return (
+      <TwoFactorVerification
+        email={twoFactorData.email}
+        loginType={twoFactorData.loginType}
+        onVerificationSuccess={handle2FASuccess}
+        onBack={handle2FABack}
+        magicToken={twoFactorData.magicToken}
+      />
     )
   }
 
@@ -595,19 +677,18 @@ export function LoginPage() {
                   <label className="flex items-center cursor-pointer group">
                     <input
                       type="checkbox"
-                      className="h-2.5 w-2.5 lg:h-3 lg:w-3 text-primary focus:ring-primary focus:ring-offset-0 border-gray-300 rounded transition-colors disabled:opacity-50"
+                      checked={rememberMe}
+                      onChange={(e) => setRememberMe(e.target.checked)}
+                      className="h-2.5 w-2.5 lg:h-3 lg:w-3 text-primary focus:ring-primary focus:ring-offset-0 border-gray-300 rounded transition-colors disabled:opacity-50 cursor-pointer"
                       disabled={isLoading || isSubmitting}
                     />
-                    <span className="ml-1 lg:ml-1.5 text-xs text-gray-700 group-hover:text-gray-900 transition-colors">
-                      Remember me
+                    <span className="ml-1 lg:ml-1.5 text-xs text-gray-700 group-hover:text-gray-900 transition-colors select-none">
+                      Remember me for 30 days
                     </span>
                   </label>
                   <button
                     type="button"
-                    onClick={() => {
-                      setLoginMode('magic-link')
-                      setErrors({}) // Clear any existing errors
-                    }}
+                    onClick={() => navigate('/forgot-password')}
                     className="text-primary hover:text-primary/80 font-medium transition-colors text-xs underline-offset-2 hover:underline"
                     disabled={isLoading || isSubmitting}
                   >

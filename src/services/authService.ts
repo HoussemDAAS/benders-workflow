@@ -3,6 +3,7 @@
 interface LoginCredentials {
   email: string
   password?: string
+  rememberMe?: boolean // Add remember me option
 }
 
 interface RegisterCredentials {
@@ -18,12 +19,30 @@ interface AuthUser {
   name?: string
   image?: string
   role?: string
+  twoFactorEnabled?: boolean
 }
 
 interface AuthResponse {
   user: AuthUser
   token: string
   expires: string
+}
+
+// New interface for 2FA responses
+interface TwoFactorRequiredResponse {
+  requiresTwoFactor: true
+  email: string
+  loginType: 'password' | 'magic-link'
+  message: string
+  magicToken?: string
+}
+
+interface TwoFactorVerificationRequest {
+  email: string
+  token: string
+  loginType: 'password' | 'magic-link'
+  password?: string
+  magicToken?: string
 }
 
 class AuthService {
@@ -61,8 +80,8 @@ class AuthService {
     localStorage.removeItem(this.userKey)
   }
 
-  // Email/Password login
-  async loginWithEmail(credentials: LoginCredentials): Promise<AuthUser> {
+  // Enhanced Email/Password login with 2FA support
+  async loginWithEmail(credentials: LoginCredentials): Promise<AuthUser | TwoFactorRequiredResponse> {
     try {
       const response = await fetch(`${this.baseUrl}/api/auth/login`, {
         method: 'POST',
@@ -74,10 +93,23 @@ class AuthService {
 
       if (!response.ok) {
         const error = await response.json()
-        throw new Error(error.message || 'Login failed')
+        throw new Error(error.error || 'Login failed')
       }
 
-      const authResponse: AuthResponse = await response.json()
+      const data = await response.json()
+
+      // Check if 2FA is required
+      if (data.requiresTwoFactor) {
+        return {
+          requiresTwoFactor: true,
+          email: data.email,
+          loginType: 'password',
+          message: data.message
+        } as TwoFactorRequiredResponse
+      }
+
+      // Regular login success (no 2FA)
+      const authResponse: AuthResponse = data
       this.setAuthData(authResponse)
       return authResponse.user
     } catch (error) {
@@ -138,8 +170,8 @@ class AuthService {
     }
   }
 
-  // Verify magic link
-  async verifyMagicLink(token: string): Promise<AuthUser> {
+  // Enhanced Magic link with 2FA support  
+  async verifyMagicLink(token: string): Promise<AuthUser | TwoFactorRequiredResponse> {
     try {
       const response = await fetch(`${this.baseUrl}/api/auth/verify-magic-link`, {
         method: 'POST',
@@ -151,10 +183,24 @@ class AuthService {
 
       if (!response.ok) {
         const error = await response.json()
-        throw new Error(error.message || 'Invalid magic link')
+        throw new Error(error.error || 'Invalid magic link')
       }
 
-      const authResponse: AuthResponse = await response.json()
+      const data = await response.json()
+
+      // Check if 2FA is required
+      if (data.requiresTwoFactor) {
+        return {
+          requiresTwoFactor: true,
+          email: data.email,
+          loginType: 'magic-link',
+          message: data.message,
+          magicToken: token
+        } as TwoFactorRequiredResponse
+      }
+
+      // Regular magic link success (no 2FA)
+      const authResponse: AuthResponse = data
       this.setAuthData(authResponse)
       return authResponse.user
     } catch (error) {
@@ -163,69 +209,136 @@ class AuthService {
     }
   }
 
-  // Google OAuth login
-  async loginWithGoogle(): Promise<void> {
+  // New method: Verify 2FA and complete login
+  async verify2FA(request: TwoFactorVerificationRequest): Promise<AuthUser> {
     try {
-      // Get Google OAuth URL from our backend
-      const response = await fetch(`${this.baseUrl}/api/auth/google/url`)
-      
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error || 'Failed to get Google OAuth URL')
-      }
-      
-      const { authUrl } = await response.json()
-      
-      // Redirect to Google OAuth
-      window.location.href = authUrl
-    } catch (error) {
-      console.error('Google OAuth URL error:', error)
-      throw error
-    }
-  }
-
-  // GitHub OAuth login
-  async loginWithGitHub(): Promise<void> {
-    try {
-      // Get GitHub OAuth URL from our backend
-      const response = await fetch(`${this.baseUrl}/api/auth/github/url`)
-      
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error || 'Failed to get GitHub OAuth URL')
-      }
-      
-      const { authUrl } = await response.json()
-      
-      // Redirect to GitHub OAuth
-      window.location.href = authUrl
-    } catch (error) {
-      console.error('GitHub OAuth URL error:', error)
-      throw error
-    }
-  }
-
-  // Handle OAuth callback
-  async handleOAuthCallback(provider: string, code: string): Promise<AuthUser> {
-    try {
-      const response = await fetch(`${this.baseUrl}/api/auth/callback/${provider}`, {
+      const response = await fetch(`${this.baseUrl}/api/auth/2fa/verify`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ code }),
+        body: JSON.stringify(request),
       })
 
       if (!response.ok) {
         const error = await response.json()
-        throw new Error(error.message || 'OAuth callback failed')
+        throw new Error(error.error || '2FA verification failed')
       }
 
       const authResponse: AuthResponse = await response.json()
       this.setAuthData(authResponse)
       return authResponse.user
     } catch (error) {
-      console.error('OAuth callback error:', error)
+      console.error('2FA verification error:', error)
+      throw error
+    }
+  }
+
+  // New 2FA management methods
+  async setup2FA(): Promise<{ secret: string; qrCodeDataURL: string; manualEntryKey: string }> {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/auth/2fa/setup`, {
+        method: 'POST',
+        headers: this.getAuthHeaders(),
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to setup 2FA')
+      }
+
+      return await response.json()
+    } catch (error) {
+      console.error('2FA setup error:', error)
+      throw error
+    }
+  }
+
+  async enable2FA(token: string): Promise<{ backupCodes: string[]; user: AuthUser }> {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/auth/2fa/enable`, {
+        method: 'POST',
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify({ token }),
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to enable 2FA')
+      }
+
+      const data = await response.json()
+      
+      // Update stored user data with new 2FA status
+      localStorage.setItem(this.userKey, JSON.stringify(data.user))
+      
+      return data
+    } catch (error) {
+      console.error('2FA enable error:', error)
+      throw error
+    }
+  }
+
+  async disable2FA(token: string): Promise<AuthUser> {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/auth/2fa/disable`, {
+        method: 'POST',
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify({ token }),
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to disable 2FA')
+      }
+
+      const data = await response.json()
+      
+      // Update stored user data with new 2FA status
+      localStorage.setItem(this.userKey, JSON.stringify(data.user))
+      
+      return data.user
+    } catch (error) {
+      console.error('2FA disable error:', error)
+      throw error
+    }
+  }
+
+  async get2FAStatus(): Promise<{ twoFactorEnabled: boolean; hasBackupCodes: boolean }> {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/auth/2fa/status`, {
+        headers: this.getAuthHeaders(),
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to get 2FA status')
+      }
+
+      return await response.json()
+    } catch (error) {
+      console.error('2FA status error:', error)
+      throw error
+    }
+  }
+
+  async regenerateBackupCodes(token: string): Promise<string[]> {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/auth/2fa/regenerate-backup-codes`, {
+        method: 'POST',
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify({ token }),
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to regenerate backup codes')
+      }
+
+      const data = await response.json()
+      return data.backupCodes
+    } catch (error) {
+      console.error('2FA regenerate backup codes error:', error)
       throw error
     }
   }
@@ -284,7 +397,53 @@ class AuthService {
       ...(token && { 'Authorization': `Bearer ${token}` }),
     }
   }
+
+  // Google OAuth login
+  async loginWithGoogle(): Promise<void> {
+    try {
+      // Get Google OAuth URL from backend
+      const response = await fetch(`${this.baseUrl}/api/auth/google/url`)
+      if (!response.ok) {
+        throw new Error('Failed to get Google OAuth URL')
+      }
+      
+      const { authUrl } = await response.json()
+      
+      // Redirect to Google OAuth
+      window.location.href = authUrl
+    } catch (error) {
+      console.error('Google OAuth error:', error)
+      throw error
+    }
+  }
+
+  // GitHub OAuth login
+  async loginWithGitHub(): Promise<void> {
+    try {
+      // Get GitHub OAuth URL from backend
+      const response = await fetch(`${this.baseUrl}/api/auth/github/url`)
+      if (!response.ok) {
+        throw new Error('Failed to get GitHub OAuth URL')
+      }
+      
+      const { authUrl } = await response.json()
+      
+      // Redirect to GitHub OAuth
+      window.location.href = authUrl
+    } catch (error) {
+      console.error('GitHub OAuth error:', error)
+      throw error
+    }
+  }
 }
 
 export const authService = new AuthService()
-export type { AuthUser, LoginCredentials, RegisterCredentials }
+
+export type { 
+  AuthUser, 
+  LoginCredentials, 
+  TwoFactorRequiredResponse, 
+  TwoFactorVerificationRequest,
+    RegisterCredentials
+}
+
