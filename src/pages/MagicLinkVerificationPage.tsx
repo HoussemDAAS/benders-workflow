@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { TwoFactorVerification } from '../components/TwoFactorVerification';
 import { LoadingCard } from '../components/LoadingSpinner';
 import { ErrorCard } from '../components/ErrorMessage';
 import { 
@@ -16,9 +17,44 @@ export function MagicLinkVerificationPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { refreshSession } = useAuth();
-  const [status, setStatus] = useState<'verifying' | 'success' | 'error'>('verifying');
+  const [status, setStatus] = useState<'verifying' | 'success' | 'error' | 'requires2fa'>('verifying');
   const [error, setError] = useState<string | null>(null);
   const [isRedirecting, setIsRedirecting] = useState(false);
+  
+  // 2FA states
+  const [twoFactorData, setTwoFactorData] = useState<{
+    email: string;
+    magicToken: string;
+  } | null>(null);
+
+  // Handle 2FA verification success
+  const handle2FASuccess = async (authData: any) => {
+    try {
+      // Store the authentication data
+      localStorage.setItem('auth-token', authData.token);
+      localStorage.setItem('auth-user', JSON.stringify(authData.user));
+
+      // Refresh the auth context
+      await refreshSession();
+
+      setStatus('success');
+
+      // Redirect to dashboard after 2 seconds
+      setTimeout(() => {
+        setIsRedirecting(true);
+        navigate('/dashboard', { replace: true });
+      }, 2000);
+    } catch (error) {
+      console.error('Failed to complete 2FA login:', error);
+      setError('Login failed after 2FA verification. Please try again.');
+      setStatus('error');
+    }
+  };
+
+  // Handle going back from 2FA verification
+  const handle2FABack = () => {
+    navigate('/login', { replace: true });
+  };
 
   useEffect(() => {
     let isMounted = true;
@@ -26,6 +62,7 @@ export function MagicLinkVerificationPage() {
     const verifyMagicLink = async () => {
       try {
         const token = searchParams.get('token');
+        const requires2fa = searchParams.get('requires2fa') === 'true';
         
         if (!token) {
           throw new Error('Invalid magic link - no token found');
@@ -51,9 +88,20 @@ export function MagicLinkVerificationPage() {
         
         if (!isMounted) return;
 
+        // Check if 2FA is required
+        if (authData.requiresTwoFactor) {
+          console.log('🔐 2FA required for magic link login');
+          setTwoFactorData({
+            email: authData.email,
+            magicToken: token
+          });
+          setStatus('requires2fa');
+          return;
+        }
+
         console.log('✅ Magic link verified successfully');
         
-        // Store authentication data
+        // Regular login success (no 2FA)
         localStorage.setItem('auth-token', authData.token);
         localStorage.setItem('auth-user', JSON.stringify(authData.user));
 
@@ -108,6 +156,19 @@ export function MagicLinkVerificationPage() {
       clearTimeout(timeoutId);
     };
   }, [searchParams, navigate, refreshSession]);
+
+  // Show 2FA verification screen
+  if (status === 'requires2fa' && twoFactorData) {
+    return (
+      <TwoFactorVerification
+        email={twoFactorData.email}
+        loginType="magic-link"
+        onVerificationSuccess={handle2FASuccess}
+        onBack={handle2FABack}
+        magicToken={twoFactorData.magicToken}
+      />
+    );
+  }
 
   if (status === 'verifying') {
     return (

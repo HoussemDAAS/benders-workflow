@@ -1,14 +1,16 @@
 const express = require('express');
 const { body, validationResult } = require('express-validator');
 const { google } = require('googleapis');
+const qrcode = require('qrcode');
 const User = require('../models/User');
-const { createAuthRateLimit } = require('../middleware/auth');
+const { createAuthRateLimit, authenticate } = require('../middleware/auth');
 const emailService = require('../services/emailService');
 const router = express.Router();
 
 // Rate limiting for auth endpoints
 const loginRateLimit = createAuthRateLimit(15 * 60 * 1000, 5); // 5 attempts per 15 minutes
 const magicLinkRateLimit = createAuthRateLimit(5 * 60 * 1000, 3); // 3 attempts per 5 minutes
+const twoFARate = createAuthRateLimit(5 * 60 * 1000, 10); // 10 attempts per 5 minutes for 2FA
 
 // Google OAuth configuration
 const googleConfig = {
@@ -50,7 +52,7 @@ const validateRegister = [
   body('role').optional().isIn(['admin', 'manager', 'user']).withMessage('Invalid role'),
 ];
 
-// POST /auth/login - Email/Password login
+// POST /auth/login - Email/Password login (with 2FA support)
 router.post('/login', loginRateLimit, validateLogin, async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -72,7 +74,18 @@ router.post('/login', loginRateLimit, validateLogin, async (req, res) => {
       return res.status(401).json({ error: 'Invalid email or password' });
     }
 
-    // Update last login
+    // Check if 2FA is enabled
+    if (user.twoFactorEnabled) {
+      // Don't update last login yet - wait for 2FA verification
+      return res.status(200).json({
+        requiresTwoFactor: true,
+        message: 'Please provide your 2FA verification code',
+        email: user.email, // Frontend needs this for 2FA verification
+        loginType: 'password'
+      });
+    }
+
+    // Regular login flow (no 2FA)
     await user.updateLastLogin();
 
     // Generate token
@@ -94,7 +107,7 @@ router.post('/login', loginRateLimit, validateLogin, async (req, res) => {
   }
 });
 
-// POST /auth/magic-link - Send magic link
+// POST /auth/magic-link - Send magic link (with 2FA support)
 router.post('/magic-link', magicLinkRateLimit, validateMagicLink, async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -124,7 +137,13 @@ router.post('/magic-link', magicLinkRateLimit, validateMagicLink, async (req, re
 
     // Generate magic link token (expires in 15 minutes)
     const magicToken = user.generateMagicLinkToken();
-    const magicLink = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/auth/verify?token=${magicToken}`;
+    
+    // For 2FA users, we need a special magic link that includes 2FA requirement
+    const magicLinkPath = user.twoFactorEnabled 
+      ? `/auth/verify?token=${magicToken}&requires2fa=true`
+      : `/auth/verify?token=${magicToken}`;
+    
+    const magicLink = `${process.env.FRONTEND_URL || 'http://localhost:5173'}${magicLinkPath}`;
 
     try {
       // Send professional magic link email
@@ -144,7 +163,8 @@ router.post('/magic-link', magicLinkRateLimit, validateMagicLink, async (req, re
       // In development, include the link for easy testing
       ...(process.env.NODE_ENV === 'development' && { 
         developmentLink: magicLink,
-        expiresIn: '15 minutes'
+        expiresIn: '15 minutes',
+        requires2FA: user.twoFactorEnabled
       })
     });
 
@@ -154,7 +174,7 @@ router.post('/magic-link', magicLinkRateLimit, validateMagicLink, async (req, re
   }
 });
 
-// POST /auth/verify-magic-link - Verify magic link token
+// POST /auth/verify-magic-link - Verify magic link token (with 2FA support)
 router.post('/verify-magic-link', async (req, res) => {
   try {
     const { token } = req.body;
@@ -175,7 +195,19 @@ router.post('/verify-magic-link', async (req, res) => {
       return res.status(401).json({ error: 'User not found' });
     }
 
-    // Update last login
+    // Check if 2FA is enabled
+    if (user.twoFactorEnabled) {
+      // Don't update last login yet - wait for 2FA verification
+      return res.status(200).json({
+        requiresTwoFactor: true,
+        message: 'Please provide your 2FA verification code',
+        email: user.email, // Frontend needs this for 2FA verification
+        loginType: 'magic-link',
+        magicToken: token // Keep the magic token for final verification
+      });
+    }
+
+    // Regular magic link login (no 2FA)
     await user.updateLastLogin();
 
     // Generate new auth token
@@ -321,12 +353,6 @@ router.post('/callback/google', async (req, res) => {
       googleConfig.redirectUri
     );
     
-    console.log('🔧 Google OAuth Debug:', {
-      clientId: googleConfig.clientId,
-      redirectUri: googleConfig.redirectUri,
-      codeReceived: !!code
-    });
-    
     // Exchange authorization code for access token
     const { tokens } = await oauth2Client.getToken({
       code,
@@ -337,12 +363,6 @@ router.post('/callback/google', async (req, res) => {
     // Get user profile from Google
     const oauth2 = google.oauth2({ version: 'v2', auth: oauth2Client });
     const { data: profile } = await oauth2.userinfo.get();
-
-    console.log('✅ Google Profile Retrieved:', {
-      email: profile.email,
-      name: profile.name,
-      verified_email: profile.verified_email
-    });
 
     if (!profile.email) {
       return res.status(400).json({ error: 'Unable to get email from Google profile' });
@@ -366,12 +386,9 @@ router.post('/callback/google', async (req, res) => {
       // Don't set password for OAuth users
       await user.save();
       
-      console.log(`✓ Created new user from Google OAuth: ${profile.email}`);
-      
       // Send welcome email for new users
       try {
         await emailService.sendWelcomeEmail(user.email, user.name, true);
-        console.log(`✅ Welcome email sent to new Google user: ${user.email}`);
       } catch (emailError) {
         console.error('❌ Failed to send welcome email:', emailError.message);
       }
@@ -384,19 +401,10 @@ router.post('/callback/google', async (req, res) => {
         user.name = profile.name;
         await user.save();
       }
-      
-      console.log(`✓ Existing user logged in via Google OAuth: ${profile.email}`);
     }
 
     // Generate JWT token
     const token = user.generateToken();
-
-    console.log('🎉 Google OAuth Success:', {
-      userId: user.id,
-      email: user.email,
-      isNewUser,
-      tokenGenerated: !!token
-    });
 
     res.json({
       user: user.toSafeJSON(),
@@ -456,12 +464,6 @@ router.post('/callback/github', async (req, res) => {
       return res.status(500).json({ error: 'GitHub OAuth not configured' });
     }
 
-    console.log('🔧 GitHub OAuth Debug:', {
-      clientId: githubConfig.clientId,
-      redirectUri: githubConfig.redirectUri,
-      codeReceived: !!code
-    });
-
     // Exchange authorization code for access token
     const tokenResponse = await fetch('https://github.com/login/oauth/access_token', {
       method: 'POST',
@@ -520,13 +522,6 @@ router.post('/callback/github', async (req, res) => {
       email = primaryEmail?.email;
     }
 
-    console.log('✅ GitHub Profile Retrieved:', {
-      login: profile.login,
-      name: profile.name,
-      email: email,
-      verified: true
-    });
-
     if (!email) {
       return res.status(400).json({ 
         error: 'Unable to get email from GitHub profile. Please make sure your email is public or primary.' 
@@ -551,12 +546,9 @@ router.post('/callback/github', async (req, res) => {
       // Don't set password for OAuth users
       await user.save();
       
-      console.log(`✓ Created new user from GitHub OAuth: ${email}`);
-      
       // Send welcome email for new users
       try {
         await emailService.sendWelcomeEmail(user.email, user.name, true);
-        console.log(`✅ Welcome email sent to new GitHub user: ${user.email}`);
       } catch (emailError) {
         console.error('❌ Failed to send welcome email:', emailError.message);
       }
@@ -569,19 +561,10 @@ router.post('/callback/github', async (req, res) => {
         user.name = profile.name;
         await user.save();
       }
-      
-      console.log(`✓ Existing user logged in via GitHub OAuth: ${email}`);
     }
 
     // Generate JWT token
     const token = user.generateToken();
-
-    console.log('🎉 GitHub OAuth Success:', {
-      userId: user.id,
-      email: user.email,
-      isNewUser,
-      tokenGenerated: !!token
-    });
 
     res.json({
       user: user.toSafeJSON(),
@@ -619,6 +602,261 @@ router.post('/refresh', async (req, res) => {
   } catch (error) {
     console.error('Token refresh error:', error);
     res.status(500).json({ error: 'Token refresh failed' });
+  }
+});
+
+// POST /auth/2fa/setup - Initialize 2FA setup
+router.post('/2fa/setup', authenticate, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    if (user.twoFactorEnabled) {
+      return res.status(400).json({ error: '2FA is already enabled' });
+    }
+
+    // Generate 2FA secret
+    const secretInfo = user.generate2FASecret();
+    
+    // Save the secret (but don't enable 2FA yet)
+    await user.save();
+
+    // Generate QR code
+    const qrCodeDataURL = await qrcode.toDataURL(secretInfo.qrCode);
+
+    res.json({
+      secret: secretInfo.secret,
+      qrCodeDataURL,
+      manualEntryKey: secretInfo.manualEntryKey,
+      backupCodes: null // Will be generated when 2FA is enabled
+    });
+  } catch (error) {
+    console.error('2FA setup error:', error);
+    res.status(500).json({ error: 'Failed to setup 2FA' });
+  }
+});
+
+// POST /auth/2fa/enable - Enable 2FA after verification
+router.post('/2fa/enable', authenticate, [
+  body('token').isLength({ min: 6, max: 6 }).withMessage('2FA token must be 6 digits')
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    const { token } = req.body;
+    const user = await User.findById(req.user.id);
+    
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    if (user.twoFactorEnabled) {
+      return res.status(400).json({ error: '2FA is already enabled' });
+    }
+
+    if (!user.twoFactorSecret) {
+      return res.status(400).json({ error: '2FA setup not initialized. Call /auth/2fa/setup first' });
+    }
+
+    // Enable 2FA and get backup codes
+    const backupCodes = await user.enable2FA(token);
+
+    // Send 2FA enabled notification email
+    try {
+      await emailService.send2FAEnabledEmail(user.email, user.name);
+    } catch (emailError) {
+      console.error('Failed to send 2FA enabled email:', emailError);
+    }
+
+    res.json({
+      message: '2FA enabled successfully',
+      backupCodes,
+      user: user.toSafeJSON()
+    });
+  } catch (error) {
+    console.error('2FA enable error:', error);
+    
+    if (error.message === 'Invalid verification token') {
+      return res.status(400).json({ error: 'Invalid 2FA token. Please try again.' });
+    }
+    
+    res.status(500).json({ error: 'Failed to enable 2FA' });
+  }
+});
+
+// POST /auth/2fa/disable - Disable 2FA
+router.post('/2fa/disable', authenticate, [
+  body('token').isLength({ min: 6, max: 8 }).withMessage('2FA token must be 6-8 characters')
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    const { token } = req.body;
+    const user = await User.findById(req.user.id);
+    
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    if (!user.twoFactorEnabled) {
+      return res.status(400).json({ error: '2FA is not enabled' });
+    }
+
+    // Disable 2FA
+    await user.disable2FA(token);
+
+    // Send 2FA disabled notification email
+    try {
+      await emailService.send2FADisabledEmail(user.email, user.name);
+    } catch (emailError) {
+      console.error('Failed to send 2FA disabled email:', emailError);
+    }
+
+    res.json({
+      message: '2FA disabled successfully',
+      user: user.toSafeJSON()
+    });
+  } catch (error) {
+    console.error('2FA disable error:', error);
+    
+    if (error.message === 'Invalid verification token') {
+      return res.status(400).json({ error: 'Invalid 2FA token. Please try again.' });
+    }
+    
+    res.status(500).json({ error: 'Failed to disable 2FA' });
+  }
+});
+
+// POST /auth/2fa/regenerate-backup-codes - Regenerate backup codes
+router.post('/2fa/regenerate-backup-codes', authenticate, [
+  body('token').isLength({ min: 6, max: 8 }).withMessage('2FA token must be 6-8 characters')
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    const { token } = req.body;
+    const user = await User.findById(req.user.id);
+    
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    if (!user.twoFactorEnabled) {
+      return res.status(400).json({ error: '2FA is not enabled' });
+    }
+
+    // Regenerate backup codes
+    const backupCodes = await user.regenerateBackupCodes(token);
+
+    res.json({
+      message: 'Backup codes regenerated successfully',
+      backupCodes
+    });
+  } catch (error) {
+    console.error('2FA regenerate backup codes error:', error);
+    
+    if (error.message === 'Invalid verification token') {
+      return res.status(400).json({ error: 'Invalid 2FA token. Please try again.' });
+    }
+    
+    res.status(500).json({ error: 'Failed to regenerate backup codes' });
+  }
+});
+
+// GET /auth/2fa/status - Get 2FA status
+router.get('/2fa/status', authenticate, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    res.json({
+      twoFactorEnabled: user.twoFactorEnabled,
+      twoFactorLastUsed: user.twoFactorLastUsed,
+      hasBackupCodes: user.twoFactorBackupCodes ? JSON.parse(user.twoFactorBackupCodes).length > 0 : false
+    });
+  } catch (error) {
+    console.error('2FA status error:', error);
+    res.status(500).json({ error: 'Failed to get 2FA status' });
+  }
+});
+
+// POST /auth/2fa/verify - Verify 2FA token during login
+router.post('/2fa/verify', twoFARate, [
+  body('email').isEmail().normalizeEmail().withMessage('Valid email is required'),
+  body('password').optional().isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
+  body('token').isLength({ min: 6, max: 8 }).withMessage('2FA token must be 6-8 characters'),
+  body('loginType').isIn(['password', 'magic-link']).withMessage('Invalid login type')
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    const { email, password, token, loginType } = req.body;
+
+    // Find user
+    const user = await User.findByEmail(email);
+    if (!user) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    if (!user.twoFactorEnabled) {
+      return res.status(400).json({ error: '2FA is not enabled for this user' });
+    }
+
+    // Verify primary credentials first
+    if (loginType === 'password') {
+      if (!password) {
+        return res.status(400).json({ error: 'Password is required' });
+      }
+      
+      const isValidPassword = await user.verifyPassword(password);
+      if (!isValidPassword) {
+        return res.status(401).json({ error: 'Invalid credentials' });
+      }
+    }
+    // For magic-link, the token verification serves as the primary auth
+
+    // Verify 2FA token
+    const is2FAValid = user.verify2FAToken(token);
+    if (!is2FAValid) {
+      return res.status(401).json({ error: 'Invalid 2FA token' });
+    }
+
+    // Update last login and save 2FA usage
+    await user.updateLastLogin();
+    await user.save();
+
+    // Generate JWT token
+    const authToken = user.generateToken();
+
+    // Clear rate limit attempts on successful login
+    if (req.clearAuthAttempts) {
+      req.clearAuthAttempts();
+    }
+
+    res.json({
+      user: user.toSafeJSON(),
+      token: authToken,
+      expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+    });
+  } catch (error) {
+    console.error('2FA verification error:', error);
+    res.status(500).json({ error: '2FA verification failed' });
   }
 });
 

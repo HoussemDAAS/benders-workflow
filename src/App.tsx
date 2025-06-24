@@ -19,6 +19,7 @@ import { AuthPage } from './components/AuthPage';
 import { LandingPage } from './pages/LandingPage';
 import { OAuthCallbackPage } from './pages/OAuthCallbackPage';
 import { MagicLinkVerificationPage } from './pages/MagicLinkVerificationPage';
+import { SecurityPage } from './pages/SecurityPage';
 import DashboardPage from './pages/DashboardPage';
 import WorkflowsPage from './pages/WorkflowsPage';
 import KanbanPage from './pages/KanbanPage';
@@ -109,9 +110,13 @@ const AppLayout: React.FC = () => {
                 <MeetingsPage />
               </ProtectedRoute>
             } />
-            {/* Default route - redirect to dashboard */}
-            <Route path="" element={<Navigate to="dashboard" replace />} />
-            <Route path="*" element={<Navigate to="dashboard" replace />} />
+            <Route path="/security" element={
+              <ProtectedRoute>
+                <SecurityPage />
+              </ProtectedRoute>
+            } />
+            {/* Catch all route - redirect to dashboard */}
+            <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>
         </div>
       </main>

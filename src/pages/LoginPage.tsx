@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { TwoFactorVerification } from '../components/TwoFactorVerification';
 import { 
   Mail, 
   Lock, 
@@ -35,6 +36,12 @@ interface ValidationRule {
   type?: 'error' | 'warning' | 'info'
 }
 
+interface TwoFactorData {
+  email: string
+  loginType: 'password' | 'magic-link'
+  magicToken?: string
+}
+
 export function LoginPage() {
   const navigate = useNavigate()
   const { loginWithEmail, loginWithGoogle, loginWithGitHub, sendMagicLink, isLoading } = useAuth()
@@ -49,6 +56,10 @@ export function LoginPage() {
   const [magicLinkSent, setMagicLinkSent] = useState(false)
   const [touchedFields, setTouchedFields] = useState<Set<string>>(new Set())
   const [isSubmitting, setIsSubmitting] = useState(false)
+  
+  // 2FA states
+  const [showTwoFactor, setShowTwoFactor] = useState(false)
+  const [twoFactorData, setTwoFactorData] = useState<TwoFactorData | null>(null)
 
   // Enhanced validation rules
   const emailValidationRules: ValidationRule[] = [
@@ -141,7 +152,36 @@ export function LoginPage() {
     return Object.keys(newErrors).length === 0
   }
 
-  // Enhanced submit handler with better error handling
+  // Handle 2FA verification success
+  const handle2FASuccess = async (authData: any) => {
+    try {
+      // Store the authentication data (token, user info)
+      localStorage.setItem('authToken', authData.token)
+      localStorage.setItem('authUser', JSON.stringify(authData.user))
+      localStorage.setItem('authExpires', authData.expires)
+      
+      // Reset 2FA state
+      setShowTwoFactor(false)
+      setTwoFactorData(null)
+      
+      // Navigate to dashboard
+      navigate('/dashboard')
+    } catch (error) {
+      console.error('Failed to complete 2FA login:', error)
+      setErrors({ general: 'Login failed after 2FA verification. Please try again.' })
+      setShowTwoFactor(false)
+    }
+  }
+
+  // Handle going back from 2FA verification
+  const handle2FABack = () => {
+    setShowTwoFactor(false)
+    setTwoFactorData(null)
+    setFormData({ email: '', password: '' })
+    setErrors({})
+  }
+
+  // Enhanced submit handler with 2FA support
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
@@ -156,11 +196,23 @@ export function LoginPage() {
     
     try {
       if (loginMode === 'password') {
-        // Email/Password login with enhanced error handling
-        await loginWithEmail({
+        // Email/Password login with 2FA support
+        const result = await loginWithEmail({
           email: formData.email.trim().toLowerCase(),
           password: formData.password
         })
+
+        // Check if 2FA is required
+        if ('requiresTwoFactor' in result) {
+          setTwoFactorData({
+            email: result.email,
+            loginType: 'password'
+          })
+          setShowTwoFactor(true)
+          return
+        }
+
+        // Regular login success (no 2FA) - user is already set by auth context
         navigate('/dashboard')
       } else {
         // Magic link login
@@ -176,7 +228,7 @@ export function LoginPage() {
       if (error instanceof Error) {
         const message = error.message.toLowerCase()
         
-        if (message.includes('invalid credentials') || message.includes('unauthorized')) {
+        if (message.includes('invalid credentials') || message.includes('invalid email or password')) {
           errorMessage = 'Invalid email or password. Please check your credentials and try again.'
         } else if (message.includes('user not found')) {
           errorMessage = 'No account found with this email address. Please check your email or contact admin.'
@@ -313,6 +365,19 @@ export function LoginPage() {
           </div>
         </div>
       </div>
+    )
+  }
+
+  // Show 2FA verification screen
+  if (showTwoFactor && twoFactorData) {
+    return (
+      <TwoFactorVerification
+        email={twoFactorData.email}
+        loginType={twoFactorData.loginType}
+        onVerificationSuccess={handle2FASuccess}
+        onBack={handle2FABack}
+        magicToken={twoFactorData.magicToken}
+      />
     )
   }
 
