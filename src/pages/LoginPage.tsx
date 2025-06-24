@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { TwoFactorVerification } from '../components/TwoFactorVerification';
 import { 
@@ -56,10 +56,19 @@ export function LoginPage() {
   const [magicLinkSent, setMagicLinkSent] = useState(false)
   const [touchedFields, setTouchedFields] = useState<Set<string>>(new Set())
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [rememberMe, setRememberMe] = useState(false) // Add remember me state
   
   // 2FA states
   const [showTwoFactor, setShowTwoFactor] = useState(false)
   const [twoFactorData, setTwoFactorData] = useState<TwoFactorData | null>(null)
+
+  // Load remember me preference from localStorage on component mount
+  useEffect(() => {
+    const savedRememberMe = localStorage.getItem('rememberMe')
+    if (savedRememberMe === 'true') {
+      setRememberMe(true)
+    }
+  }, [])
 
   // Enhanced validation rules
   const emailValidationRules: ValidationRule[] = [
@@ -181,7 +190,7 @@ export function LoginPage() {
     setErrors({})
   }
 
-  // Enhanced submit handler with 2FA support
+  // Enhanced submit handler with remember me support
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
@@ -196,10 +205,14 @@ export function LoginPage() {
     
     try {
       if (loginMode === 'password') {
-        // Email/Password login with 2FA support
+        // Save remember me preference
+        localStorage.setItem('rememberMe', rememberMe.toString())
+        
+        // Email/Password login with 2FA support and remember me
         const result = await loginWithEmail({
           email: formData.email.trim().toLowerCase(),
-          password: formData.password
+          password: formData.password,
+          rememberMe // Pass remember me option to login function
         })
 
         // Check if 2FA is required
@@ -660,11 +673,13 @@ export function LoginPage() {
                   <label className="flex items-center cursor-pointer group">
                     <input
                       type="checkbox"
-                      className="h-2.5 w-2.5 lg:h-3 lg:w-3 text-primary focus:ring-primary focus:ring-offset-0 border-gray-300 rounded transition-colors disabled:opacity-50"
+                      checked={rememberMe}
+                      onChange={(e) => setRememberMe(e.target.checked)}
+                      className="h-2.5 w-2.5 lg:h-3 lg:w-3 text-primary focus:ring-primary focus:ring-offset-0 border-gray-300 rounded transition-colors disabled:opacity-50 cursor-pointer"
                       disabled={isLoading || isSubmitting}
                     />
-                    <span className="ml-1 lg:ml-1.5 text-xs text-gray-700 group-hover:text-gray-900 transition-colors">
-                      Remember me
+                    <span className="ml-1 lg:ml-1.5 text-xs text-gray-700 group-hover:text-gray-900 transition-colors select-none">
+                      Remember me for 30 days
                     </span>
                   </label>
                   <button
