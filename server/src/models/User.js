@@ -48,8 +48,57 @@ class User {
     };
 
     return jwt.sign(payload, process.env.JWT_SECRET || 'dev-secret-key', {
-      expiresIn: expiresIn || process.env.JWT_EXPIRES_IN || '7d'
+      expiresIn: expiresIn || process.env.JWT_EXPIRES_IN || '15m' // Shorter access token
     });
+  }
+
+  // Generate refresh token (longer expiration)
+  generateRefreshToken() {
+    const payload = {
+      id: this.id,
+      email: this.email,
+      type: 'refresh',
+      tokenId: uuidv4() // Unique token ID for tracking
+    };
+
+    return jwt.sign(payload, process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET || 'dev-refresh-secret', {
+      expiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '7d'
+    });
+  }
+
+  // Verify refresh token
+  static verifyRefreshToken(token) {
+    try {
+      const decoded = jwt.verify(token, process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET || 'dev-refresh-secret');
+      return decoded.type === 'refresh' ? decoded : null;
+    } catch (error) {
+      return null;
+    }
+  }
+
+  // Generate token pair (access + refresh)
+  generateTokenPair(rememberMe = false) {
+    const accessTokenExpiration = '15m'; // Short-lived access token
+    const refreshTokenExpiration = rememberMe ? '30d' : '7d'; // Longer refresh token
+    
+    const accessToken = this.generateToken(accessTokenExpiration);
+    const refreshToken = jwt.sign(
+      {
+        id: this.id,
+        email: this.email,
+        type: 'refresh',
+        tokenId: uuidv4()
+      },
+      process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET || 'dev-refresh-secret',
+      { expiresIn: refreshTokenExpiration }
+    );
+
+    return {
+      accessToken,
+      refreshToken,
+      accessTokenExpires: new Date(Date.now() + 15 * 60 * 1000), // 15 minutes
+      refreshTokenExpires: new Date(Date.now() + (rememberMe ? 30 : 7) * 24 * 60 * 60 * 1000)
+    };
   }
 
   // Generate magic link token
@@ -62,6 +111,19 @@ class User {
 
     return jwt.sign(payload, process.env.JWT_SECRET || 'dev-secret-key', {
       expiresIn: '15m' // Magic links expire in 15 minutes
+    });
+  }
+
+  // Generate password reset token
+  generatePasswordResetToken() {
+    const payload = {
+      id: this.id,
+      email: this.email,
+      type: 'password-reset'
+    };
+
+    return jwt.sign(payload, process.env.JWT_SECRET || 'dev-secret-key', {
+      expiresIn: '1h' // Password reset tokens expire in 1 hour
     });
   }
 
@@ -350,6 +412,21 @@ class User {
     await ActivityLogger.log('user', this.id, 'deactivated', performedBy, {
       email: this.email,
       name: this.name
+    });
+  }
+
+  // Update password (for password reset)
+  static async updatePassword(userId, hashedPassword) {
+    const db = getDatabase();
+    const updatedAt = new Date().toISOString();
+    
+    await db.run(
+      'UPDATE users SET password = ?, updated_at = ? WHERE id = ?',
+      [hashedPassword, updatedAt, userId]
+    );
+    
+    await ActivityLogger.log('user', userId, 'password_reset', null, {
+      timestamp: updatedAt
     });
   }
 

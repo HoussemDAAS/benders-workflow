@@ -684,10 +684,7 @@ export function LoginPage() {
                   </label>
                   <button
                     type="button"
-                    onClick={() => {
-                      setLoginMode('magic-link')
-                      setErrors({}) // Clear any existing errors
-                    }}
+                    onClick={() => navigate('/forgot-password')}
                     className="text-primary hover:text-primary/80 font-medium transition-colors text-xs underline-offset-2 hover:underline"
                     disabled={isLoading || isSubmitting}
                   >
