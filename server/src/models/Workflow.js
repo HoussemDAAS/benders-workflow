@@ -8,6 +8,7 @@ class Workflow {
     this.name = data.name;
     this.description = data.description;
     this.clientId = data.clientId;
+    this.workspaceId = data.workspaceId;
     this.status = data.status || 'active';
     this.createdAt = data.createdAt || new Date();
     this.updatedAt = data.updatedAt || new Date();
@@ -16,25 +17,42 @@ class Workflow {
     this.actualEndDate = data.actualEndDate;
   }
 
-  static async findAll() {
+  static async findAll(workspaceId = null) {
     const db = getDatabase();
-    const rows = await db.all(`
+    let query = `
       SELECT w.*, c.name as client_name, c.company as client_company
       FROM workflows w
       LEFT JOIN clients c ON w.client_id = c.id
-      ORDER BY w.created_at DESC
-    `);
+    `;
+    let params = [];
+    
+    if (workspaceId) {
+      query += ' WHERE w.workspace_id = ?';
+      params.push(workspaceId);
+    }
+    
+    query += ' ORDER BY w.created_at DESC';
+    
+    const rows = await db.all(query, params);
     return rows.map(row => Workflow.fromDatabase(row));
   }
 
-  static async findById(id) {
+  static async findById(id, workspaceId = null) {
     const db = getDatabase();
-    const row = await db.get(`
+    let query = `
       SELECT w.*, c.name as client_name, c.company as client_company
       FROM workflows w
       LEFT JOIN clients c ON w.client_id = c.id
       WHERE w.id = ?
-    `, [id]);
+    `;
+    let params = [id];
+    
+    if (workspaceId) {
+      query += ' AND w.workspace_id = ?';
+      params.push(workspaceId);
+    }
+    
+    const row = await db.get(query, params);
     return row ? Workflow.fromDatabase(row) : null;
   }
 
@@ -68,10 +86,10 @@ class Workflow {
     
     if (isNew) {
       await db.run(`
-        INSERT INTO workflows (id, name, description, client_id, status, created_at, updated_at, start_date, expected_end_date, actual_end_date)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO workflows (id, name, description, client_id, workspace_id, status, created_at, updated_at, start_date, expected_end_date, actual_end_date)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `, [
-        this.id, this.name, this.description, this.clientId, this.status,
+        this.id, this.name, this.description, this.clientId, this.workspaceId, this.status,
         this.createdAt.toISOString(), this.updatedAt.toISOString(),
         this.startDate?.toISOString(), this.expectedEndDate?.toISOString(), this.actualEndDate?.toISOString()
       ]);
@@ -170,6 +188,7 @@ class Workflow {
       name: row.name,
       description: row.description,
       clientId: row.client_id,
+      workspaceId: row.workspace_id,
       status: row.status,
       createdAt: new Date(row.created_at),
       updatedAt: new Date(row.updated_at),

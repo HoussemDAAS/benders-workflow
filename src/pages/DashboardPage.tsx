@@ -1,12 +1,25 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Dashboard } from '../components/Dashboard';
 import { useAppContext } from '../hooks/useAppContext';
+import { useRecentItems } from '../hooks/useRecentItems';
 
 const DashboardPage: React.FC = () => {
   const navigate = useNavigate();
   const { dashboardStats, clients, workflows } = useAppContext(); // TODO: Removed teamMembers for user auth implementation
+  const { addRecentItem } = useRecentItems();
+
+  // Track dashboard visit
+  useEffect(() => {
+    addRecentItem({
+      id: 'dashboard',
+      type: 'workflow', // Using workflow as a fallback type
+      title: 'Dashboard',
+      subtitle: 'Main dashboard overview',
+      path: '/app/dashboard'
+    });
+  }, [addRecentItem]);
 
   const handleViewChange = (view: string) => {
     navigate(`/${view}`);

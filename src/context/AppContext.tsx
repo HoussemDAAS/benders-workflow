@@ -1,19 +1,22 @@
-import React, { createContext, useMemo } from 'react';
+import React, { createContext, useMemo, useEffect } from 'react';
 import { useMultipleApi } from '../hooks/useApi';
+import { useWorkspace } from './WorkspaceContext';
 import {
   clientService,
   workflowService,
   taskService,
   dashboardService,
   meetingService,
+  teamService,
 } from '../services';
-import { Client, Workflow, KanbanTask, Meeting, DashboardStats, KanbanColumn } from '../types';
+import { Client, Workflow, KanbanTask, Meeting, DashboardStats, KanbanColumn, TeamMember } from '../types';
 
 interface AppContextType {
   // Data
   clients: Client[];
   workflows: Workflow[];
   meetings: Meeting[];
+  teamMembers: TeamMember[];
   kanbanColumns: KanbanColumn[];
   kanbanTasks: KanbanTask[];
   dashboardStats: DashboardStats;
@@ -33,10 +36,13 @@ interface AppProviderProps {
 }
 
 export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
+  const { currentWorkspace, workspaceChanged } = useWorkspace();
+
   // Memoize API call functions to prevent infinite re-renders
   const apiCallFunctions = useMemo(() => ({
     clients: () => clientService.getAll(),
     workflows: () => workflowService.getAll(),
+    teamMembers: () => teamService.getAll(),
     kanbanColumns: () => taskService.getColumns(),
     kanbanTasks: () => taskService.getAll(),
     meetings: () => meetingService.getAll(),
@@ -46,11 +52,20 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   // Load all data using our API hook
   const { data, loading, error, refresh } = useMultipleApi(apiCallFunctions);
 
+  // Refresh data when workspace changes
+  useEffect(() => {
+    if (currentWorkspace && workspaceChanged > 0) {
+      console.log('🔄 Refreshing app data for workspace:', currentWorkspace.name);
+      refresh();
+    }
+  }, [workspaceChanged, currentWorkspace, refresh]);
+
   // Memoize the context value with proper data extraction
   const contextValue: AppContextType = useMemo(() => {
     const clients = data?.clients || [];
     const workflows = data?.workflows || [];
     const meetings = data?.meetings || [];
+    const teamMembers = data?.teamMembers || [];
     const kanbanColumns = data?.kanbanColumns || [
       { id: 'todo', title: 'To Do', color: '#64748b', order: 1 },
       { id: 'in-progress', title: 'In Progress', color: '#3b82f6', order: 2 },
@@ -70,6 +85,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
       clients,
       workflows,
       meetings,
+      teamMembers,
       kanbanColumns,
       kanbanTasks,
       dashboardStats,

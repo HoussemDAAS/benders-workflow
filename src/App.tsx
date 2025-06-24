@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 
 // Context
 import { AppProvider } from './context/AppContext';
 import { AuthProvider } from './context/AuthContext';
+import { WorkspaceProvider, useWorkspace } from './context/WorkspaceContext';
 import { useAppContext } from './hooks/useAppContext';
 import { useAuth } from './hooks/useAuth';
 
@@ -11,8 +12,12 @@ import { useAuth } from './hooks/useAuth';
 import { Sidebar } from './components/Sidebar';
 import { LoadingCard } from './components/LoadingSpinner';
 import { ErrorCard } from './components/ErrorMessage';
+import { WorkspaceSelector } from './components/WorkspaceSelector';
+import { EnhancedToolbar } from './components/EnhancedToolbar';
 
 // Pages
+import { AuthPage } from './components/AuthPage';
+import { LandingPage } from './components/LandingPage';
 import { LoginPage } from './pages/LoginPage';
 import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
 import { ResetPasswordPage } from './pages/ResetPasswordPage';
@@ -26,11 +31,12 @@ import TeamPage from './pages/TeamPage';
 import ClientsPage from './pages/ClientsPage';
 import MeetingsPage from './pages/MeetingsPage';
 
-// Protected Route Component
+// Protected Route Component with Workspace Check
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const { currentWorkspace, isLoading: workspaceLoading } = useWorkspace();
 
-  if (isLoading) {
+  if (authLoading || workspaceLoading) {
     return <LoadingCard message="Checking authentication..." />;
   }
 
@@ -38,16 +44,22 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
     return <Navigate to="/login" replace />;
   }
 
+  // If authenticated but no workspace selected, show workspace selector
+  if (!currentWorkspace) {
+    return <WorkspaceSelector />;
+  }
+
   return <>{children}</>;
 };
 
 // Layout component that handles loading and error states
 const AppLayout: React.FC = () => {
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { loading, error, refresh } = useAppContext();
 
   if (loading) {
     return (
-      <div className="flex h-screen bg-gray-50">
+      <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
         <Sidebar />
         <main className="flex-1 overflow-auto">
           <LoadingCard message="Loading application data..." />
@@ -58,7 +70,7 @@ const AppLayout: React.FC = () => {
 
   if (error) {
     return (
-      <div className="flex h-screen bg-gray-50">
+      <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
         <Sidebar />
         <main className="flex-1 overflow-auto">
           <ErrorCard error={error} onRetry={refresh} />
@@ -68,41 +80,46 @@ const AppLayout: React.FC = () => {
   }
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
       <Sidebar />
-      <main className="flex-1 overflow-auto">
-        <div className="h-full">
+      <main className="flex-1 overflow-auto flex flex-col">
+        <EnhancedToolbar 
+          onMobileMenuToggle={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+          isMobileMenuOpen={isMobileMenuOpen}
+        />
+        <div className="flex-1 overflow-auto">
           <Routes>
-            <Route path="/dashboard" element={
+            <Route path="dashboard" element={
               <ProtectedRoute>
                 <DashboardPage />
               </ProtectedRoute>
             } />
-            <Route path="/workflows" element={
+            <Route path="workflows" element={
               <ProtectedRoute>
                 <WorkflowsPage />
               </ProtectedRoute>
             } />
-            <Route path="/kanban" element={
+            <Route path="kanban" element={
               <ProtectedRoute>
                 <KanbanPage />
               </ProtectedRoute>
             } />
-            <Route path="/team" element={
+            <Route path="team" element={
               <ProtectedRoute>
                 <TeamPage />
               </ProtectedRoute>
             } />
-            <Route path="/clients" element={
+            <Route path="clients" element={
               <ProtectedRoute>
                 <ClientsPage />
               </ProtectedRoute>
             } />
-            <Route path="/meetings" element={
+            <Route path="meetings" element={
               <ProtectedRoute>
                 <MeetingsPage />
               </ProtectedRoute>
             } />
+
             <Route path="/security" element={
               <ProtectedRoute>
                 <SecurityPage />
@@ -110,6 +127,7 @@ const AppLayout: React.FC = () => {
             } />
             {/* Catch all route - redirect to dashboard */}
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
+
           </Routes>
         </div>
       </main>
@@ -120,10 +138,14 @@ const AppLayout: React.FC = () => {
 export default function App() {
   return (
     <AuthProvider>
+
       <Router>
         <Routes>
           {/* Public Routes (No Sidebar) */}
+            <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<LoginPage />} />
+           <Route path="/signup" element={<AuthPage />} />
+           <Route path="/auth" element={<AuthPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/auth/verify" element={<MagicLinkVerificationPage />} />
@@ -132,16 +154,15 @@ export default function App() {
           <Route path="/oauth/callback/github" element={<OAuthCallbackPage />} />
           
           {/* Protected Routes (With Sidebar and App Context) */}
-          <Route path="/*" element={
-            <AppProvider>
-              <Routes>
-                <Route path="/" element={<Navigate to="/dashboard" replace />} />
-                <Route path="/*" element={<AppLayout />} />
-              </Routes>
-            </AppProvider>
-          } />
-        </Routes>
+          <Route path="/app/*" element={
+              <AppProvider>
+                <AppLayout />
+              </AppProvider>
+            } />
+          </Routes>
+
       </Router>
+
     </AuthProvider>
   );
 }

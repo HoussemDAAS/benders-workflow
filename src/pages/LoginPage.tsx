@@ -1,5 +1,7 @@
+
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
+
 import { useAuth } from '../hooks/useAuth';
 import { TwoFactorVerification } from '../components/TwoFactorVerification';
 import { 
@@ -215,6 +217,7 @@ export function LoginPage() {
           rememberMe // Pass remember me option to login function
         })
 
+
         // Check if 2FA is required
         if ('requiresTwoFactor' in result) {
           setTwoFactorData({
@@ -226,7 +229,8 @@ export function LoginPage() {
         }
 
         // Regular login success (no 2FA) - user is already set by auth context
-        navigate('/dashboard')
+          navigate('/app/dashboard')
+
       } else {
         // Magic link login
         await sendMagicLink(formData.email.trim().toLowerCase())
@@ -721,9 +725,9 @@ export function LoginPage() {
             <div className="mt-2 lg:mt-3 text-center">
               <p className="text-gray-600 text-xs">
                 Don't have an account?{' '}
-                <button className="text-primary hover:text-primary/80 font-semibold transition-colors">
-                  Contact Admin
-                </button>
+                <Link to="/signup" className="text-primary hover:text-primary/80 font-semibold transition-colors">
+                  Sign Up
+                </Link>
               </p>
             </div>
           </div>

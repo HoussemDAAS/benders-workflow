@@ -2,6 +2,8 @@ const express = require('express');
 const crypto = require('crypto');
 const { body, validationResult } = require('express-validator');
 const Client = require('../models/Client');
+const { authenticate } = require('../middleware/auth');
+const { requireWorkspace } = require('../middleware/workspace');
 const router = express.Router();
 const { getDatabase } = require('../config/database');
 
@@ -13,8 +15,8 @@ const validateClient = [
   body('phone').optional().trim(),
 ];
 
-// GET /api/clients - Get all clients
-router.get('/', async (req, res) => {
+// GET /api/clients - Get all clients for workspace
+router.get('/', authenticate, requireWorkspace, async (req, res) => {
   try {
     const includeInactive = req.query.include_inactive === 'true';
     
@@ -23,16 +25,19 @@ router.get('/', async (req, res) => {
         id, name, company, email, phone, 
         is_active as isActive, created_at as createdAt, updated_at as updatedAt
       FROM clients
+      WHERE workspace_id = ?
     `;
     
+    const params = [req.workspaceId];
+    
     if (!includeInactive) {
-      query += ' WHERE is_active = 1';
+      query += ' AND is_active = 1';
     }
     
     query += ' ORDER BY created_at DESC';
     
     const db = getDatabase();
-    const clients = await db.all(query);
+    const clients = await db.all(query, params);
     res.json(clients);
   } catch (error) {
     console.error('Error fetching clients:', error);
@@ -41,7 +46,7 @@ router.get('/', async (req, res) => {
 });
 
 // GET /api/clients/:id - Get client by ID
-router.get('/:id', async (req, res) => {
+router.get('/:id', authenticate, requireWorkspace, async (req, res) => {
   try {
     const { id } = req.params;
     
@@ -51,8 +56,8 @@ router.get('/:id', async (req, res) => {
         id, name, company, email, phone, 
         is_active as isActive, created_at as createdAt, updated_at as updatedAt
       FROM clients 
-      WHERE id = ?
-    `, [id]);
+      WHERE id = ? AND workspace_id = ?
+    `, [id, req.workspaceId]);
     
     if (!client) {
       return res.status(404).json({ error: 'Client not found' });
@@ -167,23 +172,24 @@ router.get('/:id/tasks', async (req, res) => {
 });
 
 // POST /api/clients - Create new client
-router.post('/', async (req, res) => {
+router.post('/', authenticate, requireWorkspace, validateClient, async (req, res) => {
   try {
-    const { name, company, email, phone, isActive = true } = req.body;
-    
-    if (!name || !email) {
-      return res.status(400).json({ error: 'Name and email are required' });
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
     }
+
+    const { name, company, email, phone, isActive = true } = req.body;
     
     const clientId = crypto.randomUUID();
     
     const db = getDatabase();
     
-    // Insert client
+    // Insert client with workspace_id
     await db.run(`
-      INSERT INTO clients (id, name, company, email, phone, is_active, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
-    `, [clientId, name, company || '', email, phone || null, isActive ? 1 : 0]);
+      INSERT INTO clients (id, name, company, email, phone, is_active, workspace_id, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+    `, [clientId, name, company || '', email, phone || null, isActive ? 1 : 0, req.workspaceId]);
     
     // Get the created client
     const client = await db.get(`
@@ -191,8 +197,8 @@ router.post('/', async (req, res) => {
         id, name, company, email, phone, 
         is_active as isActive, created_at as createdAt, updated_at as updatedAt
       FROM clients 
-      WHERE id = ?
-    `, [clientId]);
+      WHERE id = ? AND workspace_id = ?
+    `, [clientId, req.workspaceId]);
     
     res.status(201).json(client);
   } catch (error) {

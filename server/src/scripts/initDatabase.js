@@ -222,7 +222,9 @@ const createTables = async () => {
       )
     `);
 
+
     // Activity log table for audit trail - NO FOREIGN KEY CONSTRAINTS
+
     await db.run(`
       CREATE TABLE IF NOT EXISTS activity_log (
         id TEXT PRIMARY KEY,

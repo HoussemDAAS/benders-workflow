@@ -6,6 +6,13 @@ interface LoginCredentials {
   rememberMe?: boolean // Add remember me option
 }
 
+interface RegisterCredentials {
+  email: string
+  password: string
+  name: string
+  role?: string
+}
+
 interface AuthUser {
   id: string
   email: string
@@ -107,6 +114,31 @@ class AuthService {
       return authResponse.user
     } catch (error) {
       console.error('Email login error:', error)
+      throw error
+    }
+  }
+
+  // Register new user
+  async register(credentials: RegisterCredentials): Promise<AuthUser> {
+    try {
+      const response = await fetch(`${this.baseUrl}/auth/register`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(credentials),
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.message || 'Registration failed')
+      }
+
+      const authResponse: AuthResponse = await response.json()
+      this.setAuthData(authResponse)
+      return authResponse.user
+    } catch (error) {
+      console.error('Registration error:', error)
       throw error
     }
   }
@@ -406,9 +438,12 @@ class AuthService {
 }
 
 export const authService = new AuthService()
+
 export type { 
   AuthUser, 
   LoginCredentials, 
   TwoFactorRequiredResponse, 
-  TwoFactorVerificationRequest 
+  TwoFactorVerificationRequest,
+    RegisterCredentials
 }
+

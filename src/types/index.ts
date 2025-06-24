@@ -1,4 +1,26 @@
 // Core entity types
+export interface Workspace {
+  id: string;
+  name: string;
+  description?: string;
+  ownerId: string;
+  inviteCode: string;
+  isActive: boolean;
+  members?: WorkspaceMember[];
+  userRole?: 'admin' | 'member';
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface WorkspaceMember {
+  id: string;
+  email: string;
+  name: string;
+  userRole: string; // user's global role
+  workspaceRole: 'admin' | 'member';
+  joinedAt: Date;
+}
+
 export interface TeamMember {
   id: string;
   name: string;
@@ -7,6 +29,7 @@ export interface TeamMember {
   role: string;
   skills: string[];
   isActive: boolean;
+  workspaceId?: string;
   createdAt: Date;
 }
 
@@ -18,6 +41,7 @@ export interface Client {
   phone?: string;
   avatar?: string;
   isActive: boolean;
+  workspaceId?: string;
   createdAt: Date;
 }
 
@@ -101,6 +125,8 @@ export interface KanbanTask {
 
 // Application state
 export interface AppState {
+  currentWorkspace?: Workspace;
+  workspaces: Workspace[];
   clients: Client[];
   teamMembers: TeamMember[];
   workflows: Workflow[];
