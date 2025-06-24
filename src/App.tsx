@@ -14,6 +14,8 @@ import { ErrorCard } from './components/ErrorMessage';
 
 // Pages
 import { LoginPage } from './pages/LoginPage';
+import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
+import { ResetPasswordPage } from './pages/ResetPasswordPage';
 import { OAuthCallbackPage } from './pages/OAuthCallbackPage';
 import { MagicLinkVerificationPage } from './pages/MagicLinkVerificationPage';
 import { SecurityPage } from './pages/SecurityPage';
@@ -122,6 +124,8 @@ export default function App() {
         <Routes>
           {/* Public Routes (No Sidebar) */}
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/auth/verify" element={<MagicLinkVerificationPage />} />
           <Route path="/oauth/callback" element={<OAuthCallbackPage />} />
           <Route path="/oauth/callback/google" element={<OAuthCallbackPage />} />
