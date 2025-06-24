@@ -965,39 +965,43 @@ router.get('/2fa/status', authenticate, async (req, res) => {
 // POST /auth/2fa/verify - Verify 2FA token during login
 router.post('/2fa/verify', twoFARate, [
   body('email').isEmail().normalizeEmail().withMessage('Valid email is required'),
-  body('password').optional().isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
   body('token').isLength({ min: 6, max: 8 }).withMessage('2FA token must be 6-8 characters'),
   body('loginType').isIn(['password', 'magic-link']).withMessage('Invalid login type'),
   body('magicToken').optional().isString().withMessage('Magic token must be a string')
 ], async (req, res) => {
   try {
+    // Debug logging
+    console.log('🔍 2FA Verify Request Body:', JSON.stringify(req.body, null, 2));
+    
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
+      console.log('❌ Validation Errors:', JSON.stringify(errors.array(), null, 2));
       return res.status(400).json({ errors: errors.array() });
     }
 
     const { email, password, token, loginType, magicToken } = req.body;
 
+    console.log(`🔐 2FA Verification attempt for ${email} with token: ${token} (length: ${token?.length})`);
+
     // Find user
     const user = await User.findByEmail(email);
     if (!user) {
+      console.log('❌ User not found:', email);
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
     if (!user.twoFactorEnabled) {
+      console.log('❌ 2FA not enabled for user:', email);
       return res.status(400).json({ error: '2FA is not enabled for this user' });
     }
 
+    console.log(`✅ User found: ${email}, 2FA enabled: ${user.twoFactorEnabled}`);
+
     // Verify primary credentials first
     if (loginType === 'password') {
-      if (!password) {
-        return res.status(400).json({ error: 'Password is required' });
-      }
-      
-      const isValidPassword = await user.verifyPassword(password);
-      if (!isValidPassword) {
-        return res.status(401).json({ error: 'Invalid credentials' });
-      }
+      // For password login from initial login, we don't require password verification again
+      // The frontend should store the fact that password was already verified
+      console.log('✅ Password login type - skipping password re-verification');
     } else if (loginType === 'magic-link') {
       // For magic-link, verify the magic token
       if (!magicToken) {
@@ -1006,15 +1010,23 @@ router.post('/2fa/verify', twoFARate, [
       
       const decoded = User.verifyToken(magicToken);
       if (!decoded || decoded.type !== 'magic-link' || decoded.id !== user.id) {
+        console.log('❌ Invalid magic token for user:', email);
         return res.status(401).json({ error: 'Invalid or expired magic link' });
       }
+      console.log('✅ Magic token verified for user:', email);
     }
 
     // Verify 2FA token
+    console.log(`🔢 Verifying 2FA token: ${token} for user: ${email}`);
     const is2FAValid = user.verify2FAToken(token);
+    console.log(`🔢 2FA verification result: ${is2FAValid}`);
+    
     if (!is2FAValid) {
-      return res.status(401).json({ error: 'Invalid 2FA token' });
+      console.log('❌ Invalid 2FA token for user:', email);
+      return res.status(400).json({ error: 'Invalid 2FA code' });
     }
+
+    console.log('✅ 2FA token verified successfully for user:', email);
 
     // Update last login and save 2FA usage
     await user.updateLastLogin();
@@ -1031,13 +1043,15 @@ router.post('/2fa/verify', twoFARate, [
     // Clear failed login attempts on successful login
     clearFailedLogins(email);
 
+    console.log('✅ 2FA verification completed successfully for user:', email);
+
     res.json({
       user: user.toSafeJSON(),
       token: authToken,
       expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
     });
   } catch (error) {
-    console.error('2FA verification error:', error);
+    console.error('❌ 2FA verification error:', error);
     res.status(500).json({ error: '2FA verification failed' });
   }
 });

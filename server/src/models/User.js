@@ -275,7 +275,7 @@ class User {
 
   // Generate backup code
   generateBackupCode() {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    const chars = '0123456789'; // Only numbers, no letters
     let result = '';
     for (let i = 0; i < 8; i++) {
       result += chars.charAt(Math.floor(Math.random() * chars.length));
