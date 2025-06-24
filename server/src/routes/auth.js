@@ -52,7 +52,7 @@ const validateRegister = [
   body('role').optional().isIn(['admin', 'manager', 'user']).withMessage('Invalid role'),
 ];
 
-// POST /auth/login - Email/Password login (with 2FA support)
+// POST /auth/login - Email/Password login (with 2FA support and remember me)
 router.post('/login', loginRateLimit, validateLogin, async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -60,7 +60,7 @@ router.post('/login', loginRateLimit, validateLogin, async (req, res) => {
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const { email, password } = req.body;
+    const { email, password, rememberMe = false } = req.body;
 
     // Find user by email
     const user = await User.findByEmail(email);
@@ -88,8 +88,13 @@ router.post('/login', loginRateLimit, validateLogin, async (req, res) => {
     // Regular login flow (no 2FA)
     await user.updateLastLogin();
 
-    // Generate token
-    const token = user.generateToken();
+    // Generate token with appropriate expiration
+    const tokenExpiration = rememberMe ? '30d' : '7d'; // 30 days if remember me, 7 days otherwise
+    const token = user.generateToken(tokenExpiration);
+    
+    // Calculate expiration date
+    const expirationDays = rememberMe ? 30 : 7;
+    const expirationDate = new Date(Date.now() + expirationDays * 24 * 60 * 60 * 1000);
 
     // Clear rate limit attempts on successful login
     if (req.clearAuthAttempts) {
@@ -99,7 +104,8 @@ router.post('/login', loginRateLimit, validateLogin, async (req, res) => {
     res.json({
       user: user.toSafeJSON(),
       token,
-      expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() // 7 days
+      expires: expirationDate.toISOString(),
+      rememberMe: rememberMe // Include remember me status in response
     });
   } catch (error) {
     console.error('Login error:', error);
@@ -798,7 +804,8 @@ router.post('/2fa/verify', twoFARate, [
   body('email').isEmail().normalizeEmail().withMessage('Valid email is required'),
   body('password').optional().isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
   body('token').isLength({ min: 6, max: 8 }).withMessage('2FA token must be 6-8 characters'),
-  body('loginType').isIn(['password', 'magic-link']).withMessage('Invalid login type')
+  body('loginType').isIn(['password', 'magic-link']).withMessage('Invalid login type'),
+  body('magicToken').optional().isString().withMessage('Magic token must be a string')
 ], async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -806,7 +813,7 @@ router.post('/2fa/verify', twoFARate, [
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const { email, password, token, loginType } = req.body;
+    const { email, password, token, loginType, magicToken } = req.body;
 
     // Find user
     const user = await User.findByEmail(email);
@@ -828,8 +835,17 @@ router.post('/2fa/verify', twoFARate, [
       if (!isValidPassword) {
         return res.status(401).json({ error: 'Invalid credentials' });
       }
+    } else if (loginType === 'magic-link') {
+      // For magic-link, verify the magic token
+      if (!magicToken) {
+        return res.status(400).json({ error: 'Magic token is required for magic link login' });
+      }
+      
+      const decoded = User.verifyToken(magicToken);
+      if (!decoded || decoded.type !== 'magic-link' || decoded.id !== user.id) {
+        return res.status(401).json({ error: 'Invalid or expired magic link' });
+      }
     }
-    // For magic-link, the token verification serves as the primary auth
 
     // Verify 2FA token
     const is2FAValid = user.verify2FAToken(token);

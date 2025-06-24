@@ -63,17 +63,19 @@ export function OAuthCallbackPage() {
         
         console.log('✅ OAuth authentication successful');
         
-        // Store authentication data
+        // Store authentication data using the same keys as your auth service
         localStorage.setItem('auth-token', authData.token);
         localStorage.setItem('auth-user', JSON.stringify(authData.user));
 
-        // Refresh the auth context
+        // Refresh the auth context to update the user state
         await refreshSession();
 
-        // Redirect to dashboard
+        console.log('✅ Auth context refreshed, redirecting to dashboard');
+
+        // OAuth users bypass 2FA by design, so redirect directly to dashboard
         navigate('/dashboard', { replace: true });
       } catch (err) {
-        console.error('OAuth callback error:', err);
+        console.error('❌ OAuth callback error:', err);
         setError(err instanceof Error ? err.message : 'Authentication failed');
       } finally {
         setIsProcessing(false);

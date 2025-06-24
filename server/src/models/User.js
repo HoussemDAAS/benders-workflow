@@ -38,8 +38,8 @@ class User {
     return await bcrypt.compare(plainPassword, this.password);
   }
 
-  // Generate JWT token
-  generateToken() {
+  // Generate JWT token with optional expiration
+  generateToken(expiresIn = null) {
     const payload = {
       id: this.id,
       email: this.email,
@@ -48,7 +48,7 @@ class User {
     };
 
     return jwt.sign(payload, process.env.JWT_SECRET || 'dev-secret-key', {
-      expiresIn: process.env.JWT_EXPIRES_IN || '7d'
+      expiresIn: expiresIn || process.env.JWT_EXPIRES_IN || '7d'
     });
   }
 
