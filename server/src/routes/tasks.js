@@ -22,26 +22,19 @@ const validateTask = [
 // Helper function to create auto workflow for client
 async function createAutoWorkflow(clientId, taskTitle) {
   try {
-    console.log(`🔍 Looking for client: ${clientId}`);
     const client = await Client.findById(clientId);
     if (!client) {
       throw new Error('Client not found');
     }
-    console.log(`✅ Found client: ${client.name}`);
 
     // Check if client already has an active workflow
-    console.log(`🔍 Looking for existing workflows for client ${clientId}`);
     const existingWorkflows = await Workflow.findByClientId(clientId);
-    console.log(`📋 Found ${existingWorkflows.length} workflows:`, existingWorkflows.map(w => ({ id: w.id, name: w.name, status: w.status })));
-    
     const activeWorkflow = existingWorkflows.find(w => w.status === 'active');
     
     if (activeWorkflow) {
-      console.log(`✅ Found existing active workflow: ${activeWorkflow.id} - ${activeWorkflow.name}`);
       return activeWorkflow;
     }
 
-    console.log(`🆕 No active workflow found, creating new one...`);
     // Create new workflow for client
     const workflow = new Workflow({
       name: `${client.company || client.name} - Project Workflow`,
@@ -53,8 +46,6 @@ async function createAutoWorkflow(clientId, taskTitle) {
     });
 
     await workflow.save();
-    
-    console.log(`🔄 Auto-created workflow "${workflow.name}" for client ${client.name}`);
     return workflow;
   } catch (error) {
     console.error('Error creating auto workflow:', error);
@@ -223,7 +214,6 @@ router.post('/', validateTask, async (req, res) => {
     
     // Auto-create workflow if clientId provided but no workflowId
     if (!workflowId && req.body.clientId) {
-      console.log(`🔄 Auto-creating workflow for client ${req.body.clientId}`);
       const autoWorkflow = await createAutoWorkflow(req.body.clientId, req.body.title);
       workflowId = autoWorkflow.id;
     }
@@ -630,4 +620,4 @@ router.delete('/:taskId/resources/:resourceId', async (req, res) => {
   }
 });
 
-module.exports = router; 
+module.exports = router;

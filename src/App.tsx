@@ -16,6 +16,7 @@ import { ErrorCard } from './components/ErrorMessage';
 import { LoginPage } from './pages/LoginPage';
 import { OAuthCallbackPage } from './pages/OAuthCallbackPage';
 import { MagicLinkVerificationPage } from './pages/MagicLinkVerificationPage';
+import { SecurityPage } from './pages/SecurityPage';
 import DashboardPage from './pages/DashboardPage';
 import WorkflowsPage from './pages/WorkflowsPage';
 import KanbanPage from './pages/KanbanPage';
@@ -98,6 +99,11 @@ const AppLayout: React.FC = () => {
             <Route path="/meetings" element={
               <ProtectedRoute>
                 <MeetingsPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/security" element={
+              <ProtectedRoute>
+                <SecurityPage />
               </ProtectedRoute>
             } />
             {/* Catch all route - redirect to dashboard */}

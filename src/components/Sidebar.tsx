@@ -8,6 +8,7 @@ import {
   Users, 
   Building2,
   Settings,
+  Shield,
   Plus,
   CheckSquare,
   Calendar,
@@ -215,6 +216,28 @@ export function Sidebar({ onNewTask }: SidebarProps) {
           </div>
           <div className="w-2 h-2 bg-green-400 rounded-full flex-shrink-0"></div>
         </div>
+
+        {/* Security */}
+        <button 
+          onClick={() => handleViewChange('security')}
+          className={`w-full group flex items-center gap-3 px-3 py-2 rounded-lg font-medium transition-all duration-200 ${
+            currentView === 'security'
+              ? 'bg-white/15 text-white shadow-lg border border-white/20'
+              : 'text-white/70 hover:text-white hover:bg-white/10'
+          }`}
+        >
+          <div className={`w-6 h-6 rounded-lg flex items-center justify-center transition-colors ${
+            currentView === 'security'
+              ? 'bg-white/20 text-white'
+              : 'bg-white/5 group-hover:bg-white/15'
+          }`}>
+            <Shield size={14} />
+          </div>
+          <span className="text-sm">Security & 2FA</span>
+          {user?.twoFactorEnabled && (
+            <div className="w-2 h-2 bg-green-400 rounded-full flex-shrink-0"></div>
+          )}
+        </button>
 
         {/* Settings */}
         <button className="w-full group flex items-center gap-3 px-3 py-2 text-white/70 hover:text-white hover:bg-white/10 rounded-lg font-medium transition-all duration-200">

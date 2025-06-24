@@ -27,9 +27,9 @@ class ActivityLogger {
   static async getActivities(entityType = null, entityId = null, limit = 100, offset = 0) {
     const db = getDatabase();
     let sql = `
-      SELECT al.*, tm.name as performed_by_name
+      SELECT al.*, u.name as performed_by_name
       FROM activity_log al
-      LEFT JOIN team_members tm ON al.performed_by = tm.id
+      LEFT JOIN users u ON al.performed_by = u.id
     `;
     const params = [];
 
@@ -72,4 +72,4 @@ class ActivityLogger {
   }
 }
 
-module.exports = ActivityLogger; 
+module.exports = ActivityLogger;

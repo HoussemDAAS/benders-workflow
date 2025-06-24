@@ -172,6 +172,36 @@ class EmailService {
   }
 
   /**
+   * Send 2FA enabled notification email
+   */
+  async send2FAEnabledEmail(email, userName) {
+    const emailHtml = this.generate2FAEnabledTemplate(userName);
+    const emailText = this.generate2FAEnabledText(userName);
+    
+    return await this.sendEmail({
+      to: email,
+      subject: '2FA Security Enabled - Benders Workflow',
+      html: emailHtml,
+      text: emailText
+    });
+  }
+
+  /**
+   * Send 2FA disabled notification email
+   */
+  async send2FADisabledEmail(email, userName) {
+    const emailHtml = this.generate2FADisabledTemplate(userName);
+    const emailText = this.generate2FADisabledText(userName);
+    
+    return await this.sendEmail({
+      to: email,
+      subject: '2FA Security Disabled - Benders Workflow',
+      html: emailHtml,
+      text: emailText
+    });
+  }
+
+  /**
    * Send password reset email
    */
   async sendPasswordResetEmail(email, resetLink, userName = null) {
@@ -650,6 +680,437 @@ If you didn't request this password reset, please ignore this email - your accou
 
 Best regards,
 The Benders Workflow Team
+
+© ${new Date().getFullYear()} Benders Workflow. All rights reserved.
+`;
+  }
+
+  /**
+   * 2FA enabled email template - Updated to match magic link template style
+   */
+  generate2FAEnabledTemplate(userName) {
+    return `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2FA Security Enabled - Benders Workflow</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif; 
+            line-height: 1.6; 
+            color: #374151; 
+            background-color: #f9fafb;
+            margin: 0;
+            padding: 0;
+        }
+        .container { 
+            max-width: 600px; 
+            margin: 0 auto; 
+            padding: 40px 20px; 
+        }
+        .email-card { 
+            background: white; 
+            border-radius: 16px; 
+            padding: 40px; 
+            border: 1px solid #e5e7eb;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+        .header { 
+            text-align: center; 
+            margin-bottom: 32px; 
+        }
+        .brand-name {
+            color: #111827;
+            font-size: 24px;
+            font-weight: 700;
+            letter-spacing: -0.025em;
+            margin-bottom: 8px;
+        }
+        .brand-subtitle {
+            color: #6b7280;
+            font-size: 14px;
+            margin-bottom: 24px;
+        }
+        .security-icon {
+            width: 64px;
+            height: 64px;
+            background: linear-gradient(to right, #10b981, #059669);
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 16px;
+            font-size: 24px;
+        }
+        .heading { 
+            color: #111827; 
+            font-size: 24px; 
+            font-weight: 700; 
+            margin: 16px 0; 
+            text-align: center; 
+            letter-spacing: -0.025em;
+        }
+        .subtext { 
+            color: #6b7280; 
+            font-size: 16px; 
+            text-align: center; 
+            margin-bottom: 32px;
+            line-height: 1.6;
+        }
+        .security-box { 
+            background: #ecfdf5; 
+            border: 1px solid #d1fae5; 
+            border-radius: 8px; 
+            padding: 16px; 
+            margin: 24px 0; 
+            color: #374151; 
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        .security-box strong {
+            color: #065f46;
+        }
+        .info-box { 
+            background: #f3f4f6; 
+            border: 1px solid #e5e7eb; 
+            border-radius: 8px; 
+            padding: 16px; 
+            margin: 24px 0; 
+            color: #374151; 
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        .info-box strong {
+            color: #111827;
+        }
+        .button-container { 
+            text-align: center; 
+            margin: 32px 0; 
+        }
+        .dashboard-button { 
+            display: inline-block; 
+            background: linear-gradient(to right, #04082e, #030d54);
+            color: white !important; 
+            text-decoration: none; 
+            padding: 12px 24px; 
+            border-radius: 8px; 
+            font-weight: 600; 
+            font-size: 14px;
+            letter-spacing: -0.025em;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            transition: all 0.2s ease;
+        }
+        .dashboard-button:hover {
+            background: linear-gradient(to right, rgba(4, 8, 46, 0.9), rgba(3, 13, 84, 0.9));
+            color: white !important;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            transform: translateY(-2px);
+        }
+        .footer { 
+            text-align: center; 
+            color: #9ca3af; 
+            font-size: 14px; 
+            margin-top: 32px; 
+            padding-top: 24px; 
+            border-top: 1px solid #e5e7eb; 
+        }
+        .footer strong {
+            color: #6b7280;
+        }
+        @media (max-width: 600px) {
+            .container { padding: 24px 16px; }
+            .email-card { padding: 24px; }
+            .heading { font-size: 20px; }
+            .dashboard-button { padding: 10px 20px; font-size: 12px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="email-card">
+            <div class="header">
+                <div class="brand-name">Benders Workflow</div>
+                <div class="brand-subtitle">Business Process Management</div>
+                <div class="security-icon">🛡️</div>
+            </div>
+            
+            <h1 class="heading">2FA Security Enabled</h1>
+            <p class="subtext">
+                Hi ${userName}, two-factor authentication has been successfully enabled for your account.
+            </p>
+            
+            <div class="security-box">
+                <strong>Enhanced Security Active:</strong> Your account is now protected with two-factor authentication. You'll need both your password and a code from your authenticator app to sign in.
+            </div>
+
+            <div class="info-box">
+                <strong>Important Reminders:</strong><br>
+                • Keep your backup codes in a safe place<br>
+                • Don't share your authenticator app with others<br>
+                • Contact support if you lose access to your authenticator
+            </div>
+            
+            <div class="button-container">
+                <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/dashboard" class="dashboard-button">Go to Dashboard</a>
+            </div>
+
+            <p style="text-align: center; color: #6b7280; font-size: 14px; margin-top: 20px;">
+                If you didn't enable 2FA, please contact our security team immediately.
+            </p>
+            
+            <div class="footer">
+                <p><strong>Benders Workflow</strong></p>
+                <p style="margin-top: 4px;">© ${new Date().getFullYear()} All rights reserved.</p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>`;
+  }
+
+  /**
+   * 2FA enabled plain text
+   */
+  generate2FAEnabledText(userName) {
+    return `
+BENDERS WORKFLOW - SECURITY NOTIFICATION
+
+2FA Security Enabled
+
+Hi ${userName},
+
+Two-factor authentication has been successfully enabled for your account.
+
+ENHANCED SECURITY:
+Your account is now more secure with 2FA enabled. You'll need both your password and a code from your authenticator app to sign in.
+
+IMPORTANT REMINDERS:
+• Keep your backup codes in a safe place
+• Don't share your authenticator app with others  
+• Contact support if you lose access to your authenticator
+
+If you didn't enable 2FA, please contact our security team immediately.
+
+Best regards,
+Benders Workflow Security Team
+
+© ${new Date().getFullYear()} Benders Workflow. All rights reserved.
+`;
+  }
+
+  /**
+   * 2FA disabled email template - Updated to match magic link template style
+   */
+  generate2FADisabledTemplate(userName) {
+    return `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2FA Security Disabled - Benders Workflow</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif; 
+            line-height: 1.6; 
+            color: #374151; 
+            background-color: #f9fafb;
+            margin: 0;
+            padding: 0;
+        }
+        .container { 
+            max-width: 600px; 
+            margin: 0 auto; 
+            padding: 40px 20px; 
+        }
+        .email-card { 
+            background: white; 
+            border-radius: 16px; 
+            padding: 40px; 
+            border: 1px solid #e5e7eb;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+        .header { 
+            text-align: center; 
+            margin-bottom: 32px; 
+        }
+        .brand-name {
+            color: #111827;
+            font-size: 24px;
+            font-weight: 700;
+            letter-spacing: -0.025em;
+            margin-bottom: 8px;
+        }
+        .brand-subtitle {
+            color: #6b7280;
+            font-size: 14px;
+            margin-bottom: 24px;
+        }
+        .warning-icon {
+            width: 64px;
+            height: 64px;
+            background: linear-gradient(to right, #f59e0b, #d97706);
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 16px;
+            font-size: 24px;
+        }
+        .heading { 
+            color: #111827; 
+            font-size: 24px; 
+            font-weight: 700; 
+            margin: 16px 0; 
+            text-align: center; 
+            letter-spacing: -0.025em;
+        }
+        .subtext { 
+            color: #6b7280; 
+            font-size: 16px; 
+            text-align: center; 
+            margin-bottom: 32px;
+            line-height: 1.6;
+        }
+        .warning-box {
+            background: #fffbeb;
+            border: 1px solid #fed7aa;
+            border-radius: 8px;
+            padding: 16px;
+            margin: 24px 0;
+            color: #374151;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        .warning-box strong {
+            color: #92400e;
+        }
+        .info-box { 
+            background: #f3f4f6; 
+            border: 1px solid #e5e7eb; 
+            border-radius: 8px; 
+            padding: 16px; 
+            margin: 24px 0; 
+            color: #374151; 
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        .info-box strong {
+            color: #111827;
+        }
+        .button-container { 
+            text-align: center; 
+            margin: 32px 0; 
+        }
+        .re-enable-button { 
+            display: inline-block; 
+            background: linear-gradient(to right, #04082e, #030d54);
+            color: white !important; 
+            text-decoration: none; 
+            padding: 12px 24px; 
+            border-radius: 8px; 
+            font-weight: 600; 
+            font-size: 14px;
+            letter-spacing: -0.025em;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            transition: all 0.2s ease;
+        }
+        .re-enable-button:hover {
+            background: linear-gradient(to right, rgba(4, 8, 46, 0.9), rgba(3, 13, 84, 0.9));
+            color: white !important;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            transform: translateY(-2px);
+        }
+        .footer { 
+            text-align: center; 
+            color: #9ca3af; 
+            font-size: 14px; 
+            margin-top: 32px; 
+            padding-top: 24px; 
+            border-top: 1px solid #e5e7eb; 
+        }
+        .footer strong {
+            color: #6b7280;
+        }
+        @media (max-width: 600px) {
+            .container { padding: 24px 16px; }
+            .email-card { padding: 24px; }
+            .heading { font-size: 20px; }
+            .re-enable-button { padding: 10px 20px; font-size: 12px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="email-card">
+            <div class="header">
+                <div class="brand-name">Benders Workflow</div>
+                <div class="brand-subtitle">Business Process Management</div>
+                <div class="warning-icon">⚠️</div>
+            </div>
+            
+            <h1 class="heading">2FA Security Disabled</h1>
+            <p class="subtext">
+                Hi ${userName}, two-factor authentication has been disabled for your account.
+            </p>
+            
+            <div class="warning-box">
+                <strong>Security Level Reduced:</strong> Your account is now less secure without 2FA. We strongly recommend re-enabling two-factor authentication to protect your account from unauthorized access.
+            </div>
+            
+            <div class="button-container">
+                <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/settings/security" class="re-enable-button">Re-enable 2FA</a>
+            </div>
+
+            <div class="info-box">
+                <strong>Didn't Disable 2FA?</strong><br>
+                If you didn't disable 2FA, your account may be compromised. Please contact our security team immediately and change your password.
+            </div>
+
+            <p style="text-align: center; color: #6b7280; font-size: 14px; margin-top: 20px;">
+                Need help? Contact our security team anytime.
+            </p>
+            
+            <div class="footer">
+                <p><strong>Benders Workflow</strong></p>
+                <p style="margin-top: 4px;">© ${new Date().getFullYear()} All rights reserved.</p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>`;
+  }
+
+  /**
+   * 2FA disabled plain text
+   */
+  generate2FADisabledText(userName) {
+    return `
+BENDERS WORKFLOW - SECURITY NOTIFICATION
+
+2FA Security Disabled
+
+Hi ${userName},
+
+Two-factor authentication has been disabled for your account.
+
+WARNING - SECURITY LEVEL REDUCED:
+Your account is now less secure without 2FA. We strongly recommend re-enabling two-factor authentication to protect your account.
+
+Re-enable 2FA: ${process.env.FRONTEND_URL || 'http://localhost:5173'}/settings/security
+
+DIDN'T DISABLE 2FA?
+If you didn't disable 2FA, your account may be compromised. Please:
+• Contact our security team immediately
+• Change your password
+• Re-enable 2FA
+
+Best regards,
+Benders Workflow Security Team
 
 © ${new Date().getFullYear()} Benders Workflow. All rights reserved.
 `;
