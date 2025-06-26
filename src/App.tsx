@@ -126,7 +126,7 @@ const AppLayout: React.FC = () => {
               </ProtectedRoute>
             } />
             {/* Catch all route - redirect to dashboard */}
-            <Route path="*" element={<Navigate to="/dashboard" replace />} />
+            <Route path="*" element={<Navigate to="/app/dashboard" replace />} />
 
           </Routes>
         </div>
@@ -155,9 +155,11 @@ export default function App() {
           
           {/* Protected Routes (With Sidebar and App Context) */}
           <Route path="/app/*" element={
+            <WorkspaceProvider>
               <AppProvider>
                 <AppLayout />
               </AppProvider>
+            </WorkspaceProvider>
             } />
           </Routes>
 

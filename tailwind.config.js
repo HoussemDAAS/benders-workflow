@@ -65,6 +65,12 @@ export default {
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],
       },
+      // Custom shadow definitions
+      boxShadow: {
+        'soft': '0 2px 15px -3px rgba(0, 0, 0, 0.07), 0 10px 20px -2px rgba(0, 0, 0, 0.04)',
+        'medium': '0 10px 25px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+        'large': '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+      },
       animation: {
         'slide-in': 'slideIn 0.2s ease-out',
         'slide-out': 'slideOut 0.2s ease-in',
@@ -109,6 +115,7 @@ export default {
       },
       spacing: {
         '18': '4.5rem',
+        '70': '17.5rem',
         '88': '22rem',
         '128': '32rem',
       },
