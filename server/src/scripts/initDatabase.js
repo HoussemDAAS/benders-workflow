@@ -108,19 +108,64 @@ const createTables = async () => {
       console.log('✅ Users table updated successfully');
     }
 
+    // Workspaces table
+    await db.run(`
+      CREATE TABLE IF NOT EXISTS workspaces (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        description TEXT,
+        owner_id TEXT NOT NULL,
+        invite_code TEXT UNIQUE NOT NULL,
+        is_active BOOLEAN DEFAULT 1,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (owner_id) REFERENCES users (id) ON DELETE CASCADE
+      )
+    `);
+
+    // User workspaces table (many-to-many relationship)
+    await db.run(`
+      CREATE TABLE IF NOT EXISTS user_workspaces (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        workspace_id TEXT NOT NULL,
+        role TEXT DEFAULT 'member' CHECK (role IN ('admin', 'member')),
+        is_active BOOLEAN DEFAULT 1,
+        joined_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
+        FOREIGN KEY (workspace_id) REFERENCES workspaces (id) ON DELETE CASCADE,
+        UNIQUE(user_id, workspace_id)
+      )
+    `);
+
     // Clients table
     await db.run(`
       CREATE TABLE IF NOT EXISTS clients (
         id TEXT PRIMARY KEY,
         name TEXT NOT NULL,
         company TEXT,
-        email TEXT UNIQUE NOT NULL,
+        email TEXT NOT NULL,
         phone TEXT,
+        workspace_id TEXT NOT NULL,
         is_active BOOLEAN DEFAULT 1,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (workspace_id) REFERENCES workspaces (id) ON DELETE CASCADE,
+        UNIQUE(email, workspace_id)
       )
     `);
+
+    // Check if we need to add workspace_id to existing clients table
+    const clientColumnInfo = await db.all("PRAGMA table_info(clients)");
+    const clientColumnNames = clientColumnInfo.map(col => col.name);
+    
+    if (!clientColumnNames.includes('workspace_id')) {
+      console.log('🔧 Adding workspace_id column to clients table...');
+      await db.run('ALTER TABLE clients ADD COLUMN workspace_id TEXT');
+      
+      // For existing clients without workspace_id, we'll need to handle this in the application
+      console.log('⚠️  Existing clients need workspace assignment');
+    }
 
     // Workflows table
     await db.run(`
@@ -129,15 +174,28 @@ const createTables = async () => {
         name TEXT NOT NULL,
         description TEXT,
         client_id TEXT NOT NULL,
+        workspace_id TEXT NOT NULL,
         status TEXT DEFAULT 'active' CHECK (status IN ('active', 'paused', 'completed', 'cancelled')),
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         start_date DATETIME,
         expected_end_date DATETIME,
         actual_end_date DATETIME,
-        FOREIGN KEY (client_id) REFERENCES clients (id) ON DELETE CASCADE
+        FOREIGN KEY (client_id) REFERENCES clients (id) ON DELETE CASCADE,
+        FOREIGN KEY (workspace_id) REFERENCES workspaces (id) ON DELETE CASCADE
       )
     `);
+
+    // Check if we need to add workspace_id to existing workflows table
+    const workflowColumnInfo = await db.all("PRAGMA table_info(workflows)");
+    const workflowColumnNames = workflowColumnInfo.map(col => col.name);
+    
+    if (!workflowColumnNames.includes('workspace_id')) {
+      console.log('🔧 Adding workspace_id column to workflows table...');
+      await db.run('ALTER TABLE workflows ADD COLUMN workspace_id TEXT');
+      
+      console.log('⚠️  Existing workflows need workspace assignment');
+    }
 
     // --- Remove legacy workflow_steps tables (step assign/dependency/connection) ---
     await db.run('DROP TABLE IF EXISTS workflow_connections');
