@@ -1,32 +1,18 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { useState, useCallback } from 'react';
-import {
-  ReactFlow,
-  Background,
-  Controls,
-  MiniMap,
-  addEdge,
-  useNodesState,
-  useEdgesState,
-
-  type OnConnect,
-  type Node,
-  type Edge,
-} from '@xyflow/react';
-import '@xyflow/react/dist/style.css';
-import '../flowchart-nodes.css';
+import React, { useState } from 'react';
 
 import { 
   AlertTriangle,
   X,
 } from 'lucide-react';
-import { Workflow, Client, TeamMember, WorkflowStep, KanbanTask } from '../types';
-import { nodeTypes } from '../nodes';
-import { TaskFlowView } from './TaskFlowView';
+import { Workflow, Client, TeamMember, KanbanTask } from '../types';
+
 import { WorkflowHeader } from './WorkflowHeader';
 import { WorkflowFilters } from './WorkflowFilters';
 import { WorkflowCard } from './WorkflowCard';
 import { EmptyState } from './EmptyState';
+import { TaskFlowView } from './TaskFlowView';
+
 
 interface WorkflowsViewProps {
   workflows: Workflow[];
@@ -64,132 +50,9 @@ interface DeleteModalProps {
   onConfirm: () => void;
 }
 
-interface FlowchartViewProps {
-  workflow: Workflow;
-  onClose: () => void;
-  onWorkflowUpdate: (workflow: Workflow) => void;
-}
 
-const FlowchartView: React.FC<FlowchartViewProps> = ({ workflow, onClose, onWorkflowUpdate }) => {
-  // Handle workflows without steps/connections data from API
-  const steps = workflow.steps || [];
-  const connections = workflow.connections || [];
-  
-  // Convert workflow steps to React Flow nodes
-  const initialNodes: Node[] = steps.map((step) => ({
-    id: step.id,
-    type: step.type || 'process',
-    position: step.position || { x: 0, y: 0 },
-    data: { 
-      label: step.name,
-      description: step.description 
-    },
-  }));
 
-  // Convert workflow connections to React Flow edges
-  const initialEdges: Edge[] = connections.map((conn) => ({
-    id: conn.id,
-    source: conn.source,
-    target: conn.target,
-    sourceHandle: conn.sourceHandle,
-    targetHandle: conn.targetHandle,
-    label: conn.label,
-  }));
 
-  const [nodes, onNodesChange] = useNodesState(initialNodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
-
-  const onConnect: OnConnect = useCallback(
-    (connection) => setEdges((edges) => addEdge(connection, edges)),
-    [setEdges]
-  );
-
-  const handleSave = useCallback(() => {
-    // Convert back to workflow format and save
-    const updatedSteps: WorkflowStep[] = nodes.map((node) => {
-      const originalStep = steps.find(s => s.id === node.id);
-      return {
-        ...originalStep!,
-        position: node.position,
-        name: (node.data as any).label,
-        description: (node.data as any).description || '',
-      };
-    });
-
-    const updatedWorkflow: Workflow = {
-      ...workflow,
-      steps: updatedSteps,
-      connections: edges.map((edge) => ({
-        id: edge.id,
-        source: edge.source,
-        target: edge.target,
-        sourceHandle: edge.sourceHandle,
-        targetHandle: edge.targetHandle,
-        label: edge.label,
-      })),
-      updatedAt: new Date(),
-    };
-
-    onWorkflowUpdate(updatedWorkflow);
-    onClose();
-  }, [nodes, edges, workflow, steps, onWorkflowUpdate, onClose]);
-
-  return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-7xl h-[90vh] flex flex-col overflow-hidden">
-        <div className="flex items-center justify-between p-6 border-b border-gray-200 bg-gradient-to-r from-primary to-accent text-white">
-          <div>
-            <h2 className="text-2xl font-bold">{workflow.name} - Flowchart</h2>
-            <p className="text-white/80">Design and visualize your workflow steps</p>
-          </div>
-          <div className="flex items-center gap-3">
-            <button 
-              onClick={onClose}
-              className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-xl font-medium transition-colors duration-200"
-            >
-              Cancel
-            </button>
-            <button 
-              onClick={handleSave}
-              className="px-6 py-2 bg-tertiary hover:bg-tertiary/90 text-primary rounded-xl font-semibold transition-colors duration-200"
-            >
-              Save Changes
-            </button>
-          </div>
-        </div>
-        
-        <div className="flex-1 relative">
-          <ReactFlow
-            nodes={nodes}
-            nodeTypes={nodeTypes}
-            onNodesChange={onNodesChange}
-            edges={edges}
-            onEdgesChange={onEdgesChange}
-            onConnect={onConnect}
-            fitView
-            attributionPosition="bottom-left"
-          >
-            <Background color="#f1f5f9" />
-            <MiniMap 
-              nodeColor={(node) => {
-                switch (node.type) {
-                  case 'start-end': return '#22c55e';
-                  case 'process': return '#3b82f6';
-                  case 'decision': return '#f59e0b';
-                  case 'input-output': return '#8b5cf6';
-                  default: return '#6b7280';
-                }
-              }}
-              maskColor="rgba(255, 255, 255, 0.2)"
-              position="bottom-right"
-            />
-            <Controls position="bottom-right" style={{ bottom: 100 }} />
-          </ReactFlow>
-        </div>
-      </div>
-    </div>
-  );
-};
 
 const WorkflowModal: React.FC<WorkflowModalProps> = ({ workflow, clients, isOpen, onClose, onSubmit }) => {
   const [formData, setFormData] = useState<CreateWorkflowData>({
@@ -388,7 +251,7 @@ export function WorkflowsView({
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [clientFilter, setClientFilter] = useState<string>(initialClientFilter || 'all');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [editingWorkflow, setEditingWorkflow] = useState<Workflow | null>(null);
+  const [editingWorkflow, setEditingWorkflow] = useState<Workflow | undefined>(undefined);
   const [deletingWorkflow, setDeletingWorkflow] = useState<Workflow | null>(null);
   const [taskFlowWorkflow, setTaskFlowWorkflow] = useState<Workflow | null>(null);
 
@@ -421,9 +284,11 @@ export function WorkflowsView({
     setIsCreateModalOpen(false);
   };
 
-  const handleEditWorkflow = (workflow: Workflow) => {
-    onWorkflowEdit(workflow);
-    setEditingWorkflow(null);
+  const handleEditWorkflow = (data: CreateWorkflowData) => {
+    if (editingWorkflow) {
+      onWorkflowEdit({ ...editingWorkflow, ...data });
+      setEditingWorkflow(undefined);
+    }
   };
 
   const handleDeleteWorkflow = () => {
@@ -492,7 +357,7 @@ export function WorkflowsView({
         isOpen={isCreateModalOpen || !!editingWorkflow}
         onClose={() => {
           setIsCreateModalOpen(false);
-          setEditingWorkflow(null);
+          setEditingWorkflow(undefined);
         }}
         onSubmit={editingWorkflow ? handleEditWorkflow : handleCreateWorkflow}
       />

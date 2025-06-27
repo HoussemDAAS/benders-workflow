@@ -69,15 +69,15 @@ export class TaskService {
   }
 
   async delete(id: string): Promise<void> {
-    return api.delete<void>(`/tasks/${id}`);
+    await api.delete(`/tasks/${id}`);
   }
 
-  async assignMember(taskId: string, memberId: string): Promise<void> {
+  async assignMember(taskId: string, memberId: string): Promise<any> {
     return api.post<void>(`/tasks/${taskId}/assign`, { memberId });
   }
 
   async unassignMember(taskId: string, memberId: string): Promise<void> {
-    return api.delete<void>(`/tasks/${taskId}/assign/${memberId}`);
+    await api.delete(`/tasks/${taskId}/assign/${memberId}`);
   }
 
   async getAssignedMembers(taskId: string) {
@@ -94,7 +94,7 @@ export class TaskService {
   }
 
   async deleteColumn(id: string): Promise<void> {
-    return api.delete<void>(`/tasks/columns/${id}`);
+    await api.delete(`/tasks/columns/${id}`);
   }
 }
 

@@ -1,10 +1,8 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Shield, Lock, Key, Bell, Activity, AlertTriangle } from 'lucide-react';
 import { TwoFactorSettings } from '../components/TwoFactorSettings';
-import { useAuth } from '../hooks/useAuth';
 
 export function SecurityPage() {
-  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<'2fa' | 'sessions' | 'activity' | 'notifications'>('2fa');
 
   const securityTabs = [

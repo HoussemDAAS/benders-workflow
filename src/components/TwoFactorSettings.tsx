@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   Shield, 
   Smartphone, 
@@ -19,7 +19,7 @@ interface TwoFactorSettingsProps {
 }
 
 export function TwoFactorSettings({ onClose }: TwoFactorSettingsProps) {
-  const { user, getAuthHeaders } = useAuth();
+  const { getAuthHeaders } = useAuth();
   const [is2FAEnabled, setIs2FAEnabled] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [setupStep, setSetupStep] = useState<'initial' | 'setup' | 'verify' | 'complete'>('initial');

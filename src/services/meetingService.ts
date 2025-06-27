@@ -82,16 +82,16 @@ export class MeetingService {
   }
 
   async delete(id: string): Promise<void> {
-    return apiService.delete<void>(`/meetings/${id}`);
+    await apiService.delete(`/meetings/${id}`);
   }
 
   // Attendee management
-  async addAttendee(meetingId: string, memberId: string): Promise<void> {
+  async addAttendee(meetingId: string, memberId: string): Promise<any> {
     return apiService.post<void>(`/meetings/${meetingId}/attendees`, { memberId });
   }
 
   async removeAttendee(meetingId: string, memberId: string): Promise<void> {
-    return apiService.delete<void>(`/meetings/${meetingId}/attendees/${memberId}`);
+    await apiService.delete(`/meetings/${meetingId}/attendees/${memberId}`);
   }
 
   async getAttendees(meetingId: string) {

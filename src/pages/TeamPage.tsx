@@ -2,13 +2,10 @@
 import React, { useState, useCallback } from 'react';
 import { TeamView } from '../components/TeamView';
 import { TeamMemberModal } from '../components/TeamMemberModal';
-import { useAppContext } from '../hooks/useAppContext';
 import { useTeamActions } from '../hooks/useTeamActions';
 import { TeamMember } from '../types';
 
 const TeamPage: React.FC = () => {
-  // const { teamMembers, workflows, kanbanTasks } = useAppContext(); // TODO: Removed teamMembers for user auth implementation
-  const { workflows, kanbanTasks } = useAppContext();
   const { createTeamMember, updateTeamMember, deleteTeamMember, updateTeamMemberStatus } = useTeamActions();
   
   // Team member modal state

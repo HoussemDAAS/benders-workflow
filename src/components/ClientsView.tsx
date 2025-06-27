@@ -7,14 +7,11 @@ import {
   Building2, 
   Calendar,
   Search,
-  MoreVertical,
   CheckCircle,
   Clock,
   AlertTriangle,
   TrendingUp,
   Workflow as WorkflowIcon,
-  AlertCircle,
-  Star,
   ArrowUpRight
 } from 'lucide-react';
 import { Client, Workflow, KanbanTask, TeamMember } from '../types';
@@ -46,8 +43,7 @@ const ClientCard: React.FC<ClientCardProps> = ({
   client, 
   clientWorkflows, 
   clientTasks,
-  onEdit, 
-  onStatusChange,
+  onEdit
 }) => {
   const activeWorkflows = clientWorkflows.filter(w => w.status === 'active').length;
   const completedWorkflows = clientWorkflows.filter(w => w.status === 'completed').length;

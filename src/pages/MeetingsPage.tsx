@@ -8,7 +8,7 @@ import { Meeting } from '../types';
 
 const MeetingsPage: React.FC = () => {
   const { meetings, clients, teamMembers } = useAppContext();
-  const { createMeeting, updateMeeting, deleteMeeting, updateMeetingStatus } = useMeetingActions();
+  const { createMeeting, updateMeeting, updateMeetingStatus } = useMeetingActions();
   
   // Meeting modal state
   const [meetingModal, setMeetingModal] = useState<{
@@ -59,7 +59,6 @@ const MeetingsPage: React.FC = () => {
         teamMembers={teamMembers}
         onMeetingCreate={handleMeetingCreate}
         onMeetingEdit={handleMeetingEdit}
-        onMeetingDelete={deleteMeeting}
         onMeetingStatusChange={updateMeetingStatus}
       />
       

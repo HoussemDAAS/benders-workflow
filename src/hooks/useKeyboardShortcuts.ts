@@ -136,7 +136,7 @@ export const useKeyboardShortcuts = ({
 
   return {
     shortcuts: allShortcuts,
-    addShortcut: (shortcut: KeyboardShortcut) => {
+    addShortcut: (_shortcut: KeyboardShortcut) => {
       // This would need to be implemented with state management
       // For now, shortcuts are static
     }

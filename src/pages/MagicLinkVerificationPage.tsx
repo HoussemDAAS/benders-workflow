@@ -1,16 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { TwoFactorVerification } from '../components/TwoFactorVerification';
-import { LoadingCard } from '../components/LoadingSpinner';
-import { ErrorCard } from '../components/ErrorMessage';
 import { 
-  Mail, 
   CheckCircle, 
   AlertCircle, 
-  ArrowRight, 
-  Target,
-  Sparkles
+  ArrowRight
 } from 'lucide-react';
 
 export function MagicLinkVerificationPage() {
@@ -62,7 +57,6 @@ export function MagicLinkVerificationPage() {
     const verifyMagicLink = async () => {
       try {
         const token = searchParams.get('token');
-        const requires2fa = searchParams.get('requires2fa') === 'true';
         
         if (!token) {
           throw new Error('Invalid magic link - no token found');

@@ -69,7 +69,7 @@ export const Breadcrumb: React.FC<BreadcrumbProps> = ({ items, className = '' })
     return configs[section];
   };
 
-  const getItemLabel = (section: string, itemId: string): string => {
+  const getItemLabel = (section: string, _itemId: string): string => {
     // In a real app, you'd fetch the actual item name
     // For now, return a generic label
     const sectionLabels: Record<string, string> = {

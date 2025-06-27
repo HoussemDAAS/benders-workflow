@@ -8,8 +8,7 @@ import {
   Workflow as WorkflowIcon,
   Save,
   Trash2,
-  Plus,
-  Check
+  Plus
 } from 'lucide-react';
 import { KanbanTask, TeamMember, Workflow, KanbanColumn } from '../types';
 

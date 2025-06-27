@@ -2,7 +2,6 @@ import { useCallback } from 'react';
 import { useAppContext } from './useAppContext';
 import {
   workflowService,
-  CreateWorkflowRequest,
 } from '../services';
 import { Workflow } from '../types';
 
@@ -20,14 +19,14 @@ export const useWorkflowActions = () => {
   const { refresh } = useAppContext();
 
   // Helper function to convert UI status to API status
-  const convertStatusToApi = (uiStatus: CreateWorkflowData['status']): CreateWorkflowRequest['status'] => {
+  const convertStatusToApi = (uiStatus: CreateWorkflowData['status']): Workflow['status'] => {
     switch (uiStatus) {
       case 'draft':
-        return 'active'; // Draft workflows become active in the API
+        return 'draft';
       case 'active':
         return 'active';
       case 'on-hold':
-        return 'paused';
+        return 'on-hold';
       case 'completed':
         return 'completed';
       default:
@@ -37,8 +36,8 @@ export const useWorkflowActions = () => {
 
   const createWorkflow = useCallback(async (workflowData: CreateWorkflowData) => {
     try {
-      // Convert UI data to API format
-      const apiData: CreateWorkflowRequest = {
+      // Convert UI data to Workflow format
+      const apiData: Partial<Workflow> = {
         name: workflowData.name,
         description: workflowData.description,
         clientId: workflowData.clientId,
@@ -58,7 +57,7 @@ export const useWorkflowActions = () => {
   const updateWorkflow = useCallback(async (workflow: Workflow) => {
     try {
       // Convert workflow to update format
-      const updateData: Partial<CreateWorkflowRequest> = {
+      const updateData: Partial<Workflow> = {
         name: workflow.name,
         description: workflow.description,
         clientId: workflow.clientId,

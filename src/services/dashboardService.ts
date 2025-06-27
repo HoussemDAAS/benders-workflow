@@ -38,31 +38,31 @@ export class DashboardService {
     return apiService.get<DashboardStats>('/dashboard/stats');
   }
 
-  async getRecentActivity(limit = 10) {
+  async getRecentActivity(limit = 10): Promise<any> {
     return apiService.get(`/dashboard/recent-activity?limit=${limit}`);
   }
 
-  async getTaskDistribution() {
+  async getTaskDistribution(): Promise<any> {
     return apiService.get('/dashboard/task-distribution');
   }
 
-  async getWorkflowProgress() {
+  async getWorkflowProgress(): Promise<any> {
     return apiService.get('/dashboard/workflow-progress');
   }
 
-  async getTeamWorkload() {
+  async getTeamWorkload(): Promise<any> {
     return apiService.get('/dashboard/team-workload');
   }
 
-  async getUpcomingDeadlines(days = 7) {
+  async getUpcomingDeadlines(days = 7): Promise<any> {
     return apiService.get(`/dashboard/upcoming-deadlines?days=${days}`);
   }
 
-  async getClientActivity() {
+  async getClientActivity(): Promise<any> {
     return apiService.get('/dashboard/client-activity');
   }
 
-  async getPerformanceMetrics() {
+  async getPerformanceMetrics(): Promise<any> {
     return apiService.get('/dashboard/performance-metrics');
   }
 

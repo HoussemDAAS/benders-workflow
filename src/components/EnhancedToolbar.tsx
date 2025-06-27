@@ -21,7 +21,7 @@ export const EnhancedToolbar: React.FC<EnhancedToolbarProps> = ({
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isRecentOpen, setIsRecentOpen] = useState(false);
   
-  const { theme, changeTheme, isDark } = useTheme();
+  const { theme, changeTheme } = useTheme();
   const { user, logout } = useAuth();
   
   // Enable keyboard shortcuts

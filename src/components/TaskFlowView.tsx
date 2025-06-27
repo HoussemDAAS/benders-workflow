@@ -71,11 +71,6 @@ const calculateTaskPositions = (tasks: KanbanTask[]) => {
 const createTaskEdges = (tasks: KanbanTask[]): Edge[] => {
   const edges: Edge[] = [];
   
-  // Sort tasks by creation date to establish logical flow
-  const sortedTasks = [...tasks].sort((a, b) => 
-    new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-  );
-  
   const statusOrder = ['todo', 'in-progress', 'review', 'done'];
   const tasksByStatus = tasks.reduce((acc, task) => {
     if (!acc[task.status]) acc[task.status] = [];

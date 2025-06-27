@@ -58,7 +58,8 @@ class WorkspaceService {
 
   // Remove member from workspace
   async removeMember(workspaceId: string, userId: string): Promise<{ message: string }> {
-    return await api.delete<{ message: string }>(`/workspaces/${workspaceId}/members/${userId}`)
+    const response = await api.delete(`/workspaces/${workspaceId}/members/${userId}`);
+    return response as { message: string };
   }
 
   // Update member role
@@ -68,7 +69,8 @@ class WorkspaceService {
 
   // Delete workspace
   async deleteWorkspace(id: string): Promise<{ message: string }> {
-    return await api.delete<{ message: string }>(`/workspaces/${id}`)
+    const response = await api.delete(`/workspaces/${id}`);
+    return response as { message: string };
   }
 }
 

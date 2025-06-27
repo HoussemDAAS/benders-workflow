@@ -1,14 +1,15 @@
 import { Handle, Position, type NodeProps } from '@xyflow/react';
-import { Calendar, User, Flag, Clock } from 'lucide-react';
+import { Calendar, User, Flag } from 'lucide-react';
 import { KanbanTask, TeamMember } from '../types';
 
-export interface TaskNodeData {
+export interface TaskNodeData extends Record<string, unknown> {
   task: KanbanTask;
   teamMembers?: TeamMember[];
 }
 
-export function TaskNode({ data, selected }: NodeProps<TaskNodeData>) {
-  const { task, teamMembers } = data;
+export function TaskNode({ data, selected }: NodeProps) {
+  const typedData = data as TaskNodeData;
+  const { task, teamMembers } = typedData;
   
   const getPriorityColor = (priority: string) => {
     switch (priority) {
@@ -30,7 +31,7 @@ export function TaskNode({ data, selected }: NodeProps<TaskNodeData>) {
     }
   };
 
-  const assignedMembers = teamMembers?.filter(member => 
+  const assignedMembers = teamMembers?.filter((member: TeamMember) => 
     task.assignedMembers.includes(member.id)
   ) || [];
 
@@ -76,7 +77,7 @@ export function TaskNode({ data, selected }: NodeProps<TaskNodeData>) {
         <div className="flex items-center gap-2 mb-3">
           <User size={12} className="text-gray-400" />
           <div className="flex items-center -space-x-1">
-            {assignedMembers.slice(0, 3).map(member => (
+            {assignedMembers.slice(0, 3).map((member: TeamMember) => (
               <div 
                 key={member.id} 
                 className="w-6 h-6 bg-primary text-white rounded-full flex items-center justify-center text-xs font-medium border-2 border-white"
@@ -100,7 +101,7 @@ export function TaskNode({ data, selected }: NodeProps<TaskNodeData>) {
 
       {task.tags && task.tags.length > 0 && (
         <div className="flex flex-wrap gap-1">
-          {task.tags.slice(0, 2).map(tag => (
+          {task.tags.slice(0, 2).map((tag: string) => (
             <span key={tag} className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-full">
               {tag}
             </span>

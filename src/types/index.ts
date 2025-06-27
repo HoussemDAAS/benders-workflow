@@ -85,8 +85,8 @@ export interface Workflow {
   status: 'draft' | 'active' | 'completed' | 'on-hold';
   createdAt: Date;
   updatedAt: Date;
-  startDate?: Date;
-  expectedEndDate?: Date;
+  startDate?: string | Date;
+  expectedEndDate?: string | Date;
   progress?: WorkflowProgress;
 }
 

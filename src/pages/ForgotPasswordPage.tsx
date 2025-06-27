@@ -116,14 +116,7 @@ export function ForgotPasswordPage() {
   )
 
   // Success display
-  const SuccessDisplay = ({ message }: { message: string }) => (
-    <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-      <div className="flex items-start gap-2">
-        <CheckCircle className="w-4 h-4 mt-0.5 flex-shrink-0 text-green-500" />
-        <p className="text-sm font-medium text-green-700 leading-relaxed">{message}</p>
-      </div>
-    </div>
-  )
+  
 
   if (emailSent) {
     return (

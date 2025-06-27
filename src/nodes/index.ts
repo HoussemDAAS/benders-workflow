@@ -67,5 +67,5 @@ export const nodeTypes: NodeTypes = {
   'process': ProcessNode,
   'decision': DecisionNode,
   'input-output': InputOutputNode,
-  'task': TaskNode,
+  'task': TaskNode as any,
 };

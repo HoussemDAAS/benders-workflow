@@ -318,12 +318,7 @@ export function AuthPage() {
     );
   };
 
-  const SuccessDisplay = ({ message }: { message: string }) => (
-    <div className="flex items-start gap-1.5 p-1.5 bg-green-50 border border-green-200 rounded-md text-xs text-green-600">
-      <CheckCircle className="w-3 h-3 flex-shrink-0 mt-0.5" />
-      <span className="leading-relaxed">{message}</span>
-    </div>
-  );
+  
 
   if (magicLinkSent) {
     return (

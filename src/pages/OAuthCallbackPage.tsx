@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { LoadingCard } from '../components/LoadingSpinner';
@@ -21,7 +21,6 @@ export function OAuthCallbackPage() {
       try {
         const code = searchParams.get('code');
         const error = searchParams.get('error');
-        const state = searchParams.get('state');
 
         // Check for OAuth errors
         if (error) {
@@ -108,7 +107,6 @@ export function OAuthCallbackPage() {
           <ErrorCard 
             error={error} 
             onRetry={() => navigate('/login', { replace: true })}
-            retryText="Back to Login"
           />
         </div>
       </div>

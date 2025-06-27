@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState } from 'react';
 import {
   Calendar,
   Clock,
@@ -11,10 +11,9 @@ import {
   Building,
   CheckCircle,
   XCircle,
-  AlertCircle,
   Search
 } from 'lucide-react';
-import { meetingService, Meeting } from '../services';
+import { Meeting } from '../services';
 
 interface Client {
   id: string;
@@ -36,17 +35,14 @@ interface MeetingViewProps {
   teamMembers: TeamMember[];
   onMeetingCreate: () => void;
   onMeetingEdit: (meeting: Meeting) => void;
-  onMeetingDelete: (meetingId: string) => void;
   onMeetingStatusChange: (meetingId: string, status: string) => void;
 }
 
 export function MeetingView({ 
   meetings, 
   clients, 
-  teamMembers, 
   onMeetingCreate, 
   onMeetingEdit, 
-  onMeetingDelete, 
   onMeetingStatusChange 
 }: MeetingViewProps) {
   const [selectedClient, setSelectedClient] = useState<string>('all');

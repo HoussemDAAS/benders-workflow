@@ -5,8 +5,7 @@ import {
   Eye, 
   EyeOff, 
   ArrowRight, 
-  Target, 
-  Sparkles,
+  Target,
   AlertCircle,
   CheckCircle,
   Shield

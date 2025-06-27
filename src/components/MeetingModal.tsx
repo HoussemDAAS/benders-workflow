@@ -161,7 +161,7 @@ export function MeetingModal({ meeting, clients, teamMembers, isOpen, onClose, o
 
   if (!isOpen) return null;
 
-  const selectedClient = clients.find(c => c.id === formData.clientId);
+  
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={onClose}>

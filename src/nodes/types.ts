@@ -26,5 +26,4 @@ export type AppNode =
   | ProcessNode 
   | DecisionNode 
   | InputOutputNode
-  | TaskNode
   | BuiltInNode;

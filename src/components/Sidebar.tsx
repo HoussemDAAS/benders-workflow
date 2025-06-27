@@ -10,7 +10,6 @@ import {
   Building2,
   Settings,
   Shield,
-  Plus,
   CheckSquare,
   Calendar,
   Menu,
@@ -59,10 +58,7 @@ export function Sidebar({ onNewTask }: SidebarProps) {
     setIsMobileMenuOpen(false);
   };
 
-  const handleNewWorkflow = () => {
-    navigate('/app/workflows');
-    setIsMobileMenuOpen(false);
-  };
+  
 
   const handleNewTask = () => {
     if (onNewTask) {

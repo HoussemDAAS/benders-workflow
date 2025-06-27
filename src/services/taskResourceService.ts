@@ -55,7 +55,7 @@ export const taskResourceService = {
     return api.put(`/tasks/${taskId}/resources/${resourceId}`, resource);
   },
 
-  async deleteTaskResource(taskId: string, resourceId: string): Promise<void> {
+  async deleteTaskResource(taskId: string, resourceId: string): Promise<any> {
     return api.delete(`/tasks/${taskId}/resources/${resourceId}`);
   }
 }; 

@@ -1,6 +1,6 @@
 import React, { createContext, useEffect, useState } from 'react'
 
-import { authService, type AuthUser, type LoginCredentials, type TwoFactorRequiredResponse, type TwoFactorVerificationRequest } from '../services/authService'
+import { authService, type AuthUser, type LoginCredentials, type RegisterCredentials, type TwoFactorRequiredResponse, type TwoFactorVerificationRequest } from '../services/authService'
 
 
 interface AuthContextType {

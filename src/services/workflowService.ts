@@ -26,22 +26,22 @@ export interface WorkflowProgress {
 
 export const workflowService = {
   async getAll(): Promise<Workflow[]> {
-    const response = await api.get('/workflows');
+    const response = await api.get<Workflow[]>('/workflows');
     return response;
   },
 
   async getById(id: string): Promise<Workflow> {
-    const response = await api.get(`/workflows/${id}`);
+    const response = await api.get<Workflow>(`/workflows/${id}`);
     return response;
   },
 
   async create(workflow: Partial<Workflow>): Promise<Workflow> {
-    const response = await api.post('/workflows', workflow);
+    const response = await api.post<Workflow>('/workflows', workflow);
     return response;
   },
 
   async update(id: string, workflow: Partial<Workflow>): Promise<Workflow> {
-    const response = await api.put(`/workflows/${id}`, workflow);
+    const response = await api.put<Workflow>(`/workflows/${id}`, workflow);
     return response;
   },
 
@@ -50,32 +50,32 @@ export const workflowService = {
   },
 
   async getSteps(workflowId: string): Promise<WorkflowStep[]> {
-    const response = await api.get(`/workflows/${workflowId}/steps`);
+    const response = await api.get<WorkflowStep[]>(`/workflows/${workflowId}/steps`);
     return response;
   },
 
-  async getProgress(workflowId: string): Promise<any> {
-    const response = await api.get(`/workflows/${workflowId}/progress`);
+  async getProgress(workflowId: string): Promise<WorkflowProgress> {
+    const response = await api.get<WorkflowProgress>(`/workflows/${workflowId}/progress`);
     return response;
   },
 
   async getKanbanColumns(workflowId: string): Promise<KanbanColumn[]> {
-    const response = await api.get(`/workflows/${workflowId}/kanban-columns`);
+    const response = await api.get<KanbanColumn[]>(`/workflows/${workflowId}/kanban-columns`);
     return response;
   },
 
   async getKanbanTasks(workflowId: string): Promise<{ [stepId: string]: KanbanTask[] }> {
-    const response = await api.get(`/workflows/${workflowId}/kanban-tasks`);
+    const response = await api.get<{ [stepId: string]: KanbanTask[] }>(`/workflows/${workflowId}/kanban-tasks`);
     return response;
   },
 
   async createKanbanColumn(workflowId: string, column: Partial<KanbanColumn>): Promise<KanbanColumn> {
-    const response = await api.post(`/workflows/${workflowId}/kanban-columns`, column);
+    const response = await api.post<KanbanColumn>(`/workflows/${workflowId}/kanban-columns`, column);
     return response;
   },
 
   async updateKanbanColumn(workflowId: string, stepId: string, column: Partial<KanbanColumn>): Promise<KanbanColumn> {
-    const response = await api.put(`/workflows/${workflowId}/kanban-columns/${stepId}`, column);
+    const response = await api.put<KanbanColumn>(`/workflows/${workflowId}/kanban-columns/${stepId}`, column);
     return response;
   },
 
@@ -84,12 +84,12 @@ export const workflowService = {
   },
 
   async initializeDefaultColumns(workflowId: string): Promise<KanbanColumn[]> {
-    const response = await api.post(`/workflows/${workflowId}/initialize-default-columns`);
+    const response = await api.post<KanbanColumn[]>(`/workflows/${workflowId}/initialize-default-columns`, {});
     return response;
   },
 
   async moveTaskToStep(taskId: string, stepId: string, performedBy?: string): Promise<KanbanTask> {
-    const response = await api.patch(`/tasks/${taskId}/move-to-step`, {
+    const response = await api.patch<KanbanTask>(`/tasks/${taskId}/move-to-step`, {
       stepId,
       performedBy
     });
@@ -97,13 +97,13 @@ export const workflowService = {
   },
 
   async updateStatus(id: string, status: string): Promise<Workflow> {
-    const response = await api.patch(`/workflows/${id}/status`, { status });
+    const response = await api.patch<Workflow>(`/workflows/${id}/status`, { status });
     return response;
   },
 
   // Connections management
   async getConnections(workflowId: string): Promise<WorkflowConnection[]> {
-    const response = await api.get(`/workflows/${workflowId}/connections`);
+    const response = await api.get<WorkflowConnection[]>(`/workflows/${workflowId}/connections`);
     return response;
   },
 
@@ -111,7 +111,7 @@ export const workflowService = {
     sourceStepId: string;
     targetStepId: string;
   }): Promise<WorkflowConnection> {
-    const response = await api.post(`/workflows/${workflowId}/connections`, connection);
+    const response = await api.post<WorkflowConnection>(`/workflows/${workflowId}/connections`, connection);
     return response;
   },
 
@@ -127,7 +127,7 @@ export const workflowService = {
     positionX?: number;
     positionY?: number;
   }): Promise<WorkflowStep> {
-    const response = await api.post(`/workflows/${workflowId}/steps`, step);
+    const response = await api.post<WorkflowStep>(`/workflows/${workflowId}/steps`, step);
     return response;
   }
 }; 

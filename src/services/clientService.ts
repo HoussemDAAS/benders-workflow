@@ -36,7 +36,7 @@ export class ClientService {
   }
 
   async delete(id: string): Promise<void> {
-    return apiService.delete<void>(`/clients/${id}`);
+    await apiService.delete(`/clients/${id}`);
   }
 
   async getWorkflows(id: string) {
