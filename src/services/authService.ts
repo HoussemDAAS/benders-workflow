@@ -1,5 +1,5 @@
 // Custom authentication service for Vite React app
-import { getServerBaseUrl } from '../utils/api';
+import { getApiBaseUrl } from '../utils/api';
 
 interface LoginCredentials {
   email: string
@@ -47,7 +47,7 @@ interface TwoFactorVerificationRequest {
 }
 
 class AuthService {
-  private baseUrl = getServerBaseUrl()
+  private baseUrl = getApiBaseUrl()
   private tokenKey = 'auth-token'
   private userKey = 'auth-user'
 
@@ -84,7 +84,7 @@ class AuthService {
   // Enhanced Email/Password login with 2FA support
   async loginWithEmail(credentials: LoginCredentials): Promise<AuthUser | TwoFactorRequiredResponse> {
     try {
-      const response = await fetch(`${this.baseUrl}/api/auth/login`, {
+      const response = await fetch(`${this.baseUrl}/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -147,7 +147,7 @@ class AuthService {
   // Magic link login
   async sendMagicLink(email: string): Promise<void> {
     try {
-      const response = await fetch(`${this.baseUrl}/api/auth/magic-link`, {
+      const response = await fetch(`${this.baseUrl}/auth/magic-link`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -174,7 +174,7 @@ class AuthService {
   // Enhanced Magic link with 2FA support  
   async verifyMagicLink(token: string): Promise<AuthUser | TwoFactorRequiredResponse> {
     try {
-      const response = await fetch(`${this.baseUrl}/api/auth/verify-magic-link`, {
+      const response = await fetch(`${this.baseUrl}/auth/verify-magic-link`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -213,7 +213,7 @@ class AuthService {
   // New method: Verify 2FA and complete login
   async verify2FA(request: TwoFactorVerificationRequest): Promise<AuthUser> {
     try {
-      const response = await fetch(`${this.baseUrl}/api/auth/2fa/verify`, {
+      const response = await fetch(`${this.baseUrl}/auth/2fa/verify`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -238,7 +238,7 @@ class AuthService {
   // New 2FA management methods
   async setup2FA(): Promise<{ secret: string; qrCodeDataURL: string; manualEntryKey: string }> {
     try {
-      const response = await fetch(`${this.baseUrl}/api/auth/2fa/setup`, {
+      const response = await fetch(`${this.baseUrl}/auth/2fa/setup`, {
         method: 'POST',
         headers: this.getAuthHeaders(),
       })
@@ -257,7 +257,7 @@ class AuthService {
 
   async enable2FA(token: string): Promise<{ backupCodes: string[]; user: AuthUser }> {
     try {
-      const response = await fetch(`${this.baseUrl}/api/auth/2fa/enable`, {
+      const response = await fetch(`${this.baseUrl}/auth/2fa/enable`, {
         method: 'POST',
         headers: this.getAuthHeaders(),
         body: JSON.stringify({ token }),
@@ -282,7 +282,7 @@ class AuthService {
 
   async disable2FA(token: string): Promise<AuthUser> {
     try {
-      const response = await fetch(`${this.baseUrl}/api/auth/2fa/disable`, {
+      const response = await fetch(`${this.baseUrl}/auth/2fa/disable`, {
         method: 'POST',
         headers: this.getAuthHeaders(),
         body: JSON.stringify({ token }),
@@ -307,7 +307,7 @@ class AuthService {
 
   async get2FAStatus(): Promise<{ twoFactorEnabled: boolean; hasBackupCodes: boolean }> {
     try {
-      const response = await fetch(`${this.baseUrl}/api/auth/2fa/status`, {
+      const response = await fetch(`${this.baseUrl}/auth/2fa/status`, {
         headers: this.getAuthHeaders(),
       })
 
@@ -325,7 +325,7 @@ class AuthService {
 
   async regenerateBackupCodes(token: string): Promise<string[]> {
     try {
-      const response = await fetch(`${this.baseUrl}/api/auth/2fa/regenerate-backup-codes`, {
+      const response = await fetch(`${this.baseUrl}/auth/2fa/regenerate-backup-codes`, {
         method: 'POST',
         headers: this.getAuthHeaders(),
         body: JSON.stringify({ token }),
@@ -349,7 +349,7 @@ class AuthService {
     try {
       const token = this.getToken()
       if (token) {
-        await fetch(`${this.baseUrl}/api/auth/logout`, {
+        await fetch(`${this.baseUrl}/auth/logout`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -369,7 +369,7 @@ class AuthService {
       const token = this.getToken()
       if (!token) return null
 
-      const response = await fetch(`${this.baseUrl}/api/auth/me`, {
+      const response = await fetch(`${this.baseUrl}/auth/me`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -403,7 +403,7 @@ class AuthService {
   async loginWithGoogle(): Promise<void> {
     try {
       // Get Google OAuth URL from backend
-      const response = await fetch(`${this.baseUrl}/api/auth/google/url`)
+      const response = await fetch(`${this.baseUrl}/auth/google/url`)
       if (!response.ok) {
         throw new Error('Failed to get Google OAuth URL')
       }
@@ -422,7 +422,7 @@ class AuthService {
   async loginWithGitHub(): Promise<void> {
     try {
       // Get GitHub OAuth URL from backend
-      const response = await fetch(`${this.baseUrl}/api/auth/github/url`)
+      const response = await fetch(`${this.baseUrl}/auth/github/url`)
       if (!response.ok) {
         throw new Error('Failed to get GitHub OAuth URL')
       }
