@@ -172,7 +172,7 @@ export function Dashboard({
                 
                 <div className="space-y-1">
                   <h3 className="text-2xl font-bold text-gray-900 group-hover:text-primary transition-colors duration-300">
-                    {card.value.toLocaleString()}
+                    {(card.value || 0).toLocaleString()}
                   </h3>
                   <p className="text-sm font-medium text-gray-600">{card.title}</p>
                 </div>

@@ -76,4 +76,4 @@ export const apiService = {
   put: <T>(endpoint: string, data?: unknown): Promise<T> => api.put<T>(endpoint, data),
   patch: <T>(endpoint: string, data?: unknown): Promise<T> => api.patch<T>(endpoint, data),
   delete: (endpoint: string): Promise<unknown> => api.delete(endpoint),
-}; 
+};

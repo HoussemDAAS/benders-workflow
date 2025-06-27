@@ -8,19 +8,17 @@ router.get('/stats', async (req, res) => {
   try {
     const db = getDatabase();
     
-    // Get basic counts
+    // Get basic counts (removed team_members reference)
     const [
       clientsResult,
       workflowsResult,
       tasksResult,
-      teamResult,
       overdueResult,
       meetingsResult
     ] = await Promise.all([
       db.get('SELECT COUNT(*) as count FROM clients WHERE is_active = 1'),
       db.get('SELECT COUNT(*) as count FROM workflows WHERE status = "active"'),
       db.get('SELECT COUNT(*) as count FROM kanban_tasks WHERE status = "done"'),
-      db.get('SELECT COUNT(*) as count FROM team_members WHERE is_active = 1'),
       db.get(`SELECT COUNT(*) as count FROM kanban_tasks 
               WHERE due_date < datetime('now') AND status != 'done'`),
       db.get(`SELECT COUNT(*) as count FROM client_meetings 
@@ -32,7 +30,6 @@ router.get('/stats', async (req, res) => {
       totalClients: clientsResult.count,
       activeWorkflows: workflowsResult.count,
       completedTasks: tasksResult.count,
-      teamMembers: teamResult.count,
       overdueItems: overdueResult.count,
       upcomingMeetings: meetingsResult.count
     };
@@ -108,44 +105,6 @@ router.get('/workflow-progress', async (req, res) => {
   } catch (error) {
     console.error('Error fetching workflow progress:', error);
     res.status(500).json({ error: 'Failed to fetch workflow progress' });
-  }
-});
-
-// GET /api/dashboard/team-workload - Get team workload overview
-router.get('/team-workload', async (req, res) => {
-  try {
-    const db = getDatabase();
-    const workload = await db.all(`
-      SELECT tm.id, tm.name, tm.role,
-             COUNT(DISTINCT sa.step_id) as assigned_steps,
-             COUNT(DISTINCT ta.task_id) as assigned_tasks,
-             COUNT(DISTINCT CASE WHEN ws.status != 'completed' THEN sa.step_id END) as active_steps,
-             COUNT(DISTINCT CASE WHEN kt.status != 'done' THEN ta.task_id END) as active_tasks
-      FROM team_members tm
-      LEFT JOIN step_assignments sa ON tm.id = sa.member_id
-      LEFT JOIN workflow_steps ws ON sa.step_id = ws.id
-      LEFT JOIN task_assignments ta ON tm.id = ta.member_id
-      LEFT JOIN kanban_tasks kt ON ta.task_id = kt.id
-      WHERE tm.is_active = 1
-      GROUP BY tm.id, tm.name, tm.role
-      ORDER BY tm.name
-    `);
-
-    const teamWorkload = workload.map(member => ({
-      id: member.id,
-      name: member.name,
-      role: member.role,
-      totalSteps: member.assigned_steps,
-      totalTasks: member.assigned_tasks,
-      activeSteps: member.active_steps,
-      activeTasks: member.active_tasks,
-      overallLoad: member.active_steps + member.active_tasks
-    }));
-
-    res.json(teamWorkload);
-  } catch (error) {
-    console.error('Error fetching team workload:', error);
-    res.status(500).json({ error: 'Failed to fetch team workload' });
   }
 });
 
@@ -279,4 +238,4 @@ router.get('/performance-metrics', async (req, res) => {
   }
 });
 
-module.exports = router; 
+module.exports = router;

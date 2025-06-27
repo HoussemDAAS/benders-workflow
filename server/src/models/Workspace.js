@@ -69,8 +69,8 @@ class Workspace {
     const db = getDatabase();
     const rows = await db.all(`
       SELECT w.* FROM workspaces w
-      JOIN user_workspaces uw ON w.id = uw.workspace_id
-      WHERE uw.user_id = ? AND w.is_active = 1 AND uw.is_active = 1
+      JOIN workspace_members wm ON w.id = wm.workspace_id
+      WHERE wm.user_id = ? AND w.is_active = 1
       ORDER BY w.created_at DESC
     `, [userId]);
     
@@ -81,11 +81,11 @@ class Workspace {
   async getMembers() {
     const db = getDatabase();
     const rows = await db.all(`
-      SELECT u.id, u.email, u.name, u.role as user_role, uw.role as workspace_role, uw.joined_at
+      SELECT u.id, u.email, u.name, u.role as user_role, wm.role as workspace_role, wm.joined_at
       FROM users u
-      JOIN user_workspaces uw ON u.id = uw.user_id
-      WHERE uw.workspace_id = ? AND u.is_active = 1 AND uw.is_active = 1
-      ORDER BY uw.joined_at DESC
+      JOIN workspace_members wm ON u.id = wm.user_id
+      WHERE wm.workspace_id = ? AND u.is_active = 1
+      ORDER BY wm.joined_at DESC
     `, [this.id]);
     
     return rows;
@@ -97,32 +97,32 @@ class Workspace {
     
     // Check if already a member
     const existing = await db.get(`
-      SELECT * FROM user_workspaces 
+      SELECT * FROM workspace_members 
       WHERE user_id = ? AND workspace_id = ?
     `, [userId, this.id]);
 
     if (existing) {
-      if (existing.is_active) {
+      if (existing.added_by !== null) {
         throw new Error('User is already a member of this workspace');
       } else {
-        // Reactivate membership
+        // Update existing membership
         await db.run(`
-          UPDATE user_workspaces 
-          SET is_active = 1, role = ?, joined_at = CURRENT_TIMESTAMP
+          UPDATE workspace_members 
+          SET role = ?, joined_at = CURRENT_TIMESTAMP, added_by = ?
           WHERE user_id = ? AND workspace_id = ?
-        `, [role, userId, this.id]);
+        `, [role, performedBy, userId, this.id]);
       }
     } else {
       // Add new membership
       await db.run(`
-        INSERT INTO user_workspaces (id, user_id, workspace_id, role, joined_at)
-        VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
-      `, [uuidv4(), userId, this.id, role]);
+        INSERT INTO workspace_members (id, user_id, workspace_id, role, joined_at, added_by)
+        VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, ?)
+      `, [uuidv4(), userId, this.id, role, performedBy]);
     }
 
-          // ActivityLogger expects team_member_id, but workspace operations use user_id
-      // For now, skip activity logging for workspace operations to avoid foreign key constraints
-      // TODO: Create workspace-specific activity logging that doesn't depend on team_members table
+    // ActivityLogger expects team_member_id, but workspace operations use user_id
+    // For now, skip activity logging for workspace operations to avoid foreign key constraints
+    // TODO: Create workspace-specific activity logging that doesn't depend on team_members table
   }
 
   // Remove member from workspace
@@ -130,8 +130,7 @@ class Workspace {
     const db = getDatabase();
     
     await db.run(`
-      UPDATE user_workspaces 
-      SET is_active = 0
+      DELETE FROM workspace_members 
       WHERE user_id = ? AND workspace_id = ?
     `, [userId, this.id]);
 
@@ -143,9 +142,9 @@ class Workspace {
     const db = getDatabase();
     
     await db.run(`
-      UPDATE user_workspaces 
+      UPDATE workspace_members 
       SET role = ?
-      WHERE user_id = ? AND workspace_id = ? AND is_active = 1
+      WHERE user_id = ? AND workspace_id = ?
     `, [newRole, userId, this.id]);
 
     // Skip activity logging for workspace operations (see above TODO)
@@ -155,8 +154,8 @@ class Workspace {
   static async isUserMember(userId, workspaceId) {
     const db = getDatabase();
     const row = await db.get(`
-      SELECT * FROM user_workspaces 
-      WHERE user_id = ? AND workspace_id = ? AND is_active = 1
+      SELECT * FROM workspace_members 
+      WHERE user_id = ? AND workspace_id = ?
     `, [userId, workspaceId]);
     
     return !!row;
@@ -166,8 +165,8 @@ class Workspace {
   static async getUserRole(userId, workspaceId) {
     const db = getDatabase();
     const row = await db.get(`
-      SELECT role FROM user_workspaces 
-      WHERE user_id = ? AND workspace_id = ? AND is_active = 1
+      SELECT role FROM workspace_members 
+      WHERE user_id = ? AND workspace_id = ?
     `, [userId, workspaceId]);
     
     return row ? row.role : null;
@@ -280,4 +279,4 @@ class Workspace {
   }
 }
 
-module.exports = Workspace; 
+module.exports = Workspace;

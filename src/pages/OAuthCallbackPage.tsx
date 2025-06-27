@@ -73,7 +73,7 @@ export function OAuthCallbackPage() {
         console.log('✅ Auth context refreshed, redirecting to dashboard');
 
         // OAuth users bypass 2FA by design, so redirect directly to dashboard
-        navigate('/dashboard', { replace: true });
+        navigate('/app/dashboard', { replace: true });
       } catch (err) {
         console.error('❌ OAuth callback error:', err);
         setError(err instanceof Error ? err.message : 'Authentication failed');

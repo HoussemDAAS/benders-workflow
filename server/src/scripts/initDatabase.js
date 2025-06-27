@@ -253,6 +253,60 @@ const createTables = async () => {
       )
     `);
 
+    // Workspaces table
+    await db.run(`
+      CREATE TABLE IF NOT EXISTS workspaces (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        description TEXT,
+        owner_id TEXT NOT NULL,
+        invite_code TEXT UNIQUE NOT NULL,
+        is_active BOOLEAN DEFAULT 1,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (owner_id) REFERENCES users (id) ON DELETE CASCADE
+      )
+    `);
+
+    // Workspace members table (many-to-many: workspaces <-> users)
+    await db.run(`
+      CREATE TABLE IF NOT EXISTS workspace_members (
+        id TEXT PRIMARY KEY,
+        workspace_id TEXT NOT NULL,
+        user_id TEXT NOT NULL,
+        role TEXT DEFAULT 'member' CHECK (role IN ('admin', 'member')),
+        joined_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        added_by TEXT,
+        FOREIGN KEY (workspace_id) REFERENCES workspaces (id) ON DELETE CASCADE,
+        FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
+        FOREIGN KEY (added_by) REFERENCES users (id) ON DELETE SET NULL,
+        UNIQUE(workspace_id, user_id)
+      )
+    `);
+
+    // Add workspace_id column to existing tables
+    const tablesToUpdate = [
+      'clients',
+      'workflows', 
+      'kanban_tasks',
+      'client_meetings'
+    ];
+
+    for (const tableName of tablesToUpdate) {
+      const columnInfo = await db.all(`PRAGMA table_info(${tableName})`);
+      const columnNames = columnInfo.map(col => col.name);
+      
+      if (!columnNames.includes('workspace_id')) {
+        console.log(`🔧 Adding workspace_id column to ${tableName} table...`);
+        await db.run(`ALTER TABLE ${tableName} ADD COLUMN workspace_id TEXT`);
+        
+        // Add foreign key constraint in a separate step
+        await db.run(`
+          UPDATE ${tableName} SET workspace_id = 'default-workspace' WHERE workspace_id IS NULL
+        `);
+      }
+    }
+
     // Insert default kanban columns
     const defaultColumns = [
       { id: 'todo', title: 'To Do', color: '#64748b', order_index: 1 },
@@ -269,6 +323,78 @@ const createTables = async () => {
     }
 
     console.log('Database tables created successfully!');
+    
+    // Create default workspace if none exists
+    const existingWorkspaces = await db.all('SELECT COUNT(*) as count FROM workspaces');
+    if (existingWorkspaces[0].count === 0) {
+      console.log('🏢 Creating default workspace...');
+      
+      const { v4: uuidv4 } = require('uuid');
+      const defaultWorkspaceId = 'default-workspace';
+      
+      // Create default admin user if none exists
+      const existingUsers = await db.all('SELECT * FROM users LIMIT 1');
+      let adminUserId;
+      
+      if (existingUsers.length === 0) {
+        adminUserId = uuidv4();
+        await db.run(`
+          INSERT INTO users (id, email, name, role, is_active, email_verified)
+          VALUES (?, ?, ?, ?, ?, ?)
+        `, [adminUserId, 'admin@bendersworkflow.com', 'Default Admin', 'admin', 1, 1]);
+        console.log('👤 Created default admin user');
+      } else {
+        adminUserId = existingUsers[0].id;
+      }
+      
+      // Create default workspace
+      await db.run(`
+        INSERT INTO workspaces (id, name, description, owner_id, invite_code, is_active)
+        VALUES (?, ?, ?, ?, ?, ?)
+      `, [
+        defaultWorkspaceId,
+        'Default Workspace',
+        'Your default workspace for getting started',
+        adminUserId,
+        'default-invite',
+        1
+      ]);
+      
+      // Add admin user to workspace
+      await db.run(`
+        INSERT INTO workspace_members (id, workspace_id, user_id, role, joined_at)
+        VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+      `, [uuidv4(), defaultWorkspaceId, adminUserId, 'admin']);
+      
+      console.log('✅ Default workspace created successfully!');
+    }
+    
+    // Add all existing users to the default workspace if they're not members of any workspace
+    const defaultWorkspace = await db.get('SELECT id FROM workspaces WHERE id = ?', ['default-workspace']);
+    if (defaultWorkspace) {
+      const usersWithoutWorkspace = await db.all(`
+        SELECT u.id, u.email, u.name 
+        FROM users u 
+        WHERE u.is_active = 1 
+        AND NOT EXISTS (
+          SELECT 1 FROM workspace_members wm 
+          WHERE wm.user_id = u.id
+        )
+      `);
+      
+      if (usersWithoutWorkspace.length > 0) {
+        console.log(`🏢 Adding ${usersWithoutWorkspace.length} users to default workspace...`);
+        
+        for (const user of usersWithoutWorkspace) {
+          await db.run(`
+            INSERT OR IGNORE INTO workspace_members (id, workspace_id, user_id, role, joined_at)
+            VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+          `, [require('uuid').v4(), 'default-workspace', user.id, 'member']);
+        }
+        
+        console.log('✅ Users added to default workspace successfully!');
+      }
+    }
     
   } catch (error) {
     console.error('Error creating tables:', error);

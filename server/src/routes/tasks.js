@@ -155,10 +155,11 @@ router.get('/by-client/:clientId', async (req, res) => {
 });
 
 // GET /api/tasks/columns - Get kanban columns for workspace
-router.get('/columns', authenticate, requireWorkspace, async (req, res) => {
+router.get('/columns', authenticate, async (req, res) => {
   try {
     const db = getDatabase();
-    const columns = await db.all('SELECT * FROM kanban_columns WHERE workspace_id = ? ORDER BY order_index', [req.workspaceId]);
+    // Remove workspace filtering since kanban_columns doesn't have workspace_id column
+    const columns = await db.all('SELECT * FROM kanban_columns ORDER BY order_index');
     res.json(columns);
   } catch (error) {
     console.error('Error fetching kanban columns:', error);

@@ -27,6 +27,8 @@ import KanbanPage from './pages/KanbanPage';
 import TeamPage from './pages/TeamPage';
 import ClientsPage from './pages/ClientsPage';
 import MeetingsPage from './pages/MeetingsPage';
+import { LandingPage } from './components/LandingPage';
+import { AuthPage } from './components/AuthPage';
 
 // Protected Route Component with Workspace Check
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -133,7 +135,10 @@ export default function App() {
           <Routes>
             {/* Public Routes (No Sidebar) */}
             <Route path="/" element={<LandingPage />} />
-            <Route path="/login" element={<AuthPage />} />
+            <Route path="/login" element={<LoginPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
+          <Route path="/auth/verify" element={<MagicLinkVerificationPage />} />
             <Route path="/signup" element={<AuthPage />} />
             <Route path="/auth" element={<AuthPage />} />
             <Route path="/oauth/callback" element={<OAuthCallbackPage />} />
@@ -149,28 +154,7 @@ export default function App() {
           </Routes>
         </Router>
       </WorkspaceProvider>
-      <Router>
-        <Routes>
-          {/* Public Routes (No Sidebar) */}
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-          <Route path="/reset-password" element={<ResetPasswordPage />} />
-          <Route path="/auth/verify" element={<MagicLinkVerificationPage />} />
-          <Route path="/oauth/callback" element={<OAuthCallbackPage />} />
-          <Route path="/oauth/callback/google" element={<OAuthCallbackPage />} />
-          <Route path="/oauth/callback/github" element={<OAuthCallbackPage />} />
-          
-          {/* Protected Routes (With Sidebar and App Context) */}
-          <Route path="/*" element={
-            <AppProvider>
-              <Routes>
-                <Route path="/" element={<Navigate to="/dashboard" replace />} />
-                <Route path="/*" element={<AppLayout />} />
-              </Routes>
-            </AppProvider>
-          } />
-        </Routes>
-      </Router>
+  
     </AuthProvider>
   );
 }
