@@ -85,7 +85,7 @@ const KanbanPage: React.FC = () => {
 
   const handleTaskEdit = useCallback(async (task: KanbanTask | WorkflowStep) => {
     if ('type' in task) {
-      console.log('Workflow step clicked:', task.name);
+      
       return;
     }
     

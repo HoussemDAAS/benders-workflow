@@ -70,6 +70,7 @@ export interface TimeStats {
   todayHours: number;
   weekHours: number;
   monthHours: number;
+  tasksCompletedToday?: number;
   taskBreakdown: Array<{
     taskId: string;
     taskTitle: string;

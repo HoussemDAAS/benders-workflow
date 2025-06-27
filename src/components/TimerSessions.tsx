@@ -23,7 +23,7 @@ export const TimerSessions: React.FC = () => {
       setIsLoading(true);
       setError(null);
       const today = new Date().toISOString().split('T')[0];
-      console.log('📅 Fetching timer sessions for date:', today);
+
       
       const activities = await timeEntriesService.getTimerActivities({
         start_date: today,
@@ -31,8 +31,7 @@ export const TimerSessions: React.FC = () => {
         limit: 50
       });
       
-      console.log('🎯 Timer activities response:', activities);
-      console.log('🔢 Sessions count:', activities?.sessions?.length || 0);
+
       setTimerActivities(activities);
     } catch (error) {
       console.error('❌ Failed to fetch timer activities:', error);

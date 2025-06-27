@@ -263,12 +263,30 @@ router.get('/stats', async (req, res) => {
     const daysInPeriod = Math.max(1, Math.ceil((new Date(defaultEndDate) - new Date(defaultStartDate)) / (1000 * 60 * 60 * 24)));
     const dailyAverage = totalHours / daysInPeriod;
 
+    // Count completed tasks for the period
+    const completedTasksToday = await db.get(`
+      SELECT COUNT(DISTINCT kt.id) as count
+      FROM kanban_tasks kt
+      WHERE kt.status = 'done'
+        AND date(kt.updated_at) >= date(?)
+        AND date(kt.updated_at) <= date(?)
+        AND EXISTS (
+          SELECT 1 FROM workspace_members wm 
+          WHERE wm.workspace_id = ? AND wm.user_id = ?
+        )
+    `, [defaultStartDate, defaultEndDate, workspaceId, userId]);
+
+    const tasksCompletedToday = completedTasksToday?.count || 0;
+
+    console.log(`📋 Tasks completed today: ${tasksCompletedToday}`);
+
     res.json({
       totalHours: Math.round(totalHours * 100) / 100,
       totalMinutes: Math.round(totalMinutes),
       todayHours: Math.round(todayHours * 100) / 100,
       weekHours: Math.round(weekHours * 100) / 100,
       monthHours: Math.round(totalHours * 100) / 100, // Same as total for the queried period
+      tasksCompletedToday, // Add this new field
       taskBreakdown,
       categoryBreakdown,
       dailyAverage: Math.round(dailyAverage * 100) / 100,

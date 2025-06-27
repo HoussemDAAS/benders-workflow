@@ -575,4 +575,114 @@ router.post('/bulk-create', async (req, res) => {
   }
 });
 
+// PATCH /api/calendar/events/:id/complete - Mark calendar event as completed
+router.patch('/events/:id/complete', async (req, res) => {
+  try {
+    const db = getDatabase();
+    const userId = req.user.id;
+    const { id } = req.params;
+    
+    // Get user's workspace ID
+    let workspaceId;
+    try {
+      workspaceId = await getUserWorkspaceId(req);
+    } catch (error) {
+      return res.status(400).json({ error: 'No accessible workspace found. Please select a workspace first.' });
+    }
+
+    // Check if event exists and belongs to user
+    const existingEvent = await db.get(`
+      SELECT * FROM calendar_events WHERE id = ? AND user_id = ? AND workspace_id = ?
+    `, [id, userId, workspaceId]);
+
+    if (!existingEvent) {
+      return res.status(404).json({ error: 'Calendar event not found' });
+    }
+
+    // Mark as completed by updating the event type or adding a completion flag
+    // For now, we'll add an "is_completed" column or use description to track completion
+    await db.run(`
+      UPDATE calendar_events 
+      SET description = CASE 
+        WHEN description IS NULL OR description = '' THEN '[COMPLETED]'
+        WHEN description NOT LIKE '%[COMPLETED]%' THEN description || ' [COMPLETED]'
+        ELSE description
+      END,
+      updated_at = CURRENT_TIMESTAMP
+      WHERE id = ? AND user_id = ? AND workspace_id = ?
+    `, [id, userId, workspaceId]);
+
+    // If it's linked to a kanban task, mark that as done too
+    if (existingEvent.task_id) {
+      await db.run(`
+        UPDATE kanban_tasks 
+        SET status = 'done', updated_at = CURRENT_TIMESTAMP
+        WHERE id = ? AND workspace_id = ?
+      `, [existingEvent.task_id, workspaceId]);
+    }
+
+    res.json({ 
+      message: 'Calendar event marked as completed successfully',
+      completed: true
+    });
+  } catch (error) {
+    console.error('Error marking calendar event as completed:', error);
+    res.status(500).json({ error: 'Failed to mark calendar event as completed' });
+  }
+});
+
+// GET /api/calendar/events/completed-count - Get count of completed events
+router.get('/events/completed-count', async (req, res) => {
+  try {
+    const db = getDatabase();
+    const userId = req.user.id;
+    
+    // Get user's workspace ID
+    let workspaceId;
+    try {
+      workspaceId = await getUserWorkspaceId(req);
+    } catch (error) {
+      return res.status(400).json({ error: 'No accessible workspace found. Please select a workspace first.' });
+    }
+
+    const { start_date, end_date } = req.query;
+    
+    // Default to today if no dates provided
+    const today = new Date();
+    const startDate = start_date || new Date(today.setHours(0, 0, 0, 0)).toISOString();
+    const endDate = end_date || new Date(today.setHours(23, 59, 59, 999)).toISOString();
+
+    // Count completed calendar events (those with [COMPLETED] in description)
+    const calendarCompleted = await db.get(`
+      SELECT COUNT(*) as count
+      FROM calendar_events
+      WHERE user_id = ? AND workspace_id = ?
+        AND description LIKE '%[COMPLETED]%'
+        AND start_time >= ? AND start_time <= ?
+    `, [userId, workspaceId, startDate, endDate]);
+
+    // Count completed kanban tasks for same period
+    const kanbanCompleted = await db.get(`
+      SELECT COUNT(*) as count
+      FROM kanban_tasks
+      WHERE workspace_id = ?
+        AND status = 'done'
+        AND updated_at >= ? AND updated_at <= ?
+    `, [workspaceId, startDate, endDate]);
+
+    const totalCompleted = (calendarCompleted.count || 0) + (kanbanCompleted.count || 0);
+
+    res.json({ 
+      count: totalCompleted,
+      breakdown: {
+        calendarEvents: calendarCompleted.count || 0,
+        kanbanTasks: kanbanCompleted.count || 0
+      }
+    });
+  } catch (error) {
+    console.error('Error getting completed events count:', error);
+    res.status(500).json({ error: 'Failed to get completed events count' });
+  }
+});
+
 module.exports = router;

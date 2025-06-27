@@ -3,50 +3,51 @@ import { api } from './api';
 export interface CalendarEvent {
   id: string;
   title: string;
-  start_time: string;
-  end_time: string;
-  all_day: boolean;
-  task_id?: string;
+  startTime: string;
+  endTime: string;
+  allDay: boolean;
+  taskId?: string;
   description?: string;
-  event_type: 'task' | 'meeting' | 'break' | 'personal';
+  eventType: 'task' | 'meeting' | 'break' | 'personal';
   color?: string;
-  created_at: string;
-  updated_at: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface CreateCalendarEventData {
   title: string;
-  start_time: string;
-  end_time: string;
-  all_day?: boolean;
-  task_id?: string;
+  startTime: string;
+  endTime: string;
+  allDay?: boolean;
+  taskId?: string;
   description?: string;
-  event_type?: 'task' | 'meeting' | 'break' | 'personal';
+  eventType?: 'task' | 'meeting' | 'break' | 'personal';
   color?: string;
 }
 
 export interface UpdateCalendarEventData extends Partial<CreateCalendarEventData> {}
 
 export interface CalendarFilters {
-  start_date?: string;
-  end_date?: string;
-  event_type?: string;
-  task_id?: string;
+  startDate?: string;
+  endDate?: string;
+  eventType?: string;
+  taskId?: string;
 }
 
 export const calendarService = {
   // Get calendar events with optional filters
   async getEvents(filters?: CalendarFilters): Promise<CalendarEvent[]> {
     const params = new URLSearchParams();
-    if (filters?.start_date) params.append('start_date', filters.start_date);
-    if (filters?.end_date) params.append('end_date', filters.end_date);
-    if (filters?.event_type) params.append('event_type', filters.event_type);
-    if (filters?.task_id) params.append('task_id', filters.task_id);
+    if (filters?.startDate) params.append('startDate', filters.startDate);
+    if (filters?.endDate) params.append('endDate', filters.endDate);
+    if (filters?.eventType) params.append('eventType', filters.eventType);
+    if (filters?.taskId) params.append('taskId', filters.taskId);
 
     const queryString = params.toString();
-    const url = queryString ? `/calendar/events?${queryString}` : '/calendar/events';
+    const url = queryString ? `/calendar?${queryString}` : '/calendar';
     
-    return await api.get(url);
+    const response = await api.get<{events: CalendarEvent[]}>(url);
+    return response.events || [];
   },
 
   // Get events for a specific date
@@ -66,22 +67,24 @@ export const calendarService = {
 
   // Create a new calendar event
   async createEvent(eventData: CreateCalendarEventData): Promise<CalendarEvent> {
-    return await api.post('/calendar/events', eventData);
+    const response = await api.post<{event: CalendarEvent}>('/calendar', eventData);
+    return response.event;
   },
 
   // Update an existing calendar event
   async updateEvent(eventId: string, eventData: UpdateCalendarEventData): Promise<CalendarEvent> {
-    return await api.put(`/calendar/events/${eventId}`, eventData);
+    const response = await api.put<{event: CalendarEvent}>(`/calendar/${eventId}`, eventData);
+    return response.event;
   },
 
   // Delete a calendar event
   async deleteEvent(eventId: string): Promise<void> {
-    await api.delete(`/calendar/events/${eventId}`);
+    await api.delete(`/calendar/${eventId}`);
   },
 
   // Get event by ID
   async getEvent(eventId: string): Promise<CalendarEvent> {
-    return await api.get(`/calendar/events/${eventId}`);
+    return await api.get(`/calendar/${eventId}`);
   }
 };
 

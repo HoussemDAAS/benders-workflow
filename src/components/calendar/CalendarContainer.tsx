@@ -7,6 +7,9 @@ import listPlugin from '@fullcalendar/list';
 import { CalendarView } from '../../pages/CalendarPage';
 import { CalendarHeader } from './CalendarHeader';
 import { EventModal } from './EventModal';
+import { calendarService } from '../../services/calendarService';
+import { timeEntriesService } from '../../services/timeTrackingService';
+import { calendarTaskService } from '../../services/calendarTaskService';
 
 // Import components directly to avoid module resolution issues
 
@@ -90,6 +93,9 @@ interface CalendarEvent {
     workflowId?: string;
     clientId?: string;
     description?: string;
+    isCompleted?: boolean;
+    isTaskEvent?: boolean;
+    isLocalOnly?: boolean;
   };
 }
 
@@ -102,53 +108,8 @@ export const CalendarContainer: React.FC<CalendarContainerProps> = ({
   clients
 }) => {
   const calendarRef = useRef<FullCalendar>(null);
-  const [events, setEvents] = useState<CalendarEvent[]>([
-    // Sample events with your design system colors
-    {
-      id: '1',
-      title: 'Team Meeting',
-      start: new Date(2025, 5, 27, 10, 0),
-      end: new Date(2025, 5, 27, 11, 0),
-      backgroundColor: '#f59e0b',
-      borderColor: '#f59e0b',
-      textColor: '#ffffff',
-      className: ['font-medium', 'rounded-lg', 'shadow-sm', 'hover:shadow-md', 'transition-all'],
-      extendedProps: {
-        type: 'meeting',
-        description: 'Weekly team standup meeting'
-      }
-    },
-    {
-      id: '2',
-      title: 'Development Work',
-      start: new Date(2025, 5, 27, 14, 0),
-      end: new Date(2025, 5, 27, 17, 0),
-      backgroundColor: '#3b82f6',
-      borderColor: '#3b82f6',
-      textColor: '#ffffff',
-      className: ['font-medium', 'rounded-lg', 'shadow-sm', 'hover:shadow-md', 'transition-all'],
-      extendedProps: {
-        type: 'task',
-        taskId: 'task-1',
-        description: 'Working on calendar integration'
-      }
-    },
-    {
-      id: '3',
-      title: 'Client Call',
-      start: new Date(2025, 5, 28, 15, 30),
-      end: new Date(2025, 5, 28, 16, 30),
-      backgroundColor: '#10b981',
-      borderColor: '#10b981',
-      textColor: '#ffffff',
-      className: ['font-medium', 'rounded-lg', 'shadow-sm', 'hover:shadow-md', 'transition-all'],
-      extendedProps: {
-        type: 'meeting',
-        clientId: 'client-1',
-        description: 'Project review with client'
-      }
-    }
-  ]);
+  const [events, setEvents] = useState<CalendarEvent[]>([]);
+  const [isLoadingEvents, setIsLoadingEvents] = useState(false);
 
   const [eventModal, setEventModal] = useState<{
     isOpen: boolean;
@@ -157,6 +118,166 @@ export const CalendarContainer: React.FC<CalendarContainerProps> = ({
   }>({
     isOpen: false
   });
+
+  // Fetch calendar events and time entries
+  const fetchEvents = useCallback(async (startDate: Date, endDate: Date) => {
+    try {
+      setIsLoadingEvents(true);
+      
+      const start = startDate.toISOString().split('T')[0];
+      const end = endDate.toISOString().split('T')[0];
+      
+
+      
+      // Fetch calendar events and time entries in parallel
+      const [calendarEvents, timeEntries] = await Promise.all([
+        calendarService.getEvents({ startDate: start, endDate: end }).catch(() => []),
+        timeEntriesService.getTimeEntries({ start_date: start, end_date: end }).catch(() => [])
+      ]);
+
+
+
+      const allEvents: CalendarEvent[] = [];
+
+      // Add Kanban tasks as calendar events (scheduled tasks)
+      if (tasks && Array.isArray(tasks)) {
+        tasks.forEach(task => {
+          const isCompleted = task.status === 'done';
+          const colors = getEventColors('task', isCompleted);
+          
+          // Show tasks with due dates or all tasks for today/this week
+          const taskDate = task.dueDate ? new Date(task.dueDate) : new Date();
+          
+          allEvents.push({
+            id: `task-${task.id}`,
+            title: `📋 ${task.title}${isCompleted ? ' ✅' : ''}`,
+            start: taskDate,
+            end: taskDate,
+            allDay: true,
+            ...colors,
+            className: ['font-medium', 'rounded-lg', 'shadow-sm', 'hover:shadow-md', 'transition-all'],
+            extendedProps: {
+              type: 'task' as const,
+              taskId: task.id,
+              description: task.title,
+              isCompleted,
+              isTaskEvent: true
+            }
+          });
+        });
+      }
+
+      // Add calendar events
+      if (calendarEvents && Array.isArray(calendarEvents)) {
+        calendarEvents.forEach(event => {
+          // Check if this event is linked to a task
+          const relatedTask = tasks.find(task => task.id === event.taskId);
+          const isTaskCompleted = relatedTask?.status === 'done';
+          
+          // Check if the calendar event itself is completed (marked with [COMPLETED] in description or in localStorage)
+          const isEventCompleted = !!(event.description && event.description.includes('[COMPLETED]')) || 
+                                   calendarTaskService.isEventCompleted(event.id);
+          const isCompleted = isTaskCompleted || isEventCompleted;
+          
+          const colors = getEventColors(event.eventType || 'task', isCompleted);
+          allEvents.push({
+            id: event.id,
+            title: `${event.title}${isCompleted ? ' ✅' : ''}`,
+            start: new Date(event.startTime),
+            end: new Date(event.endTime),
+            allDay: event.allDay,
+            ...colors,
+            className: ['font-medium', 'rounded-lg', 'shadow-sm', 'hover:shadow-md', 'transition-all'],
+            extendedProps: {
+              type: event.eventType as 'task' | 'meeting' | 'break' | 'personal',
+              taskId: event.taskId,
+              description: event.description,
+              isCompleted,
+              isTaskEvent: !!event.taskId // True if linked to a task
+            }
+          });
+        });
+      }
+
+      // Add time entries as events (representing actual work done)
+      if (timeEntries && Array.isArray(timeEntries)) {
+        timeEntries.forEach(entry => {
+          const eventType = entry.isBreak ? 'break' : 'task';
+          
+          // Check if the task is completed
+          const relatedTask = tasks.find(task => task.id === entry.taskId);
+          const isCompleted = relatedTask?.status === 'done';
+          
+          const colors = getEventColors(eventType, isCompleted);
+          const title = entry.taskTitle 
+            ? `🎯 ${entry.taskTitle}${isCompleted ? ' ✅' : ''}` 
+            : entry.isBreak 
+              ? '☕ Break' 
+              : '⚡ Work Session';
+          
+          allEvents.push({
+            id: `time-entry-${entry.id}`,
+            title,
+            start: new Date(entry.startTime),
+            end: new Date(entry.endTime),
+            allDay: false,
+            ...colors,
+            className: ['font-medium', 'rounded-lg', 'shadow-sm', 'hover:shadow-md', 'transition-all', 'opacity-75'],
+            extendedProps: {
+              type: eventType,
+              taskId: entry.taskId,
+              description: entry.description || `${entry.isBreak ? 'Break' : 'Work'} session`,
+              isCompleted
+            }
+          });
+        });
+      }
+
+
+      setEvents(allEvents);
+      
+    } catch (error) {
+      console.error('❌ Error fetching calendar events:', error);
+    } finally {
+      setIsLoadingEvents(false);
+    }
+  }, []);
+
+  // Fetch events when view or date changes
+  useEffect(() => {
+    const startDate = new Date(selectedDate);
+    const endDate = new Date(selectedDate);
+    
+    // Adjust date range based on view
+    switch (view) {
+      case 'day':
+        // Keep same day for start and end
+        break;
+      case 'week': {
+        // Get Monday of the week
+        const dayOfWeek = startDate.getDay();
+        const diff = startDate.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
+        startDate.setDate(diff);
+        endDate.setDate(diff + 6);
+        break;
+      }
+      case 'month':
+        // Get first and last day of month
+        startDate.setDate(1);
+        endDate.setMonth(endDate.getMonth() + 1, 0);
+        break;
+      case 'table': {
+        // Show current week
+        const tableDayOfWeek = startDate.getDay();
+        const tableDiff = startDate.getDate() - tableDayOfWeek + (tableDayOfWeek === 0 ? -6 : 1);
+        startDate.setDate(tableDiff);
+        endDate.setDate(tableDiff + 6);
+        break;
+      }
+    }
+    
+    fetchEvents(startDate, endDate);
+  }, [view, selectedDate, fetchEvents]);
 
   // Convert our view type to FullCalendar view
   const getFullCalendarView = useCallback(() => {
@@ -191,8 +312,16 @@ export const CalendarContainer: React.FC<CalendarContainerProps> = ({
     }
   }, [selectedDate]);
 
-  // Get event color based on type
-  const getEventColors = (type: string) => {
+  // Get event color based on type and completion status
+  const getEventColors = (type: string, isCompleted?: boolean) => {
+    if (isCompleted && type === 'task') {
+      return {
+        backgroundColor: '#22c55e', // green for completed tasks
+        borderColor: '#22c55e',
+        textColor: '#ffffff'
+      };
+    }
+    
     switch (type) {
       case 'task':
         return {
@@ -228,28 +357,62 @@ export const CalendarContainer: React.FC<CalendarContainerProps> = ({
   };
 
   // Handle event creation
-  const handleEventCreate = useCallback((eventData: Partial<CalendarEvent>) => {
-    const colors = getEventColors(eventData.extendedProps?.type || 'task');
-    const newEvent: CalendarEvent = {
-      id: Date.now().toString(),
-      title: eventData.title || 'New Event',
-      start: eventData.start || new Date(),
-      end: eventData.end,
-      allDay: eventData.allDay || false,
-      ...colors,
-      className: ['font-medium', 'rounded-lg', 'shadow-sm', 'hover:shadow-md', 'transition-all'],
-      extendedProps: {
-        type: eventData.extendedProps?.type || 'task',
-        description: eventData.extendedProps?.description,
+  const handleEventCreate = useCallback(async (eventData: Partial<CalendarEvent>) => {
+    try {
+      const createData = {
+        title: eventData.title || 'New Event',
+        startTime: eventData.start?.toISOString() || new Date().toISOString(),
+        endTime: eventData.end?.toISOString() || new Date().toISOString(),
+        allDay: eventData.allDay || false,
         taskId: eventData.extendedProps?.taskId,
-        workflowId: eventData.extendedProps?.workflowId,
-        clientId: eventData.extendedProps?.clientId
-      }
-    };
-    
-    setEvents(prev => [...prev, newEvent]);
-    setEventModal({ isOpen: false });
-  }, []);
+        description: eventData.extendedProps?.description,
+        eventType: eventData.extendedProps?.type || 'task'
+      };
+
+
+      
+      // Save to database
+      await calendarService.createEvent(createData);
+      
+
+      
+      // Refresh events to show the new one
+      const startDate = new Date(selectedDate);
+      const endDate = new Date(selectedDate);
+      
+      // Refresh current view
+      fetchEvents(startDate, endDate);
+      
+      setEventModal({ isOpen: false });
+    } catch (error) {
+      console.error('❌ Failed to create calendar event:', error);
+      // For now, still add locally if database save fails
+      const eventId = Date.now().toString();
+      const isCompleted = calendarTaskService.isEventCompleted(eventId);
+      const colors = getEventColors(eventData.extendedProps?.type || 'task', isCompleted);
+      const newEvent: CalendarEvent = {
+        id: eventId,
+        title: `📅 ${eventData.title || 'New Event'}${isCompleted ? ' ✅' : ''} (Local)`,
+        start: eventData.start || new Date(),
+        end: eventData.end,
+        allDay: eventData.allDay || false,
+        ...colors,
+        className: ['font-medium', 'rounded-lg', 'shadow-sm', 'hover:shadow-md', 'transition-all', 'border-dashed'],
+        extendedProps: {
+          type: eventData.extendedProps?.type || 'task',
+          description: eventData.extendedProps?.description,
+          taskId: eventData.extendedProps?.taskId,
+          workflowId: eventData.extendedProps?.workflowId,
+          clientId: eventData.extendedProps?.clientId,
+          isCompleted,
+          isLocalOnly: true // Mark as local-only event
+        }
+      };
+      
+      setEvents(prev => [...prev, newEvent]);
+      setEventModal({ isOpen: false });
+    }
+  }, [selectedDate, fetchEvents]);
 
   // Handle event update
   const handleEventUpdate = useCallback((eventId: string, eventData: Partial<CalendarEvent>) => {
@@ -273,6 +436,53 @@ export const CalendarContainer: React.FC<CalendarContainerProps> = ({
     setEvents(prev => prev.filter(event => event.id !== eventId));
     setEventModal({ isOpen: false });
   }, []);
+
+  // Handle task completion
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const handleTaskComplete = useCallback(async (taskId: string) => {
+    try {
+      
+      // Refresh events to update any task-related events
+      const startDate = new Date(selectedDate);
+      const endDate = new Date(selectedDate);
+      
+      // Adjust date range based on current view
+      switch (view) {
+        case 'day':
+          break;
+        case 'week': {
+          const dayOfWeek = startDate.getDay();
+          const diff = startDate.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
+          startDate.setDate(diff);
+          endDate.setDate(diff + 6);
+          break;
+        }
+        case 'month':
+          startDate.setDate(1);
+          endDate.setMonth(endDate.getMonth() + 1, 0);
+          break;
+        case 'table': {
+          const tableDayOfWeek = startDate.getDay();
+          const tableDiff = startDate.getDate() - tableDayOfWeek + (tableDayOfWeek === 0 ? -6 : 1);
+          startDate.setDate(tableDiff);
+          endDate.setDate(tableDiff + 6);
+          break;
+        }
+      }
+      
+      // Refresh events to show updated status
+      await fetchEvents(startDate, endDate);
+      
+      // Also emit an event to refresh time stats if needed
+      window.dispatchEvent(new CustomEvent('refreshTimeStats'));
+      
+      // Close the modal after completion
+      setEventModal({ isOpen: false });
+      
+    } catch (error) {
+      console.error('❌ Failed to refresh after task completion:', error);
+    }
+  }, [selectedDate, view, fetchEvents]);
 
   // FullCalendar event handlers with local types
   const handleDateSelect = useCallback((selectInfo: DateSelectInfo) => {
@@ -337,6 +547,16 @@ export const CalendarContainer: React.FC<CalendarContainerProps> = ({
       
       <div className="p-6">
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+          {/* Loading overlay */}
+          {isLoadingEvents && (
+            <div className="absolute inset-0 bg-white/80 backdrop-blur-sm flex items-center justify-center z-10">
+              <div className="flex items-center gap-3 text-gray-600">
+                <div className="animate-spin rounded-full h-6 w-6 border-2 border-blue-500 border-t-transparent"></div>
+                <span className="text-sm font-medium">Loading events...</span>
+              </div>
+            </div>
+          )}
+          
           {/* Custom FullCalendar wrapper with Tailwind classes */}
           <div className="[&_.fc]:font-sans [&_.fc-theme-standard]:border-0 [&_.fc-scrollgrid]:border-0">
             <FullCalendar
@@ -398,18 +618,19 @@ export const CalendarContainer: React.FC<CalendarContainerProps> = ({
       </div>
 
       {/* Event Modal */}
-      <EventModal
-        isOpen={eventModal.isOpen}
-        event={eventModal.event}
-        selectedDate={eventModal.selectedDate}
-        onClose={() => setEventModal({ isOpen: false })}
-        onCreate={handleEventCreate}
-        onUpdate={handleEventUpdate}
-        onDelete={handleEventDelete}
-        tasks={tasks}
-        workflows={workflows}
-        clients={clients}
-      />
+              <EventModal
+          isOpen={eventModal.isOpen}
+          event={eventModal.event}
+          selectedDate={eventModal.selectedDate}
+          onClose={() => setEventModal({ isOpen: false })}
+          onCreate={handleEventCreate}
+          onUpdate={handleEventUpdate}
+          onDelete={handleEventDelete}
+          onTaskComplete={handleTaskComplete}
+          tasks={tasks}
+          workflows={workflows}
+          clients={clients}
+        />
     </div>
   );
 };

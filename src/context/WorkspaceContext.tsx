@@ -68,9 +68,20 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
       setIsLoading(true)
       setError(null)
       const userWorkspaces = await workspaceService.getWorkspaces()
+      
+      // If no workspaces, set a default workspace ID anyway for API calls
+      if (userWorkspaces.length === 0) {
+        console.warn('⚠️ No workspaces found for user. Setting default workspace for API calls.')
+        localStorage.setItem('current-workspace-id', 'default-workspace')
+      }
+      
       setWorkspaces(userWorkspaces)
     } catch (err) {
       console.error('Failed to load workspaces:', err)
+      
+      // If workspace loading fails, still set a default workspace ID for API calls
+      localStorage.setItem('current-workspace-id', 'default-workspace')
+      
       setError(err instanceof Error ? err.message : 'Failed to load workspaces')
     } finally {
       setIsLoading(false)
@@ -123,7 +134,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     // Trigger workspace change event if workspace actually changed
     if (previousWorkspaceId !== workspace.id) {
       setWorkspaceChanged(prev => prev + 1)
-      console.log('🔄 Workspace changed to:', workspace.name)
+
     }
   }
 

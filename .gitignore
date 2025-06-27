@@ -26,3 +26,5 @@ dist-ssr
 *.db
 server/data/benders_workflow.db
 server/src/data/benders_workflow.db
+server/data/benders_workflow.db-shm
+server/data/benders_workflow.db-wal

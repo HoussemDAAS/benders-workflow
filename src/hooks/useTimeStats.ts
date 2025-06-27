@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { timeEntriesService } from '../services/timeTrackingService';
+import { calendarTaskService } from '../services/calendarTaskService';
 
 interface TaskBreakdown {
   taskId: string;
@@ -70,6 +71,13 @@ export const useTimeStats = () => {
     try {
       setError(null);
       
+      // Check workspace setup first
+      const authToken = localStorage.getItem('auth-token');
+      
+      if (!authToken) {
+        throw new Error('No authentication token found');
+      }
+      
       // Get current date ranges - focus on today and last 7 days for weekly trend
       const today = new Date();
       const startOfToday = new Date(today);
@@ -83,9 +91,7 @@ export const useTimeStats = () => {
       weekStart.setDate(today.getDate() - 6);
       weekStart.setHours(0, 0, 0, 0);
 
-      console.log('🔍 Fetching time stats for today and weekly trend...');
-      console.log('📅 Today range:', startOfToday.toISOString(), 'to', endOfToday.toISOString());
-      console.log('📊 Weekly range:', weekStart.toISOString(), 'to', endOfToday.toISOString());
+
       
       // Fetch today's statistics
       const todayStats = await timeEntriesService.getStats({
@@ -99,9 +105,7 @@ export const useTimeStats = () => {
         end_date: endOfToday.toISOString()
       });
 
-      console.log('📊 Today\'s stats from backend:', todayStats);
-      console.log('📊 Weekly stats from backend:', weeklyStats);
-      console.log('📋 Category breakdown:', todayStats.categoryBreakdown);
+
 
       // Calculate break time (assuming non-task time is break time)
       const totalTaskHours = todayStats.taskBreakdown.reduce((sum: number, task: TaskBreakdown) => sum + task.hours, 0);
@@ -139,10 +143,14 @@ export const useTimeStats = () => {
         color: categoryColors[index % categoryColors.length]
       }));
 
-      console.log('🎨 Transformed categories:', categories);
 
-      // Count tasks completed (from task breakdown)
-      const tasksCompleted = todayStats.taskBreakdown.length;
+
+      // Count tasks completed (from backend calculation + calendar tasks)
+      const backendTasksCompleted = todayStats.tasksCompletedToday || 0;
+      const calendarTasksCompleted = await calendarTaskService.getTodayCompletedCount();
+      const tasksCompleted = backendTasksCompleted + calendarTasksCompleted;
+      
+
 
       const transformedData = {
         todayStats: {
@@ -156,7 +164,7 @@ export const useTimeStats = () => {
         categories
       };
 
-      console.log('✅ Final transformed data:', transformedData);
+
       setData(transformedData);
 
     } catch (err) {
@@ -174,7 +182,18 @@ export const useTimeStats = () => {
 
   useEffect(() => {
     fetchTimeStats();
-  }, [fetchTimeStats]);
+    
+    // Listen for custom refresh events from calendar task completion
+    const handleRefreshStats = () => {
+      refreshStats();
+    };
+    
+    window.addEventListener('refreshTimeStats', handleRefreshStats);
+    
+    return () => {
+      window.removeEventListener('refreshTimeStats', handleRefreshStats);
+    };
+  }, [fetchTimeStats, refreshStats]);
 
   return {
     data,
