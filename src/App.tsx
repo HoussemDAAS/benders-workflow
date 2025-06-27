@@ -27,6 +27,7 @@ import KanbanPage from './pages/KanbanPage';
 import TeamPage from './pages/TeamPage';
 import ClientsPage from './pages/ClientsPage';
 import MeetingsPage from './pages/MeetingsPage';
+import CalendarPage from './pages/CalendarPage';
 import { LandingPage } from './components/LandingPage';
 import { AuthPage } from './components/AuthPage';
 
@@ -111,6 +112,11 @@ const AppLayout: React.FC = () => {
             <Route path="meetings" element={
               <ProtectedRoute>
                 <MeetingsPage />
+              </ProtectedRoute>
+            } />
+            <Route path="calendar" element={
+              <ProtectedRoute>
+                <CalendarPage />
               </ProtectedRoute>
             } />
             <Route path="/security" element={

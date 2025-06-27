@@ -19,6 +19,9 @@ const tasksRoutes = require('./routes/tasks');
 // const teamRoutes = require('./routes/team'); // TODO: Commented out for user auth implementation
 const meetingsRoutes = require('./routes/meetings');
 const dashboardRoutes = require('./routes/dashboard');
+const calendarRoutes = require('./routes/calendar');
+const timeEntriesRoutes = require('./routes/time-entries');
+const timeTrackerRoutes = require('./routes/time-tracker');
 
 // Create Express app
 const app = express();
@@ -89,6 +92,9 @@ app.use('/api/tasks', tasksRoutes);
 // app.use('/api/team', teamRoutes); // TODO: Commented out for user auth implementation
 app.use('/api/meetings', meetingsRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/calendar', calendarRoutes);
+app.use('/api/time-entries', timeEntriesRoutes);
+app.use('/api/time-tracker', timeTrackerRoutes);
 
 // API documentation endpoint
 app.get('/api', (req, res) => {
@@ -104,7 +110,10 @@ app.get('/api', (req, res) => {
       tasks: '/api/tasks',
       team: '/api/team',
       meetings: '/api/meetings',
-      dashboard: '/api/dashboard'
+      dashboard: '/api/dashboard',
+      calendar: '/api/calendar',
+      'time-entries': '/api/time-entries',
+      'time-tracker': '/api/time-tracker'
     },
     documentation: {
       health: 'GET /health',
@@ -157,6 +166,26 @@ app.get('/api', (req, res) => {
         'Get recent activity': 'GET /api/dashboard/recent-activity',
         'Get task distribution': 'GET /api/dashboard/task-distribution',
         'Get workflow progress': 'GET /api/dashboard/workflow-progress'
+      },
+      calendar: {
+        'Get all events': 'GET /api/calendar',
+        'Get event by ID': 'GET /api/calendar/:id',
+        'Create event': 'POST /api/calendar',
+        'Update event': 'PUT /api/calendar/:id',
+        'Delete event': 'DELETE /api/calendar/:id'
+      },
+      'time-entries': {
+        'Get all time entries': 'GET /api/time-entries',
+        'Get time entry by ID': 'GET /api/time-entries/:id',
+        'Create time entry': 'POST /api/time-entries',
+        'Update time entry': 'PUT /api/time-entries/:id',
+        'Delete time entry': 'DELETE /api/time-entries/:id'
+      },
+      'time-tracker': {
+        'Start time tracking': 'POST /api/time-tracker/start',
+        'Stop time tracking': 'POST /api/time-tracker/stop',
+        'Get current tracking': 'GET /api/time-tracker/current',
+        'Get tracking history': 'GET /api/time-tracker/history'
       }
     }
   });

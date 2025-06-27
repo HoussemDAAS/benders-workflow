@@ -123,9 +123,15 @@ export function Sidebar({ onNewTask }: SidebarProps) {
       badge: '12'
     },
     { 
+      id: 'calendar', 
+      label: 'Calendar', 
+      icon: Calendar, 
+      badge: null
+    },
+    { 
       id: 'meetings', 
       label: 'Meetings', 
-      icon: Calendar, 
+      icon: Users, 
       badge: null
     },
     { 
