@@ -37,8 +37,40 @@ async function initializeOnce() {
 // Import the main server app
 const app = require('../server/src/index.js');
 
-// Wrap the app to initialize database on each request if needed
+// Wrap the app to initialize database and handle Vercel routing
 module.exports = async (req, res) => {
   await initializeOnce();
+  
+  // Parse the URL to extract the path that should be handled by Express
+  const url = new URL(req.url, `https://${req.headers.host}`);
+  let path = url.pathname;
+  
+  // Log the incoming request for debugging
+  console.log('🌐 Serverless request:', { 
+    method: req.method, 
+    url: req.url, 
+    path: path,
+    originalUrl: req.url
+  });
+  
+  // For Vercel, we need to adjust the path based on the routing
+  // If path starts with /api/, remove it since Express routes expect /api/* internally
+  // If path is just /health, keep it as is
+  if (path.startsWith('/api/')) {
+    // Keep the full path for API routes
+    req.url = path + (url.search || '');
+  } else if (path === '/health') {
+    // Health endpoint should be handled directly
+    req.url = '/health';
+  } else {
+    // For other paths, pass them through
+    req.url = path + (url.search || '');
+  }
+  
+  // Set the original URL for Express
+  req.originalUrl = req.url;
+  
+  console.log('🔄 Modified request URL:', req.url);
+  
   return app(req, res);
 };
