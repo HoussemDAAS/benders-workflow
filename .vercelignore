@@ -1,6 +1,7 @@
-server/
 node_modules/
-.env*
 .git/
 *.log
 .DS_Store
+server/node_modules/
+server/.env.example
+server/README.md
