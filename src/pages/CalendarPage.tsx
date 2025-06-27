@@ -14,6 +14,7 @@ import {
   Coffee
 } from 'lucide-react';
 import { CalendarContainer, TimeStats } from '../components/calendar';
+import { TimerSessions } from '../components/TimerSessions';
 import PauseReasonModal from '../components/PauseReasonModal';
 import StopTimerModal from '../components/StopTimerModal';
 import { useAppContext } from '../hooks/useAppContext';
@@ -24,9 +25,9 @@ export type CalendarView = 'month' | 'week' | 'day' | 'table';
 
 const CalendarPage: React.FC = () => {
   const { kanbanTasks, workflows, clients } = useAppContext();
-  const [currentView, setCurrentView] = useState<CalendarView>('week');
+  const [currentView, setCurrentView] = useState<CalendarView>('day');
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
-  const [showTimeStats, setShowTimeStats] = useState(true); // Stats active by default
+
   const [showPauseModal, setShowPauseModal] = useState(false);
   const [showStopModal, setShowStopModal] = useState(false);
   // Real-time pause timer
@@ -113,7 +114,7 @@ const CalendarPage: React.FC = () => {
 
   const handleStop = async () => {
     try {
-      const result = await stopTimer();
+      await stopTimer();
       setShowStopModal(false);
       
       // Force immediate refresh of time stats after stopping timer
@@ -185,60 +186,49 @@ const CalendarPage: React.FC = () => {
                 </div>
                 
                 {/* Quick Actions */}
-                <div className="flex flex-wrap items-center justify-center lg:justify-end gap-3">
-                  <button
-                    onClick={() => setShowTimeStats(!showTimeStats)}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-xl font-medium transition-colors duration-200 backdrop-blur-sm ${
-                      showTimeStats 
-                        ? 'bg-white/20 text-white' 
-                        : 'bg-white/10 hover:bg-white/20 text-white'
-                    }`}
-                  >
-                    <BarChart3 size={16} />
-                    <span className="hidden sm:inline">Stats</span>
-                  </button>
-                  <button className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-xl font-medium transition-colors duration-200 backdrop-blur-sm">
-                    <Download size={16} />
+                <div className="flex flex-wrap items-center justify-center lg:justify-end gap-2">
+                  <button className="flex items-center gap-1.5 px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg text-sm font-medium transition-colors duration-200 backdrop-blur-sm">
+                    <Download size={14} />
                     <span className="hidden sm:inline">Export</span>
                   </button>
-                  <button className="flex items-center gap-2 px-4 py-2 bg-tertiary hover:bg-tertiary/90 text-white rounded-xl font-medium transition-colors duration-200 shadow-lg">
-                    <Plus size={16} />
+                  <button className="flex items-center gap-1.5 px-3 py-1.5 bg-tertiary hover:bg-tertiary/90 text-white rounded-lg text-sm font-medium transition-colors duration-200 shadow-md">
+                    <Plus size={14} />
                     <span className="hidden sm:inline">New Event</span>
                   </button>
                 </div>
               </div>
 
               {/* Bottom Row - Timer Display and View Controls */}
-              <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
+              <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 lg:gap-6">
                 {/* View Controls */}
                 <div className="xl:col-span-5">
-                  <div className="bg-white/10 backdrop-blur-sm rounded-2xl border border-white/20 p-4">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                  <div className="bg-white/10 backdrop-blur-sm rounded-xl border border-white/20 p-3 lg:p-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
                       <div>
-                        <h3 className="text-lg font-bold text-white">View Mode</h3>
-                        <p className="text-white/70 text-sm">Choose your calendar layout</p>
+                        <h3 className="text-base lg:text-lg font-bold text-white">View Mode</h3>
+                        <p className="text-white/70 text-xs lg:text-sm">Choose your calendar layout</p>
                       </div>
-                      <div className="flex items-center gap-2 text-white/60">
-                        <Filter size={16} />
-                        <span className="text-sm">Options</span>
+                      <div className="flex items-center gap-1.5 text-white/60">
+                        <Filter size={14} />
+                        <span className="text-xs lg:text-sm">Options</span>
                       </div>
                     </div>
                     
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 lg:gap-2">
                       {viewOptions.map((option) => {
                         const Icon = option.icon;
                         return (
                           <button
                             key={option.id}
                             onClick={() => handleViewChange(option.id as CalendarView)}
-                            className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl font-medium transition-all duration-200 ${
+                            className={`flex items-center justify-center gap-1.5 px-2 py-2 lg:px-3 lg:py-2.5 rounded-lg font-medium transition-all duration-200 text-xs lg:text-sm ${
                               currentView === option.id
-                                ? 'bg-white text-primary shadow-lg'
+                                ? 'bg-white text-primary shadow-md scale-105'
                                 : 'bg-white/10 text-white hover:bg-white/20'
                             }`}
                           >
-                            <Icon size={16} />
-                            <span className="text-sm">{option.label}</span>
+                            <Icon size={14} />
+                            <span>{option.label}</span>
                           </button>
                         );
                       })}
@@ -248,27 +238,28 @@ const CalendarPage: React.FC = () => {
 
                 {/* Enhanced Timer Display and Controls */}
                 <div className="xl:col-span-7">
-                  <div className="bg-white/10 backdrop-blur-sm rounded-2xl border border-white/20 p-4">
-                    <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                  <div className="bg-white/10 backdrop-blur-sm rounded-xl border border-white/20 p-3 lg:p-4">
+                    <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 lg:gap-4">
                       
-                      {/* Timer Display - Your existing design */}
-                      <div className="flex items-center gap-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
-                            <Timer size={20} className="text-white" />
+                      {/* Timer Display */}
+                      <div className="flex items-center gap-3 lg:gap-4">
+                        <div className="flex items-center gap-2 lg:gap-3">
+                          <div className="w-10 h-10 lg:w-12 lg:h-12 bg-white/20 rounded-lg flex items-center justify-center">
+                            <Timer size={18} className="text-white lg:hidden" />
+                            <Timer size={20} className="text-white hidden lg:block" />
                           </div>
                           <div>
-                            <div className="text-2xl font-bold text-white font-mono">
+                            <div className="text-xl lg:text-2xl font-bold text-white font-mono">
                               {formattedElapsed}
                             </div>
-                            <div className="text-white/70 text-sm">
+                            <div className="text-white/70 text-xs lg:text-sm truncate max-w-[200px] lg:max-w-none">
                               {currentTask ? `Working on: ${currentTask}` : 'Ready to track time'}
                             </div>
                           </div>
                         </div>
 
                         {/* Status Badge */}
-                        <div className={`px-3 py-1.5 rounded-full text-xs font-semibold ${
+                        <div className={`px-2 py-1 lg:px-3 lg:py-1.5 rounded-full text-xs font-semibold ${
                           isTimerActive && !isPaused ? 'bg-green-400/20 text-green-100' : 
                           isPaused ? 'bg-yellow-400/20 text-yellow-100' : 'bg-white/20 text-white/80'
                         }`}>
@@ -278,14 +269,14 @@ const CalendarPage: React.FC = () => {
                       </div>
 
                       {/* Timer Controls */}
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1.5 lg:gap-2">
                         {isTimerActive ? (
                           <>
                             {isPaused ? (
                               <button
                                 onClick={handleResume}
                                 disabled={isLoading}
-                                className="flex items-center gap-2 px-3 py-2 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white rounded-lg font-medium transition-colors"
+                                className="flex items-center gap-1.5 px-3 py-2 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white rounded-lg text-sm font-medium transition-colors"
                               >
                                 <Play size={14} />
                                 <span className="hidden sm:inline">Resume</span>
@@ -294,7 +285,7 @@ const CalendarPage: React.FC = () => {
                               <button
                                 onClick={() => setShowPauseModal(true)}
                                 disabled={isLoading}
-                                className="flex items-center gap-2 px-3 py-2 bg-orange-600 hover:bg-orange-700 disabled:opacity-50 text-white rounded-lg font-medium transition-colors"
+                                className="flex items-center gap-1.5 px-3 py-2 bg-orange-600 hover:bg-orange-700 disabled:opacity-50 text-white rounded-lg text-sm font-medium transition-colors"
                               >
                                 <Pause size={14} />
                                 <span className="hidden sm:inline">Pause</span>
@@ -304,7 +295,7 @@ const CalendarPage: React.FC = () => {
                             <button
                               onClick={() => setShowStopModal(true)}
                               disabled={isLoading}
-                              className="flex items-center gap-2 px-3 py-2 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white rounded-lg font-medium transition-colors"
+                              className="flex items-center gap-1.5 px-3 py-2 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white rounded-lg text-sm font-medium transition-colors"
                             >
                               <Square size={14} />
                               <span className="hidden sm:inline">Stop</span>
@@ -314,7 +305,7 @@ const CalendarPage: React.FC = () => {
                           <button
                             onClick={handleStartTimer}
                             disabled={isLoading}
-                            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg font-medium transition-colors"
+                            className="flex items-center gap-1.5 px-3 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg text-sm font-medium transition-colors"
                           >
                             <Play size={14} />
                             <span className="hidden sm:inline">Start Timer</span>
@@ -322,7 +313,7 @@ const CalendarPage: React.FC = () => {
                         )}
                         
                         {error && (
-                          <div className="text-red-200 text-xs">
+                          <div className="text-red-200 text-xs max-w-[150px] truncate">
                             {error}
                           </div>
                         )}
@@ -336,7 +327,7 @@ const CalendarPage: React.FC = () => {
         </div>
 
         {/* Main Content */}
-        <div className="px-4 sm:px-6 pb-6 pt-4">
+        <div className="px-3 sm:px-4 lg:px-6 pb-4 lg:pb-6 pt-3 lg:pt-4">
           <div className="max-w-7xl mx-auto">
             {/* Break Timer Widget - Only visible when paused */}
             {isTimerActive && isPaused && (
@@ -396,13 +387,13 @@ const CalendarPage: React.FC = () => {
                     </div>
 
                     {/* Break Stats */}
-                    {timerStatus?.timer?.totalPausedDuration > 0 && (
+                    {timerStatus?.timer?.totalPausedDuration && (timerStatus.timer?.totalPausedDuration || 0) > 0 && (
                       <div className="mt-6 pt-4 border-t border-orange-200">
                         <div className="grid grid-cols-2 gap-4 text-center">
                           <div>
                             <div className="text-xs text-orange-600 mb-1">Session Breaks</div>
                             <div className="text-sm font-medium text-orange-800">
-                              {timeUtils.formatDurationHuman(timerStatus.timer.totalPausedDuration)}
+                              {timeUtils.formatDurationHuman(timerStatus.timer?.totalPausedDuration || 0)}
                             </div>
                           </div>
                           <div>
@@ -419,42 +410,46 @@ const CalendarPage: React.FC = () => {
               </div>
             )}
 
-            {/* Time Stats - Full Width */}
-            {showTimeStats && (
-              <div className="mb-8">
-                <TimeStats />
-              </div>
-            )}
+            {/* Today's Performance - Always visible */}
+            <div className="mb-6">
+              <TimeStats />
+            </div>
 
-            {/* Placeholder when stats are hidden */}
-            {!showTimeStats && (
-              <div className="mb-8">
-                <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 h-64 flex items-center justify-center">
-                  <div className="text-center">
-                    <BarChart3 size={48} className="text-gray-300 mx-auto mb-4" />
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">Time Statistics</h3>
-                    <p className="text-gray-600 mb-4">View your productivity metrics and trends</p>
-                    <button
-                      onClick={() => setShowTimeStats(true)}
-                      className="px-4 py-2 bg-primary hover:bg-primary/90 text-white rounded-lg font-medium transition-colors"
-                    >
-                      Show Stats
-                    </button>
+            {/* Main Content Grid - Calendar and Timer Sessions Side by Side */}
+            <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 lg:gap-6">
+              {/* Calendar Container - Takes more space */}
+              <div className="lg:col-span-3 bg-white rounded-xl lg:rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
+                <CalendarContainer
+                  view={currentView}
+                  selectedDate={selectedDate}
+                  onDateChange={setSelectedDate}
+                  tasks={kanbanTasks}
+                  workflows={workflows}
+                  clients={clients}
+                />
+              </div>
+
+              {/* Right Sidebar - Timer Sessions */}
+              <div className="lg:col-span-2 space-y-4 lg:space-y-6">
+                {/* Today's Timer Sessions */}
+                <div className="bg-white rounded-xl lg:rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
+                  <div className="p-3 lg:p-4 xl:p-6">
+                    <div className="flex items-center justify-between mb-3 lg:mb-4 xl:mb-6">
+                      <div>
+                        <h3 className="text-base lg:text-lg font-semibold text-gray-900">Timer Sessions</h3>
+                        <p className="text-xs lg:text-sm text-gray-600">Today's activity</p>
+                      </div>
+                      <div className="w-7 h-7 lg:w-8 lg:h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                        <Activity size={14} className="text-blue-600 lg:hidden" />
+                        <Activity size={16} className="text-blue-600 hidden lg:block" />
+                      </div>
+                    </div>
+                    
+                    {/* Timer Sessions Component */}
+                    <TimerSessions />
                   </div>
                 </div>
               </div>
-            )}
-
-            {/* Main Calendar Container */}
-            <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
-              <CalendarContainer
-                view={currentView}
-                selectedDate={selectedDate}
-                onDateChange={setSelectedDate}
-                tasks={kanbanTasks}
-                workflows={workflows}
-                clients={clients}
-              />
             </div>
           </div>
         </div>
@@ -474,7 +469,7 @@ const CalendarPage: React.FC = () => {
         onConfirm={handleStop}
         isLoading={isLoading}
         elapsedSeconds={timerStatus?.timer?.elapsedSeconds || 0}
-        taskTitle={currentTask}
+        taskTitle={currentTask ?? undefined}
       />
     </>
   );

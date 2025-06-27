@@ -345,7 +345,7 @@ export const CalendarContainer: React.FC<CalendarContainerProps> = ({
               initialView={getFullCalendarView()}
               initialDate={selectedDate}
               headerToolbar={false} // We use our custom header
-              height="calc(100vh - 300px)"
+              height="auto"
               events={events}
               selectable={true}
               selectMirror={true}
@@ -358,9 +358,9 @@ export const CalendarContainer: React.FC<CalendarContainerProps> = ({
                 startTime: '09:00',
                 endTime: '18:00'
               }}
-              slotMinTime="07:00:00"
-              slotMaxTime="22:00:00"
-              slotDuration="00:30:00"
+              slotMinTime="00:00:00"
+              slotMaxTime="24:00:00"
+              slotDuration="01:00:00"
               allDaySlot={true}
               nowIndicator={true}
               select={handleDateSelect}
@@ -389,7 +389,7 @@ export const CalendarContainer: React.FC<CalendarContainerProps> = ({
               slotLaneClassNames="hover:bg-gray-50/50 transition-colors"
               // Responsive
               aspectRatio={1.35}
-              contentHeight="auto"
+              contentHeight="calc(70vh - 100px)"
               // Custom styling for different views
               viewClassNames={view === 'table' ? 'list-view-custom' : ''}
             />
