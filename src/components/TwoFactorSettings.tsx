@@ -13,6 +13,7 @@ import {
   EyeOff
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
+import { getApiBaseUrl } from '../utils/api';
 
 interface TwoFactorSettingsProps {
   onClose?: () => void;
@@ -20,6 +21,7 @@ interface TwoFactorSettingsProps {
 
 export function TwoFactorSettings({ onClose }: TwoFactorSettingsProps) {
   const { getAuthHeaders } = useAuth();
+  const apiBaseUrl = getApiBaseUrl();
   const [is2FAEnabled, setIs2FAEnabled] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [setupStep, setSetupStep] = useState<'initial' | 'setup' | 'verify' | 'complete'>('initial');
@@ -43,7 +45,7 @@ export function TwoFactorSettings({ onClose }: TwoFactorSettingsProps) {
 
   const fetchTwoFactorStatus = async () => {
     try {
-      const response = await fetch('http://localhost:3001/api/auth/2fa/status', {
+      const response = await fetch(`${apiBaseUrl}/auth/2fa/status`, {
         headers: getAuthHeaders()
       });
 
@@ -63,7 +65,7 @@ export function TwoFactorSettings({ onClose }: TwoFactorSettingsProps) {
     setError('');
 
     try {
-      const response = await fetch('http://localhost:3001/api/auth/2fa/setup', {
+      const response = await fetch(`${apiBaseUrl}/auth/2fa/setup`, {
         method: 'POST',
         headers: getAuthHeaders()
       });
@@ -94,7 +96,7 @@ export function TwoFactorSettings({ onClose }: TwoFactorSettingsProps) {
     setError('');
 
     try {
-      const response = await fetch('http://localhost:3001/api/auth/2fa/enable', {
+      const response = await fetch(`${apiBaseUrl}/auth/2fa/enable`, {
         method: 'POST',
         headers: {
           ...getAuthHeaders(),
@@ -128,7 +130,7 @@ export function TwoFactorSettings({ onClose }: TwoFactorSettingsProps) {
     setError('');
 
     try {
-      const response = await fetch('http://localhost:3001/api/auth/2fa/disable', {
+      const response = await fetch(`${apiBaseUrl}/auth/2fa/disable`, {
         method: 'POST',
         headers: {
           ...getAuthHeaders(),
@@ -160,7 +162,7 @@ export function TwoFactorSettings({ onClose }: TwoFactorSettingsProps) {
     setError('');
 
     try {
-      const response = await fetch('http://localhost:3001/api/auth/2fa/regenerate-backup-codes', {
+      const response = await fetch(`${apiBaseUrl}/auth/2fa/regenerate-backup-codes`, {
         method: 'POST',
         headers: {
           ...getAuthHeaders(),

@@ -10,6 +10,7 @@ import {
   CheckCircle,
   Shield
 } from 'lucide-react';
+import { getApiBaseUrl } from '../utils/api';
 
 interface ResetPasswordFormData {
   password: string
@@ -26,6 +27,7 @@ export function ResetPasswordPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const token = searchParams.get('token')
+  const apiBaseUrl = getApiBaseUrl()
   
   const [formData, setFormData] = useState<ResetPasswordFormData>({
     password: '',
@@ -47,7 +49,7 @@ export function ResetPasswordPage() {
       }
 
       try {
-        const response = await fetch('http://localhost:3001/api/auth/validate-reset-token', {
+        const response = await fetch(`${apiBaseUrl}/auth/validate-reset-token`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -129,7 +131,7 @@ export function ResetPasswordPage() {
     setErrors({})
     
     try {
-      const response = await fetch('http://localhost:3001/api/auth/reset-password', {
+      const response = await fetch(`${apiBaseUrl}/auth/reset-password`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

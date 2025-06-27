@@ -9,6 +9,7 @@ import {
   CheckCircle,
   ArrowLeft
 } from 'lucide-react';
+import { getApiBaseUrl } from '../utils/api';
 
 interface ForgotPasswordFormData {
   email: string
@@ -21,6 +22,7 @@ interface ForgotPasswordFormErrors {
 
 export function ForgotPasswordPage() {
   const navigate = useNavigate()
+  const apiBaseUrl = getApiBaseUrl()
   
   const [formData, setFormData] = useState<ForgotPasswordFormData>({
     email: ''
@@ -68,7 +70,7 @@ export function ForgotPasswordPage() {
     setErrors({})
     
     try {
-      const response = await fetch('http://localhost:3001/api/auth/forgot-password', {
+      const response = await fetch(`${apiBaseUrl}/auth/forgot-password`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -1,4 +1,5 @@
 // Custom authentication service for Vite React app
+import { getServerBaseUrl } from '../utils/api';
 
 interface LoginCredentials {
   email: string
@@ -46,7 +47,7 @@ interface TwoFactorVerificationRequest {
 }
 
 class AuthService {
-  private baseUrl = 'http://localhost:3001'
+  private baseUrl = getServerBaseUrl()
   private tokenKey = 'auth-token'
   private userKey = 'auth-user'
 
