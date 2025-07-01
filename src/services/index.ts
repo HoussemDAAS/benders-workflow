@@ -7,6 +7,8 @@ export { workflowService } from './workflowService';
 export { teamService } from './teamService'; // Re-export the mock teamService
 export { dashboardService } from './dashboardService';
 export { meetingService } from './meetingService';
+export { calendarService } from './calendarService';
+export { timeTrackerService, timeEntriesService, timeUtils } from './timeTrackingService';
 
 export type {
   CreateWorkspaceData,
@@ -54,3 +56,21 @@ export type {
   Meeting,
   MeetingWithDetails
 } from './meetingService';
+
+export type {
+  CalendarEvent,
+  CreateCalendarEventData,
+  UpdateCalendarEventData,
+  CalendarFilters
+} from './calendarService';
+
+export type {
+  ActiveTimer,
+  TimerStatus,
+  StartTimerData,
+  TimeEntry,
+  CreateTimeEntryData,
+  UpdateTimeEntryData,
+  TimeEntryFilters,
+  TimeStats
+} from './timeTrackingService';

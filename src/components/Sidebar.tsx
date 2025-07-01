@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useWorkspace } from '../context/WorkspaceContext';
+import { WorkspaceManagementModal } from './WorkspaceManagementModal';
 import { 
   LayoutDashboard, 
   Workflow, 
@@ -19,7 +20,10 @@ import {
   ChevronDown,
   Sparkles,
   User,
-  LogOut
+  LogOut,
+  UserPlus,
+  Edit,
+  Cog
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -35,6 +39,9 @@ export function Sidebar({ onNewTask }: SidebarProps) {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isWorkspaceDropdownOpen, setIsWorkspaceDropdownOpen] = useState(false);
   const [isWorkspaceSwitching, setIsWorkspaceSwitching] = useState(false);
+  const [showWorkspaceModal, setShowWorkspaceModal] = useState(false);
+  const [workspaceModalMode, setWorkspaceModalMode] = useState<'create' | 'edit' | 'manage'>('create');
+  const [selectedWorkspaceForEdit, setSelectedWorkspaceForEdit] = useState<any>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Get current view from URL path
@@ -103,6 +110,18 @@ export function Sidebar({ onNewTask }: SidebarProps) {
     }
   };
 
+  const handleOpenWorkspaceModal = (mode: 'create' | 'edit' | 'manage', workspace?: any) => {
+    setWorkspaceModalMode(mode);
+    setSelectedWorkspaceForEdit(workspace || null);
+    setShowWorkspaceModal(true);
+    setIsWorkspaceDropdownOpen(false);
+  };
+
+  const handleCloseWorkspaceModal = () => {
+    setShowWorkspaceModal(false);
+    setSelectedWorkspaceForEdit(null);
+  };
+
   const navItems = [
     { 
       id: 'dashboard', 
@@ -123,9 +142,15 @@ export function Sidebar({ onNewTask }: SidebarProps) {
       badge: '12'
     },
     { 
+      id: 'calendar', 
+      label: 'Calendar', 
+      icon: Calendar, 
+      badge: null
+    },
+    { 
       id: 'meetings', 
       label: 'Meetings', 
-      icon: Calendar, 
+      icon: Users, 
       badge: null
     },
     { 
@@ -198,29 +223,96 @@ export function Sidebar({ onNewTask }: SidebarProps) {
           {/* Workspace Dropdown */}
           {isWorkspaceDropdownOpen && (
             <div className="absolute top-full left-0 right-0 mt-2 bg-white/95 backdrop-blur-sm rounded-xl shadow-xl border border-white/20 overflow-hidden z-50">
-              <div className="py-2">
-                {workspaces.map((workspace) => (
-                  <button
-                    key={workspace.id}
-                    className={`w-full px-4 py-3 text-left text-sm transition-colors hover:bg-primary/10 ${
-                      currentWorkspace?.id === workspace.id 
-                        ? 'bg-primary/20 text-primary font-medium' 
-                        : 'text-gray-700 hover:text-primary'
-                    }`}
-                    onClick={() => handleWorkspaceSelect(workspace)}
-                  >
-                    <div className="font-medium truncate">{workspace.name}</div>
-                    {workspace.description && (
-                      <div className="text-xs opacity-70 truncate mt-0.5">{workspace.description}</div>
-                    )}
-                  </button>
-                ))}
-                {workspaces.length === 0 && (
-                  <div className="px-4 py-3 text-sm text-gray-500 text-center">
-                    No workspaces available
+              {/* Current Workspace Section */}
+              {currentWorkspace && (
+                <>
+                  <div className="px-4 py-2 bg-primary/5 border-b border-gray-200">
+                    <div className="text-xs font-medium text-primary uppercase tracking-wide">Current Workspace</div>
                   </div>
-                )}
+                  <div className="py-2">
+                    <div className="px-4 py-2">
+                      <div className="font-medium text-primary truncate">{currentWorkspace.name}</div>
+                      {currentWorkspace.description && (
+                        <div className="text-xs text-gray-600 truncate mt-0.5">{currentWorkspace.description}</div>
+                      )}
+                    </div>
+                    <div className="flex items-center justify-between px-4 py-2 gap-2">
+                      <button
+                        onClick={() => handleOpenWorkspaceModal('edit', currentWorkspace)}
+                        className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-gray-700 hover:text-primary hover:bg-primary/10 rounded-lg transition-colors"
+                      >
+                        <Edit size={12} />
+                        Edit Details
+                      </button>
+                      <button
+                        onClick={() => handleOpenWorkspaceModal('manage', currentWorkspace)}
+                        className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-gray-700 hover:text-primary hover:bg-primary/10 rounded-lg transition-colors"
+                      >
+                        <UserPlus size={12} />
+                        Manage Members
+                      </button>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* Other Workspaces */}
+              {workspaces.filter(w => w.id !== currentWorkspace?.id).length > 0 && (
+                <>
+                  <div className="px-4 py-2 bg-gray-50 border-b border-gray-200">
+                    <div className="text-xs font-medium text-gray-600 uppercase tracking-wide">Switch Workspace</div>
+                  </div>
+                  <div className="py-2">
+                    {workspaces.filter(w => w.id !== currentWorkspace?.id).map((workspace) => (
+                      <button
+                        key={workspace.id}
+                        className="w-full px-4 py-3 text-left text-sm transition-colors hover:bg-primary/10 text-gray-700 hover:text-primary group"
+                        onClick={() => handleWorkspaceSelect(workspace)}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex-1 min-w-0">
+                            <div className="font-medium truncate">{workspace.name}</div>
+                            {workspace.description && (
+                              <div className="text-xs opacity-70 truncate mt-0.5">{workspace.description}</div>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleOpenWorkspaceModal('manage', workspace);
+                              }}
+                              className="p-1 hover:bg-primary/20 rounded text-primary"
+                              title="Manage workspace"
+                            >
+                              <Cog size={12} />
+                            </button>
+                          </div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+
+              {/* Quick Actions */}
+              <div className="border-t border-gray-200 py-2">
+                <button
+                  onClick={() => handleOpenWorkspaceModal('create')}
+                  className="w-full px-4 py-3 text-left text-sm font-medium text-primary hover:bg-primary/10 transition-colors flex items-center gap-3"
+                >
+                  <div className="w-5 h-5 bg-primary/20 rounded-lg flex items-center justify-center">
+                    <Plus size={12} />
+                  </div>
+                  Create New Workspace
+                </button>
               </div>
+
+              {workspaces.length === 0 && (
+                <div className="px-4 py-3 text-sm text-gray-500 text-center">
+                  No workspaces available
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -397,6 +489,14 @@ export function Sidebar({ onNewTask }: SidebarProps) {
           <SidebarContent />
         </div>
       </div>
+      
+      {/* Workspace Management Modal */}
+      <WorkspaceManagementModal
+        isOpen={showWorkspaceModal}
+        onClose={handleCloseWorkspaceModal}
+        mode={workspaceModalMode}
+        workspace={selectedWorkspaceForEdit}
+      />
     </>
   );
 }

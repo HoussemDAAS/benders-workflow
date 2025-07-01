@@ -8,6 +8,25 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Custom scrollbar for timer sessions */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 2px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 2px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
 /* Custom base styles */
 body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -58,4 +77,106 @@ body {
 
 .nav-scrollbar-hide::-webkit-scrollbar-thumb {
   display: none !important;
+}
+
+/* FullCalendar Integration with Tailwind */
+.fc {
+  font-family: inherit;
+}
+
+/* Header styling */
+.fc .fc-col-header-cell {
+  @apply bg-gray-50 border-0 border-b border-gray-200 font-semibold text-gray-600 text-sm;
+}
+
+/* Day cells */
+.fc .fc-daygrid-day-number {
+  @apply font-medium text-gray-900 p-2 rounded-md transition-all;
+}
+
+.fc .fc-day-today .fc-daygrid-day-number {
+  @apply bg-gradient-to-br from-primary to-accent text-white font-semibold;
+}
+
+.fc .fc-day-other .fc-daygrid-day-number {
+  @apply text-gray-400;
+}
+
+/* Time grid styling */
+.fc .fc-timegrid-slot {
+  @apply border-0 border-t border-gray-100;
+  height: 3rem;
+}
+
+.fc .fc-timegrid-axis-cushion {
+  @apply text-gray-500 text-xs font-medium;
+}
+
+.fc .fc-timegrid-col {
+  @apply border-0 border-l border-gray-200;
+}
+
+/* Events */
+.fc .fc-event {
+  @apply border-0 rounded-lg shadow-sm cursor-pointer transition-all duration-200;
+  border: none !important;
+  margin: 2px !important;
+}
+
+.fc .fc-event:hover {
+  @apply shadow-lg transform -translate-y-0.5;
+}
+
+.fc .fc-event-title {
+  @apply font-medium text-sm;
+}
+
+.fc .fc-event-time {
+  @apply text-xs opacity-90;
+}
+
+/* List view */
+.fc .fc-list-day-cushion {
+  @apply bg-gray-50 text-gray-700 font-semibold border-b border-gray-200;
+}
+
+.fc .fc-list-event {
+  @apply border-0 border-b border-gray-100 hover:bg-gray-50 transition-colors;
+}
+
+.fc .fc-list-event-title {
+  @apply font-medium text-gray-900;
+}
+
+.fc .fc-list-event-time {
+  @apply text-gray-600 text-sm;
+}
+
+/* Now indicator */
+.fc .fc-timegrid-now-indicator-line {
+  @apply border-red-500;
+  border-top-width: 2px;
+}
+
+/* Business hours */
+.fc .fc-non-business {
+  @apply bg-gray-50 opacity-60;
+}
+
+/* Selection highlight */
+.fc .fc-highlight {
+  @apply bg-primary/10 border-2 border-dashed border-primary;
+}
+
+/* Scrollbars */
+.fc-scroller::-webkit-scrollbar {
+  @apply w-1.5;
+}
+
+.fc-scroller::-webkit-scrollbar-track {
+  @apply bg-gray-100 rounded;
+}
+
+.fc-scroller::-webkit-scrollbar-thumb {
+  @apply bg-gray-300 rounded hover:bg-gray-400;
 }

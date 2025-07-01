@@ -396,6 +396,172 @@ const createTables = async () => {
       }
     }
     
+    // =====================================================================
+    // CALENDAR & TIME TRACKING SYSTEM TABLES
+    // =====================================================================
+
+    // Time entries for tracking work sessions
+    await db.run(`
+      CREATE TABLE IF NOT EXISTS time_entries (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        workspace_id TEXT NOT NULL,
+        task_id TEXT,
+        start_time DATETIME NOT NULL,
+        end_time DATETIME,
+        duration_seconds INTEGER,
+        status TEXT DEFAULT 'completed' CHECK (status IN ('active', 'paused', 'completed')),
+        description TEXT,
+        is_break BOOLEAN DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
+        FOREIGN KEY (workspace_id) REFERENCES workspaces (id) ON DELETE CASCADE,
+        FOREIGN KEY (task_id) REFERENCES kanban_tasks (id) ON DELETE SET NULL
+      )
+    `);
+
+    // Calendar events for scheduling (future planning)
+    await db.run(`
+      CREATE TABLE IF NOT EXISTS calendar_events (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        workspace_id TEXT NOT NULL,
+        title TEXT NOT NULL,
+        start_time DATETIME NOT NULL,
+        end_time DATETIME NOT NULL,
+        all_day BOOLEAN DEFAULT 0,
+        task_id TEXT,
+        description TEXT,
+        event_type TEXT DEFAULT 'task' CHECK (event_type IN ('task', 'meeting', 'break', 'personal')),
+        color TEXT DEFAULT '#3b82f6',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
+        FOREIGN KEY (workspace_id) REFERENCES workspaces (id) ON DELETE CASCADE,
+        FOREIGN KEY (task_id) REFERENCES kanban_tasks (id) ON DELETE SET NULL
+      )
+    `);
+
+    // Active timers (for current work sessions) - only one active timer per user
+    await db.run(`
+      CREATE TABLE IF NOT EXISTS active_timers (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL UNIQUE, -- Only one active timer per user
+        workspace_id TEXT NOT NULL,
+        task_id TEXT,
+        start_time DATETIME NOT NULL,
+        last_pause_time DATETIME,
+        total_paused_duration INTEGER DEFAULT 0,
+        description TEXT,
+        is_break BOOLEAN DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
+        FOREIGN KEY (workspace_id) REFERENCES workspaces (id) ON DELETE CASCADE,
+        FOREIGN KEY (task_id) REFERENCES kanban_tasks (id) ON DELETE SET NULL
+      )
+    `);
+
+    // Time tracking categories for better organization
+    await db.run(`
+      CREATE TABLE IF NOT EXISTS time_categories (
+        id TEXT PRIMARY KEY,
+        workspace_id TEXT NOT NULL,
+        name TEXT NOT NULL,
+        description TEXT,
+        color TEXT DEFAULT '#64748b',
+        is_billable BOOLEAN DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (workspace_id) REFERENCES workspaces (id) ON DELETE CASCADE,
+        UNIQUE(workspace_id, name)
+      )
+    `);
+
+    // Check if category_id column exists before adding it to time_entries
+    const timeEntriesColumnInfo = await db.all("PRAGMA table_info(time_entries)");
+    const timeEntriesColumnNames = timeEntriesColumnInfo.map(col => col.name);
+    
+    if (!timeEntriesColumnNames.includes('category_id')) {
+      console.log('🔧 Adding category_id column to time_entries table...');
+      await db.run(`ALTER TABLE time_entries ADD COLUMN category_id TEXT`);
+      await db.run(`
+        CREATE INDEX IF NOT EXISTS idx_time_entries_category 
+        ON time_entries(category_id)
+      `);
+      console.log('✅ Category_id column added successfully!');
+    } else {
+      console.log('✅ Category_id column already exists in time_entries table');
+      // Make sure the index exists even if column already exists
+      await db.run(`
+        CREATE INDEX IF NOT EXISTS idx_time_entries_category 
+        ON time_entries(category_id)
+      `);
+    }
+
+    console.log('✅ Calendar and time tracking tables created successfully!');
+
+    // Insert default time categories
+    const defaultCategories = [
+      { id: 'dev-work', name: 'Development', description: 'Software development and coding', color: '#3b82f6', billable: 1 },
+      { id: 'meetings', name: 'Meetings', description: 'Client meetings and internal discussions', color: '#f59e0b', billable: 1 },
+      { id: 'planning', name: 'Planning', description: 'Project planning and requirements', color: '#8b5cf6', billable: 1 },
+      { id: 'testing', name: 'Testing', description: 'Quality assurance and testing', color: '#10b981', billable: 1 },
+      { id: 'admin', name: 'Administrative', description: 'Administrative tasks and overhead', color: '#64748b', billable: 0 },
+      { id: 'break', name: 'Break', description: 'Coffee breaks and lunch', color: '#ef4444', billable: 0 }
+    ];
+
+    // Only insert categories if default workspace exists
+    const categoriesWorkspace = await db.get('SELECT id FROM workspaces WHERE id = ?', ['default-workspace']);
+    if (categoriesWorkspace) {
+      for (const category of defaultCategories) {
+        await db.run(`
+          INSERT OR IGNORE INTO time_categories (id, workspace_id, name, description, color, is_billable)
+          VALUES (?, ?, ?, ?, ?, ?)
+        `, [category.id, 'default-workspace', category.name, category.description, category.color, category.billable]);
+      }
+      console.log('✅ Default time tracking categories created!');
+    }
+
+    // Create indexes for better performance
+    await db.run(`CREATE INDEX IF NOT EXISTS idx_time_entries_user_date ON time_entries(user_id, start_time)`);
+    await db.run(`CREATE INDEX IF NOT EXISTS idx_time_entries_workspace ON time_entries(workspace_id)`);
+    await db.run(`CREATE INDEX IF NOT EXISTS idx_time_entries_task ON time_entries(task_id)`);
+    await db.run(`CREATE INDEX IF NOT EXISTS idx_calendar_events_user_date ON calendar_events(user_id, start_time)`);
+    await db.run(`CREATE INDEX IF NOT EXISTS idx_calendar_events_workspace ON calendar_events(workspace_id)`);
+    await db.run(`CREATE INDEX IF NOT EXISTS idx_active_timers_user ON active_timers(user_id)`);
+
+    console.log('✅ Performance indexes created for calendar and time tracking!');
+
+    // Add missing columns to active_timers table if they don't exist
+    try {
+      console.log('🔧 Checking active_timers table structure...');
+      
+      const activeTimersColumns = await db.all(`PRAGMA table_info(active_timers)`);
+      const columnNames = activeTimersColumns.map(col => col.name);
+      
+      if (!columnNames.includes('pause_reason')) {
+        console.log('🔧 Adding pause_reason column to active_timers table...');
+        await db.run(`ALTER TABLE active_timers ADD COLUMN pause_reason TEXT`);
+      }
+      
+      if (!columnNames.includes('last_pause_time')) {
+        console.log('🔧 Adding last_pause_time column to active_timers table...');
+        await db.run(`ALTER TABLE active_timers ADD COLUMN last_pause_time DATETIME`);
+      }
+      
+      if (!columnNames.includes('total_paused_duration')) {
+        console.log('🔧 Adding total_paused_duration column to active_timers table...');
+        await db.run(`ALTER TABLE active_timers ADD COLUMN total_paused_duration INTEGER DEFAULT 0`);
+      }
+      
+      console.log('✅ Active timers table structure updated successfully');
+    } catch (error) {
+      console.error('❌ Error updating active_timers table:', error);
+    }
+
+    console.log('Database initialization completed!');
+    
   } catch (error) {
     console.error('Error creating tables:', error);
     process.exit(1);

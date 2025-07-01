@@ -68,7 +68,7 @@ export function MagicLinkVerificationPage() {
           throw new Error('Invalid magic link - no token found');
         }
 
-        console.log('🔗 Verifying magic link token...');
+
 
         // Verify the magic link token with our backend
         const response = await fetch(`${import.meta.env.VITE_API_URL}/auth/verify-magic-link`, {
@@ -90,7 +90,7 @@ export function MagicLinkVerificationPage() {
 
         // Check if 2FA is required
         if (authData.requiresTwoFactor) {
-          console.log('🔐 2FA required for magic link login');
+          
           setTwoFactorData({
             email: authData.email,
             magicToken: token
@@ -99,7 +99,7 @@ export function MagicLinkVerificationPage() {
           return;
         }
 
-        console.log('✅ Magic link verified successfully');
+        
         
         // Regular login success (no 2FA)
         localStorage.setItem('auth-token', authData.token);

@@ -35,7 +35,7 @@ export function OAuthCallbackPage() {
         // Determine provider from current path
         const provider = window.location.pathname.includes('google') ? 'google' : 'github';
 
-        console.log('🔐 Processing OAuth callback:', { provider, codeLength: code.length });
+
 
         // Send code to our backend
         const response = await fetch(`${import.meta.env.VITE_API_URL}/auth/callback/${provider}`, {
@@ -61,7 +61,7 @@ export function OAuthCallbackPage() {
 
         const authData = await response.json();
         
-        console.log('✅ OAuth authentication successful');
+
         
         // Store authentication data using the same keys as your auth service
         localStorage.setItem('auth-token', authData.token);
@@ -70,7 +70,7 @@ export function OAuthCallbackPage() {
         // Refresh the auth context to update the user state
         await refreshSession();
 
-        console.log('✅ Auth context refreshed, redirecting to dashboard');
+
 
         // OAuth users bypass 2FA by design, so redirect directly to dashboard
         navigate('/app/dashboard', { replace: true });

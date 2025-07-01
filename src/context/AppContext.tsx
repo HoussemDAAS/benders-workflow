@@ -52,7 +52,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   // Refresh data when workspace changes
   useEffect(() => {
     if (currentWorkspace && workspaceChanged > 0) {
-      console.log('🔄 Refreshing app data for workspace:', currentWorkspace.name);
+  
       refresh();
     }
   }, [workspaceChanged, currentWorkspace, refresh]);

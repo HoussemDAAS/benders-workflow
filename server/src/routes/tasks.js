@@ -623,4 +623,350 @@ router.delete('/:taskId/resources/:resourceId', async (req, res) => {
   }
 });
 
+// =============================================================================
+// SMART TASK SELECTION FOR TIME TRACKING
+// =============================================================================
+
+router.use(authenticate);
+
+// Helper function to get user's workspace ID
+const getUserWorkspaceId = async (req) => {
+  let workspaceId = req.headers['x-workspace-id'] || req.query.workspace_id;
+  
+  if (workspaceId) {
+    const isMember = await Workspace.isUserMember(req.user.id, workspaceId);
+    if (isMember) {
+      return workspaceId;
+    }
+  }
+  
+  const userWorkspaces = await Workspace.findForUser(req.user.id);
+  if (userWorkspaces.length > 0) {
+    return userWorkspaces[0].id;
+  }
+  
+  throw new Error('No accessible workspace found for user');
+};
+
+// GET /api/tasks/for-tracking - Get tasks optimized for time tracking selection
+router.get('/for-tracking', async (req, res) => {
+  try {
+    const db = getDatabase();
+    const userId = req.user.id;
+    
+    // Get user's workspace ID
+    let workspaceId;
+    try {
+      workspaceId = await getUserWorkspaceId(req);
+    } catch (error) {
+      return res.status(400).json({ error: 'No accessible workspace found. Please select a workspace first.' });
+    }
+
+    const { 
+      status = 'active', 
+      priority,
+      recent_only = 'false',
+      include_completed = 'false' 
+    } = req.query;
+
+    // Get recently tracked tasks first (last 30 days)
+    const recentlyTrackedTasks = await db.all(`
+      SELECT DISTINCT te.task_id
+      FROM time_entries te
+      WHERE te.user_id = ? AND te.workspace_id = ?
+        AND te.task_id IS NOT NULL
+        AND te.start_time >= datetime('now', '-30 days')
+      ORDER BY te.start_time DESC
+    `, [userId, workspaceId]);
+
+    const recentTaskIds = recentlyTrackedTasks.map(row => row.task_id);
+
+    // Build main query
+    let query = `
+      SELECT 
+        kt.id,
+        kt.title,
+        kt.description,
+        kt.priority,
+        kt.status,
+        kt.estimated_hours,
+        kt.actual_hours,
+        kt.due_date,
+        kt.created_at,
+        wf.id as workflow_id,
+        wf.name as workflow_name,
+        wf.status as workflow_status,
+        c.id as client_id,
+        c.name as client_name,
+        c.company as client_company,
+        -- Calculate total time spent on this task
+        COALESCE(
+          (SELECT SUM(te.duration_seconds) 
+           FROM time_entries te 
+           WHERE te.task_id = kt.id AND te.user_id = ?), 
+          0
+        ) as total_time_seconds,
+        -- Get last time this task was tracked
+        (SELECT MAX(te.start_time) 
+         FROM time_entries te 
+         WHERE te.task_id = kt.id AND te.user_id = ?) as last_tracked_at,
+        -- Count of time entries for this task
+        (SELECT COUNT(*) 
+         FROM time_entries te 
+         WHERE te.task_id = kt.id AND te.user_id = ?) as tracking_count
+      FROM kanban_tasks kt
+      LEFT JOIN workflows wf ON kt.workflow_id = wf.id
+      LEFT JOIN clients c ON wf.client_id = c.id
+      WHERE kt.workspace_id = ?
+    `;
+
+    const params = [userId, userId, userId, workspaceId];
+
+    // Add filters
+    if (status && status !== 'all') {
+      query += ` AND kt.status = ?`;
+      params.push(status);
+    }
+
+    if (priority) {
+      query += ` AND kt.priority = ?`;
+      params.push(priority);
+    }
+
+    if (include_completed === 'false') {
+      query += ` AND kt.status != 'done'`;
+    }
+
+    // Order by: recently tracked first, then by priority and due date
+    query += `
+      ORDER BY 
+        CASE WHEN kt.id IN (${recentTaskIds.map(() => '?').join(',')}) THEN 0 ELSE 1 END,
+        CASE kt.priority 
+          WHEN 'high' THEN 0 
+          WHEN 'medium' THEN 1 
+          WHEN 'low' THEN 2 
+          ELSE 3 
+        END,
+        CASE WHEN kt.due_date IS NOT NULL THEN 0 ELSE 1 END,
+        kt.due_date ASC,
+        kt.created_at DESC
+    `;
+
+    // Add recent task IDs to params for the IN clause
+    params.push(...recentTaskIds);
+
+    const tasks = await db.all(query, params);
+
+    // If recent_only is true, limit to recently tracked + high priority
+    let filteredTasks = tasks;
+    if (recent_only === 'true') {
+      filteredTasks = tasks.filter(task => 
+        recentTaskIds.includes(task.id) || 
+        task.priority === 'high' ||
+        (task.due_date && new Date(task.due_date) <= new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)) // Due within 7 days
+      );
+    }
+
+    // Group by client and workflow
+    const groupedTasks = {};
+
+    filteredTasks.forEach(task => {
+      const clientKey = task.client_id || 'no-client';
+      const workflowKey = task.workflow_id || 'no-workflow';
+      
+      if (!groupedTasks[clientKey]) {
+        groupedTasks[clientKey] = {
+          client: {
+            id: task.client_id,
+            name: task.client_name || 'No Client',
+            company: task.client_company
+          },
+          workflows: {}
+        };
+      }
+
+      if (!groupedTasks[clientKey].workflows[workflowKey]) {
+        groupedTasks[clientKey].workflows[workflowKey] = {
+          workflow: {
+            id: task.workflow_id,
+            name: task.workflow_name || 'No Workflow',
+            status: task.workflow_status
+          },
+          tasks: []
+        };
+      }
+
+      // Calculate progress and time info
+      const totalTimeHours = task.total_time_seconds / 3600;
+      const estimatedHours = task.estimated_hours || 0;
+      const progressPercentage = estimatedHours > 0 ? Math.min(100, Math.round((totalTimeHours / estimatedHours) * 100)) : 0;
+
+      groupedTasks[clientKey].workflows[workflowKey].tasks.push({
+        id: task.id,
+        title: task.title,
+        description: task.description,
+        priority: task.priority,
+        status: task.status,
+        estimatedHours: task.estimated_hours,
+        actualHours: task.actual_hours,
+        dueDate: task.due_date,
+        totalTimeSpent: {
+          seconds: task.total_time_seconds,
+          hours: Math.round(totalTimeHours * 100) / 100,
+          formatted: formatDuration(task.total_time_seconds)
+        },
+        lastTrackedAt: task.last_tracked_at,
+        trackingCount: task.tracking_count,
+        progress: {
+          percentage: progressPercentage,
+          isOvertime: totalTimeHours > estimatedHours && estimatedHours > 0
+        },
+        isRecentlyTracked: recentTaskIds.includes(task.id),
+        urgency: calculateUrgency(task)
+      });
+    });
+
+    // Convert to array format with totals
+    const result = Object.values(groupedTasks).map(clientGroup => ({
+      client: clientGroup.client,
+      workflows: Object.values(clientGroup.workflows).map(workflowGroup => ({
+        workflow: workflowGroup.workflow,
+        tasks: workflowGroup.tasks,
+        totalTasks: workflowGroup.tasks.length,
+        totalTimeSpent: workflowGroup.tasks.reduce((sum, task) => sum + task.totalTimeSpent.hours, 0)
+      })),
+      totalTasks: Object.values(clientGroup.workflows).reduce((sum, wf) => sum + wf.tasks.length, 0)
+    }));
+
+    // Add summary statistics
+    const summary = {
+      totalTasks: filteredTasks.length,
+      recentlyTrackedTasks: filteredTasks.filter(task => recentTaskIds.includes(task.id)).length,
+      highPriorityTasks: filteredTasks.filter(task => task.priority === 'high').length,
+      overdueTasks: filteredTasks.filter(task => task.due_date && new Date(task.due_date) < new Date()).length,
+      totalClients: Object.keys(groupedTasks).length,
+      totalWorkflows: Object.values(groupedTasks).reduce((sum, client) => sum + Object.keys(client.workflows).length, 0)
+    };
+
+    res.json({
+      tasks: result,
+      summary,
+      meta: {
+        workspaceId,
+        userId,
+        filters: { status, priority, recent_only, include_completed },
+        generatedAt: new Date().toISOString()
+      }
+    });
+
+  } catch (error) {
+    console.error('Error fetching tasks for tracking:', error);
+    res.status(500).json({ error: 'Failed to fetch tasks for tracking' });
+  }
+});
+
+// GET /api/tasks/recent-tracking - Get recently tracked tasks for quick start
+router.get('/recent-tracking', async (req, res) => {
+  try {
+    const db = getDatabase();
+    const userId = req.user.id;
+    
+    let workspaceId;
+    try {
+      workspaceId = await getUserWorkspaceId(req);
+    } catch (error) {
+      return res.status(400).json({ error: 'No accessible workspace found. Please select a workspace first.' });
+    }
+
+    const { limit = 10 } = req.query;
+
+    const recentTasks = await db.all(`
+      SELECT DISTINCT
+        kt.id,
+        kt.title,
+        kt.priority,
+        kt.status,
+        wf.name as workflow_name,
+        c.name as client_name,
+        MAX(te.start_time) as last_tracked_at,
+        COUNT(te.id) as session_count,
+        SUM(te.duration_seconds) as total_seconds,
+        AVG(te.duration_seconds) as avg_session_seconds
+      FROM time_entries te
+      JOIN kanban_tasks kt ON te.task_id = kt.id
+      LEFT JOIN workflows wf ON kt.workflow_id = wf.id
+      LEFT JOIN clients c ON wf.client_id = c.id
+      WHERE te.user_id = ? AND te.workspace_id = ?
+        AND te.start_time >= datetime('now', '-14 days')
+      GROUP BY kt.id
+      ORDER BY MAX(te.start_time) DESC
+      LIMIT ?
+    `, [userId, workspaceId, parseInt(limit)]);
+
+    const formattedTasks = recentTasks.map(task => ({
+      id: task.id,
+      title: task.title,
+      priority: task.priority,
+      status: task.status,
+      workflowName: task.workflow_name,
+      clientName: task.client_name,
+      lastTrackedAt: task.last_tracked_at,
+      sessionCount: task.session_count,
+      totalTime: {
+        seconds: task.total_seconds,
+        formatted: formatDuration(task.total_seconds)
+      },
+      averageSession: {
+        seconds: task.avg_session_seconds,
+        formatted: formatDuration(task.avg_session_seconds)
+      }
+    }));
+
+    res.json(formattedTasks);
+
+  } catch (error) {
+    console.error('Error fetching recent tracking:', error);
+    res.status(500).json({ error: 'Failed to fetch recent tracking data' });
+  }
+});
+
+// Helper functions
+function formatDuration(seconds) {
+  if (!seconds) return '0m';
+  
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  
+  if (hours > 0) {
+    return minutes > 0 ? `${hours}h ${minutes}m` : `${hours}h`;
+  }
+  return `${minutes}m`;
+}
+
+function calculateUrgency(task) {
+  let urgencyScore = 0;
+  
+  // Priority weight
+  const priorityWeights = { high: 3, medium: 2, low: 1 };
+  urgencyScore += priorityWeights[task.priority] || 0;
+  
+  // Due date weight
+  if (task.due_date) {
+    const daysUntilDue = Math.ceil((new Date(task.due_date) - new Date()) / (1000 * 60 * 60 * 24));
+    if (daysUntilDue < 0) urgencyScore += 5; // Overdue
+    else if (daysUntilDue <= 1) urgencyScore += 4; // Due today/tomorrow
+    else if (daysUntilDue <= 3) urgencyScore += 3; // Due this week
+    else if (daysUntilDue <= 7) urgencyScore += 2; // Due next week
+  }
+  
+  // Status weight
+  if (task.status === 'in-progress') urgencyScore += 2;
+  else if (task.status === 'review') urgencyScore += 1;
+  
+  if (urgencyScore >= 7) return 'critical';
+  if (urgencyScore >= 5) return 'high';
+  if (urgencyScore >= 3) return 'medium';
+  return 'low';
+}
+
 module.exports = router;
